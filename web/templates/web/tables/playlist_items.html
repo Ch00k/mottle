@@ -1,0 +1,23 @@
+{% load tekore_model_extras %}
+<table>
+    <thead>
+        <tr>
+            {% comment %}<th>Image</th>{% endcomment %}
+            {% comment %}<th>ID</th>{% endcomment %}
+            <th>Artist</th>
+            <th>Album</th>
+            <th>Track</th>
+            <th>Duration</th>
+        </tr>
+    </thead>
+    {% for item in playlist_items %}
+        <tr>
+            {% comment %}<td><img src="{{ item.track.album.images.0.url }}" width="50" /></td>{% endcomment %}
+            {% comment %}<td>{{ item.track.id }}</td>{% endcomment %}
+            <td>{{ item.track | artists }}</td>
+            <td>{{ item.track.album.name }}</td>
+            <td>{{ item.track.name }}</td>
+            <td>{{ item.track.duration_ms | duration_humanized }}</td>
+        </tr>
+    {% endfor %}
+</table>

@@ -1,0 +1,9 @@
+{% extends "web/base.html" %}
+{% block page_title %}
+    Login
+{% endblock page_title %}
+{% block content %}
+    <form action="." method="post">
+        {% include "web/forms/login.html" %}
+    </form>
+{% endblock content %}

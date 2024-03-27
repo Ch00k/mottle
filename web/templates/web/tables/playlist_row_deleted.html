@@ -1,0 +1,16 @@
+{% load tekore_model_extras %}
+<tr>
+    <td>
+        <img src="{{ playlist.images | pick_image }}">
+    </td>
+    <td>
+        <a href="{% url 'playlist' playlist.id %}">{{ playlist.name }}</a>
+    </td>
+    <td>{{ playlist.tracks.total }} tracks</td>
+    <td>
+        <a href=""
+           hx-post="{% url 'playlist' playlist.id %}"
+           hx-target="closest tr"
+           hx-swap="outerHTML">Undo</a>
+    </td>
+</tr>

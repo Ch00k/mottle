@@ -1,0 +1,22 @@
+{% extends "web/base.html" %}
+{% load static %}
+{% block script %}
+    <script src="{% static 'web/script.js' %}"></script>
+{% endblock script %}
+{% block page_title %}
+    Discography
+{% endblock page_title %}
+{% block content %}
+    <section>
+        <form action="." method="post">
+            <header>
+                <h2>Create playlist</h2>
+            </header>
+            {% csrf_token %}
+            <div>
+                <button type="submit" id="create">Create</button>
+            </div>
+            {% include "web/forms/playlist_create.html" with albums=albums %}
+        </form>
+    </section>
+{% endblock content %}

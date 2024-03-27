@@ -1,0 +1,26 @@
+{% extends "web/base.html" %}
+{% block content %}
+    <section>
+        <aside>
+            <h3>Create discography</h3>
+            <p>Combine all artist's albums into a single playlist</p>
+            <p>
+                <a href="{% url 'search' %}"><b>Try it!</b></a>
+            </p>
+        </aside>
+        <aside>
+            <h3>Follow all</h3>
+            <p>Follow all artists in a playlist</p>
+            <p>
+                <a href="#"><i>Coming soon!</i></a>
+            </p>
+        </aside>
+        <aside>
+            <h3>Deduplicate</h3>
+            <p>Remove duplicate tracks from a playlist</p>
+            <p>
+                <a href="#"><i>Coming soon!</i></a>
+            </p>
+        </aside>
+    </section>
+{% endblock content %}

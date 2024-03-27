@@ -1,0 +1,69 @@
+{% load static %}
+{% load tekore_model_extras %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <link rel="shortcut icon"
+              type="image/png"
+              href="{% static 'web/favicon.png' %}">
+        <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
+        <link rel="stylesheet" href="{% static 'web/style.css' %}">
+        <script src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"></script>
+        <meta charset="utf-8">
+        <meta name="description" content="My description">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>
+            {% block title %}
+                mottle
+            {% endblock title %}
+        </title>
+        {% block script %}{% endblock %}
+    </head>
+    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <header>
+            <nav>
+                <a href="{% url 'index' %}">
+                    <img class="logo" alt="Logo" src="{% static 'web/logo.png' %}" height=50">
+                </a>
+                Filling spots missed by Spotify
+                <ul>
+                    <li>
+                        <a href="{% url 'index' %}">Home</a>
+                    </li>
+                    {% if request.spotify_client %}
+                        <li>
+                            <a href="#">{{ request.spotify_user.display_name }}</a>
+                            <ul>
+                                <li>
+                                    <a href="{% url 'playlists' %}">Playlists</a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'logout' %}">Logout</a>
+                                </li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="{% url 'login' %}">Login</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <h1>
+                {% block page_title %}
+                    mottle
+                {% endblock page_title %}
+            </h1>
+        </header>
+        <main>
+            {% block content %}
+            {% endblock content %}
+        </main>
+        <footer>
+            <hr>
+            <p>
+                <small>mottle</small>
+            </p>
+        </footer>
+    </body>
+</html>

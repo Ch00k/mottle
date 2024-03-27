@@ -1,0 +1,18 @@
+{% extends "web/base.html" %}
+{% load static %}
+{% load tekore_model_extras %}
+{% block script %}
+    <script src="{% static 'web/script.js' %}"></script>
+{% endblock script %}
+{% block page_title %}
+    Discography
+{% endblock page_title %}
+{% block content %}
+    <section>
+        <form>
+            {% csrf_token %}
+            {% include "web/forms/search_artists.html" %}
+            <div id="search-results"></div>
+        </form>
+    </section>
+{% endblock content %}

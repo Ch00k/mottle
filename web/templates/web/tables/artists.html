@@ -1,0 +1,14 @@
+{% load tekore_model_extras %}
+<table>
+    {% for artist in artists %}
+        <tr>
+            <td>
+                <img src="{{ artist.images | pick_image }}">
+            </td>
+            <td>
+                <a href="{% url 'albums' artist.id %}">{{ artist.name }}</a>
+            </td>
+            <td>{{ artist | genres }}</td>
+        </tr>
+    {% endfor %}
+</table>

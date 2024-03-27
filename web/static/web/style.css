@@ -1,0 +1,30 @@
+:root {
+    --width-card: 270px;
+    --width-card-medium: 1080px;
+    --width-card-wide: 1080px;
+    --width-content: 1080px;
+}
+
+form {
+    min-width: var(--width-content);
+}
+
+table {
+    display: table;
+    white-space: normal;
+    width: 100%;
+}
+
+table td,
+table th,
+table tr {
+    text-align: var(--justify-normal);
+}
+
+img:not(.logo) {
+    object-fit: cover;
+    min-width: 50px;
+    width: 50px;
+    height: 50px;
+    border-radius: 15%;
+}
