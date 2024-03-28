@@ -1,6 +1,5 @@
 import logging
 
-from asyncstdlib import sorted
 from django.conf import settings
 from django.http import (
     HttpRequest,
@@ -10,7 +9,7 @@ from django.http import (
     HttpResponseServerError,
 )
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 from tekore.model import AlbumType
 
 from .models import SpotifyAuth
@@ -39,7 +38,6 @@ logger = logging.getLogger(__name__)
 @require_http_methods(["GET", "POST"])
 async def login(request: HttpRequest) -> HttpResponse:
     if request.method == "GET":
-        # __import__("pdb").set_trace()
         spotify_auth_id = request.session.get("spotify_auth_id")
         logger.debug(f"SpotifyAuth ID: {spotify_auth_id}")
 
@@ -111,7 +109,7 @@ async def callback(request: HttpRequest) -> HttpResponse:
         logger.error(f"Failed to request token: {e}")
         return HttpResponseBadRequest("Invalid request")
 
-    await spotify_auth.update_from_tekore_token(tekore_token)
+    await spotify_auth.update_from_tekore_token(tekore_token)  # pyright: ignore[reportArgumentType]
 
     logger.debug(spotify_auth)
 
@@ -134,7 +132,7 @@ async def search(request: HttpRequestWithSpotifyClient) -> HttpResponse:
             logger.exception(e)
             return HttpResponseServerError("Failed to search for artists")
 
-        return render(request, "web/tables/artists.html", context={"artists": artists[0].items})
+        return render(request, "web/tables/artists.html", context={"artists": artists.items})
 
 
 async def albums(request: HttpRequestWithSpotifyClient, artist_id: str) -> HttpResponse:
@@ -146,8 +144,8 @@ async def albums(request: HttpRequestWithSpotifyClient, artist_id: str) -> HttpR
         logger.exception(e)
         return HttpResponseServerError("Failed to get albums")
 
-    sorted_albums = await sorted(
-        await sorted(albums, key=lambda x: x.release_date, reverse=True), key=lambda x: ALBUM_SORT_ORDER[x.album_type]
+    sorted_albums = sorted(
+        sorted(albums, key=lambda x: x.release_date, reverse=True), key=lambda x: ALBUM_SORT_ORDER[x.album_type]
     )
 
     has_albums = list_has(sorted_albums, AlbumType.album)

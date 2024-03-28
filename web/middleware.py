@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from asgiref.sync import async_to_sync, iscoroutinefunction, markcoroutinefunction, sync_to_async
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -26,9 +26,9 @@ class SpotifyAuthMiddleware:
         logger.debug(f"Request path: {request.path_info}")
         if request.path_info in ("/login/", "/callback/"):
             logger.debug(f"Skipping {self.__class__.__name__} middleware")
-            request.spotify_client = None
-            request.spotify_user = None
-            response = await self.get_response(request)
+            # request.spotify_client = None
+            # request.spotify_user = None
+            response: HttpResponse = await self.get_response(request)
             return response
 
         spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
@@ -62,7 +62,7 @@ class SpotifyAuthMiddleware:
         sender = RetryingSender(sender=AsyncSender())
         spotify_client = Spotify(token=spotify_auth.access_token, sender=sender, max_limits_on=True, chunked_on=True)
 
-        user = await spotify_client.current_user()
+        user = await spotify_client.current_user()  # pyright: ignore
 
         request.spotify_client = spotify_client
         request.spotify_user = user

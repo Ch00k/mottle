@@ -4,11 +4,7 @@ version = "0.1.0"
 description = "Missing spotify features"
 authors = ["Andrii Yurchuk <ay@mntw.re>"]
 readme = "README.md"
-packages = [
-  { include = "mottle" },
-  { include = "web" },
-  #{ include = "manage.py" },
-]
+packages = [{ include = "mottle" }, { include = "web" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -16,7 +12,6 @@ django = "^5.0.3"
 environs = "^11.0.0"
 django-htmx = "^1.17.3"
 daphne = "^4.1.0"
-asyncstdlib = "^3.12.2"
 whitenoise = "^6.6.0"
 tekore = "^5.4.0"
 
