@@ -3,9 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <link rel="shortcut icon"
-              type="image/png"
-              href="{% static 'web/favicon.png' %}">
+        <link rel="icon" href="{% static 'web/favicon.ico' %}">
         <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
         <link rel="stylesheet" href="{% static 'web/style.css' %}">
         <script src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"></script>
@@ -25,14 +23,13 @@
                 <a href="{% url 'index' %}">
                     <img class="logo" alt="Logo" src="{% static 'web/logo.png' %}" height=50">
                 </a>
-                Filling spots missed by Spotify
                 <ul>
                     <li>
                         <a href="{% url 'index' %}">Home</a>
                     </li>
-                    {% if request.spotify_client %}
+                    {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
                         <li>
-                            <a href="#">{{ request.spotify_user.display_name }}</a>
+                            <a href="#">{{ request.session.spotify_user_display_name }}</a>
                             <ul>
                                 <li>
                                     <a href="{% url 'playlists' %}">Playlists</a>
@@ -51,7 +48,7 @@
             </nav>
             <h1>
                 {% block page_title %}
-                    mottle
+                    {% comment %}mottle{% endcomment %}
                 {% endblock page_title %}
             </h1>
         </header>

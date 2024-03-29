@@ -12,7 +12,6 @@ from tekore.model import (
     FullPlaylist,
     Model,
     PlaylistTrack,
-    PrivateUser,
     SimpleAlbum,
     SimplePlaylist,
     SimpleTrack,
@@ -27,7 +26,6 @@ class MottleException(Exception):
 
 class HttpRequestWithSpotifyClient(HttpRequest):
     spotify_client: Spotify
-    spotify_user: PrivateUser
 
 
 async def get_artists(spotify_client: Spotify, query: str) -> list[FullArtist]:
@@ -84,14 +82,19 @@ async def get_tracks_in_albums(spotify_client: Spotify, album_ids: list[str]) ->
 
 
 async def create_playlist(
-    spotify_client: Spotify, spotify_user: PrivateUser, name: str, track_uris: list[str], is_public: bool = True
+    spotify_client: Spotify, name: str, track_uris: list[str], is_public: bool = True
 ) -> FullPlaylist:
     if not track_uris:
         raise MottleException("No tracks to add to playlist")
 
     try:
+        user = await spotify_client.current_user()  # pyright: ignore
+    except Exception as e:
+        raise MottleException(f"Failed to get current user: {e}")
+
+    try:
         playlist = await spotify_client.playlist_create(  # pyright: ignore
-            user_id=spotify_user.id,
+            user_id=user.id,
             name=name,
             public=is_public,
         )

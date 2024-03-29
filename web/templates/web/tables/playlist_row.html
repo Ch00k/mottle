@@ -11,12 +11,6 @@
         <a href=""
            hx-delete="{% url 'playlist' playlist.id %}"
            hx-target="this"
-           hx-swap="outerHTML">
-            {% if playlist.owner.id == current_user.id %}
-                Delete
-            {% else %}
-                Unfollow
-            {% endif %}
-        </a>
+           hx-swap="outerHTML">Delete</a>
     </td>
 </tr>

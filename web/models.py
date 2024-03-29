@@ -9,6 +9,7 @@ TOKEN_EXPIRATION_THRESHOLD = 60
 
 class SpotifyAuth(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    redirect_uri = models.CharField(max_length=500, null=True)
     state = models.CharField(max_length=100, unique=True)
     access_token = models.CharField(max_length=500, null=True)
     refresh_token = models.CharField(max_length=300, null=True)

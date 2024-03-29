@@ -3,8 +3,8 @@ from typing import Any
 
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
 from django.conf import settings
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse
-from django.shortcuts import redirect
 from tekore import AsyncSender, RetryingSender, Spotify
 
 from .models import SpotifyAuth
@@ -24,28 +24,27 @@ class SpotifyAuthMiddleware:
 
     async def __call__(self, request: HttpRequestWithSpotifyClient) -> HttpResponse:
         logger.debug(f"Request path: {request.path_info}")
-        if request.path_info in ("/login/", "/callback/"):
+
+        if request.path_info in settings.AUTH_EXEMPT_PATHS:
             logger.debug(f"Skipping {self.__class__.__name__} middleware")
-            # request.spotify_client = None
-            # request.spotify_user = None
             response: HttpResponse = await self.get_response(request)
             return response
 
         spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
         logger.debug(f"SpotifyAuth ID: {spotify_auth_id}")
         if spotify_auth_id is None:
-            return redirect("login")
+            return redirect_to_login(request.get_full_path())
 
         try:
             spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
             logger.debug(spotify_auth)
         except SpotifyAuth.DoesNotExist:
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} does not exist")
-            return redirect("login")
+            return redirect_to_login(request.get_full_path())
 
         if spotify_auth.access_token is None:
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} access_token is None")
-            return redirect("login")
+            return redirect_to_login(request.get_full_path())
 
         if spotify_auth.is_expiring:
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} is expiring. Refreshing")
@@ -53,7 +52,7 @@ class SpotifyAuthMiddleware:
                 tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(spotify_auth.as_tekore_token)
             except Exception as e:
                 logger.error(f"Failed to refresh token: {e}")
-                return redirect("login")
+                return redirect_to_login(request.get_full_path())
 
             await spotify_auth.update_from_tekore_token(tekore_token)
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
@@ -62,9 +61,6 @@ class SpotifyAuthMiddleware:
         sender = RetryingSender(sender=AsyncSender())
         spotify_client = Spotify(token=spotify_auth.access_token, sender=sender, max_limits_on=True, chunked_on=True)
 
-        user = await spotify_client.current_user()  # pyright: ignore
-
         request.spotify_client = spotify_client
-        request.spotify_user = user
         response = await self.get_response(request)
         return response

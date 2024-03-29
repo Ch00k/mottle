@@ -1,5 +1,7 @@
 import logging
+from typing import Optional
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import (
     HttpRequest,
@@ -10,6 +12,7 @@ from django.http import (
 )
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
+from tekore import AsyncSender, RetryingSender, Spotify
 from tekore.model import AlbumType
 
 from .models import SpotifyAuth
@@ -37,19 +40,25 @@ logger = logging.getLogger(__name__)
 
 @require_http_methods(["GET", "POST"])
 async def login(request: HttpRequest) -> HttpResponse:
+    redirect_uri: Optional[str]
+
     if request.method == "GET":
-        spotify_auth_id = request.session.get("spotify_auth_id")
+        # Django template does not undestand None (it will treat it as a literal 'None'),
+        # so we need to pass an empty string
+        redirect_uri = request.GET.get("next", "")
+
+        spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
         logger.debug(f"SpotifyAuth ID: {spotify_auth_id}")
 
         if spotify_auth_id is None:
-            return render(request, "web/login.html")
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
         else:
             spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
             logger.debug(spotify_auth)
 
             if spotify_auth.access_token is None:
                 logger.debug(f"SpotifyAuth ID {spotify_auth_id} access_token is None")
-                return render(request, "web/login.html")
+                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
             else:
                 if spotify_auth.is_expiring:
                     logger.debug(f"SpotifyAuth ID {spotify_auth_id} is expiring. Refreshing")
@@ -57,31 +66,37 @@ async def login(request: HttpRequest) -> HttpResponse:
                         tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(spotify_auth.as_tekore_token)
                     except Exception as e:
                         logger.error(f"Failed to refresh token: {e}")
-                        return render(request, "web/login.html")
+                        return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
                     await spotify_auth.update_from_tekore_token(tekore_token)
                     logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
                     logger.debug(spotify_auth)
 
-                return redirect("playlists")
+                return redirect("index")
     else:
+        redirect_uri = request.POST.get("redirect_uri")
+
+        # Convert it back from an empty string to None
+        if not redirect_uri:
+            redirect_uri = None
+
         auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE)
-        await SpotifyAuth.objects.acreate(state=auth.state)
+        await SpotifyAuth.objects.acreate(redirect_uri=redirect_uri, state=auth.state)
         return redirect(auth.url)
 
 
-def logout(request: HttpRequest) -> HttpResponse:
+async def logout(request: HttpRequest) -> HttpResponse:
     spotify_auth_id = request.session.get("spotify_auth_id")
     if spotify_auth_id is None:
         return redirect("login")
 
     try:
-        spotify_auth = SpotifyAuth.objects.get(id=spotify_auth_id)
+        spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
     except SpotifyAuth.DoesNotExist:
         return redirect("login")
 
-    spotify_auth.delete()
-    request.session.flush()
+    await spotify_auth.adelete()
+    await sync_to_async(request.session.flush)()
     return redirect("login")
 
 
@@ -113,8 +128,15 @@ async def callback(request: HttpRequest) -> HttpResponse:
 
     logger.debug(spotify_auth)
 
+    sender = RetryingSender(sender=AsyncSender())
+    spotify_client = Spotify(token=spotify_auth.access_token, sender=sender)
+
+    user = await spotify_client.current_user()  # pyright: ignore
+
     request.session["spotify_auth_id"] = str(spotify_auth.id)
-    return redirect("index")
+    request.session["spotify_user_display_name"] = user.display_name
+
+    return redirect(spotify_auth.redirect_uri or "index")
 
 
 def index(request: HttpRequestWithSpotifyClient) -> HttpResponse:
@@ -132,7 +154,7 @@ async def search(request: HttpRequestWithSpotifyClient) -> HttpResponse:
             logger.exception(e)
             return HttpResponseServerError("Failed to search for artists")
 
-        return render(request, "web/tables/artists.html", context={"artists": artists.items})
+        return render(request, "web/tables/artists.html", context={"artists": artists})
 
 
 async def albums(request: HttpRequestWithSpotifyClient, artist_id: str) -> HttpResponse:
@@ -184,7 +206,6 @@ async def albums(request: HttpRequestWithSpotifyClient, artist_id: str) -> HttpR
         try:
             playlist = await create_playlist(
                 request.spotify_client,
-                request.spotify_user,
                 name=f"{artist.name} discography",
                 track_uris=[track.uri for track in tracks],
                 is_public=is_public,
@@ -205,7 +226,7 @@ async def playlists(request: HttpRequestWithSpotifyClient) -> HttpResponse:
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlists")
 
-    context = {"playlists": playlists, "current_user": request.spotify_user}
+    context = {"playlists": playlists}
     return render(request, "web/playlists.html", context)
 
 
@@ -238,6 +259,5 @@ async def playlist(request: HttpRequestWithSpotifyClient, playlist_id: str) -> H
             logger.exception(e)
             return HttpResponseServerError("Failed to follow playlist")
 
-        text = "Delete" if playlist.owner.id == request.spotify_user.id else "Unfollow"
-        html = f"""<a href="" hx-delete="/playlist/{playlist.id}/" hx-target="this" hx-swap="outerHTML">{text}</a>"""
+        html = f"""<a href="" hx-delete="/playlist/{playlist.id}/" hx-target="this" hx-swap="outerHTML">Delete</a>"""
         return HttpResponse(html)

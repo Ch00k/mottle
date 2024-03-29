@@ -36,6 +36,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "mottle.urls"
 
+LOGIN_URL = "/login/"
+AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/callback/"]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
