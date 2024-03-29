@@ -21,12 +21,12 @@ class SpotifyAuth(models.Model):
         return f"SpotifyAuth {self.id} state={self.state} expires_at={self.expires_at}"
 
     @property
-    def expires_in(self) -> int:
+    def expires_in(self) -> float:
         if self.expires_at is None:
             return 0
 
         delta = self.expires_at - datetime.datetime.now(tz=datetime.timezone.utc)
-        return delta.seconds
+        return delta.total_seconds()
 
     @property
     def is_expiring(self) -> bool:
