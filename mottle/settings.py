@@ -11,6 +11,8 @@ DEBUG = env.bool("DEBUG", False)
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
 CSRF_TRUSTED_ORIGINS = ["https://mottle.it", "https://www.mottle.it"]
 
+APP_VERSION = env.str("APP_VERSION", "dev")
+
 INSTALLED_APPS = [
     "daphne",
     "django.contrib.auth",
@@ -50,6 +52,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "web.context_processors.app_version",
             ],
         },
     },
