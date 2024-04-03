@@ -1,0 +1,8 @@
+{% extends "web/base.html" %}
+{% load tekore_model_extras %}
+{% block page_title %}
+    Followed artists
+{% endblock page_title %}
+{% block content %}
+    {% include "web/tables/followed_artists.html" %}
+{% endblock content %}

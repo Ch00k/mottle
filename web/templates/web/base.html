@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <link rel="icon" href="{% static 'web/favicon.ico' %}">
+        <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
         <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
         <link rel="stylesheet" href="{% static 'web/style.css' %}">
         <script src="https://unpkg.com/htmx.org@1.9.11/dist/htmx.min.js"></script>
@@ -34,6 +34,9 @@
                                 <li>
                                     <a href="{% url 'playlists' %}">Playlists</a>
                                 </li>
+                                {% comment %}<li>{% endcomment %}
+                                {% comment %}    <a href="{% url 'artists' %}">Followed artists</a>{% endcomment %}
+                                {% comment %}</li>{% endcomment %}
                                 <li>
                                     <a href="{% url 'logout' %}">Logout</a>
                                 </li>

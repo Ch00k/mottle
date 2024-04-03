@@ -11,7 +11,7 @@
                        {% if item.album_type in 'album,single' %}checked{% endif %}>
             </td>
             <td>
-                <img src="{{ item.images | pick_image }}">
+                <img src="{{ item.images | pick_image | default_image:70 }}">
             </td>
             <td>{{ item.name }}</td>
             <td>{{ item.release_date | year }}</td>

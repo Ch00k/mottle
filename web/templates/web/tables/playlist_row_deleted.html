@@ -1,7 +1,7 @@
 {% load tekore_model_extras %}
 <tr>
     <td>
-        <img src="{{ playlist.images | pick_image }}">
+        <img src="{{ playlist.images | pick_image | default_image:70 }}">
     </td>
     <td>
         <a href="{% url 'playlist' playlist.id %}">{{ playlist.name }}</a>

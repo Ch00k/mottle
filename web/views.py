@@ -3,13 +3,7 @@ from typing import Optional
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseBadRequest,
-    HttpResponseNotAllowed,
-    HttpResponseServerError,
-)
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotAllowed, HttpResponseServerError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 from tekore import AsyncSender, RetryingSender, Spotify
@@ -25,6 +19,7 @@ from .utils import (
     get_artist,
     get_artist_albums,
     get_artists,
+    get_current_user_followed_artists,
     get_current_user_playlists,
     get_playlist,
     get_playlist_items,
@@ -39,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 @require_http_methods(["GET", "POST"])
-async def login(request: HttpRequest) -> HttpResponse:
+async def login(request: HttpRequestWithSpotifyClient) -> HttpResponse:
     redirect_uri: Optional[str]
 
     if request.method == "GET":
@@ -85,7 +80,8 @@ async def login(request: HttpRequest) -> HttpResponse:
         return redirect(auth.url)
 
 
-async def logout(request: HttpRequest) -> HttpResponse:
+@require_GET
+async def logout(request: HttpRequestWithSpotifyClient) -> HttpResponse:
     spotify_auth_id = request.session.get("spotify_auth_id")
     if spotify_auth_id is None:
         return redirect("login")
@@ -100,7 +96,8 @@ async def logout(request: HttpRequest) -> HttpResponse:
     return redirect("login")
 
 
-async def callback(request: HttpRequest) -> HttpResponse:
+@require_GET
+async def callback(request: HttpRequestWithSpotifyClient) -> HttpResponse:
     code = request.GET.get("code")
     state = request.GET.get("state")
     logger.debug(f"Received callback. Code: {code}, state: {state}")
@@ -139,6 +136,7 @@ async def callback(request: HttpRequest) -> HttpResponse:
     return redirect(spotify_auth.redirect_uri or "index")
 
 
+@require_GET
 def index(request: HttpRequestWithSpotifyClient) -> HttpResponse:
     return render(request, "web/index.html")
 
@@ -228,6 +226,18 @@ async def playlists(request: HttpRequestWithSpotifyClient) -> HttpResponse:
 
     context = {"playlists": playlists}
     return render(request, "web/playlists.html", context)
+
+
+@require_GET
+async def followed_artists(request: HttpRequestWithSpotifyClient) -> HttpResponse:
+    try:
+        artists = await get_current_user_followed_artists(request.spotify_client)
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get followed artists")
+
+    context = {"artists": artists}
+    return render(request, "web/followed_artists.html", context)
 
 
 @require_http_methods(["GET", "POST", "DELETE"])

@@ -123,6 +123,8 @@ SPOTIFY_TOKEN_SCOPE = env.list(
         "playlist-read-private",
         "playlist-modify-private",
         "playlist-modify-public",
+        "user-follow-read",
+        "user-follow-modify",
     ],
 )
 
@@ -131,5 +133,3 @@ SPOTIFY_CREDEINTIALS = Credentials(
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
 )
-
-DEFAULT_IMAGE_URL = "https://i.scdn.co/image/ab6775700000ee8517821cfc70e5c4a4d89006b0"

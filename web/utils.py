@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from functools import partial
+from types import MethodType
 from typing import Callable, Optional
 
 from django.http import HttpRequest
@@ -58,12 +59,12 @@ async def get_artist_albums(
         artist_id=artist_id,
         include_groups=album_types or ["album", "single", "compilation"],
     )
-    return await get_all_paging_items(func)  # pyright: ignore
+    return await get_all_offset_paging_items(func)  # pyright: ignore
 
 
 async def get_album_tracks(spotify_client: Spotify, album_id: str) -> list[SimpleTrack]:
     func = partial(spotify_client.album_tracks, album_id)
-    return await get_all_paging_items(func)  # pyright: ignore
+    return await get_all_offset_paging_items(func)  # pyright: ignore
 
 
 async def get_tracks_in_albums(spotify_client: Spotify, album_ids: list[str]) -> list[SimpleTrack]:
@@ -110,8 +111,11 @@ async def create_playlist(
 
 
 async def get_current_user_playlists(spotify_client: Spotify) -> list[SimplePlaylist]:
-    func = partial(spotify_client.followed_playlists)
-    return await get_all_paging_items(func)  # pyright: ignore
+    return await get_all_offset_paging_items(spotify_client.followed_playlists)  # pyright: ignore
+
+
+async def get_current_user_followed_artists(spotify_client: Spotify) -> list[FullArtist]:
+    return await get_all_cursor_paging_items(spotify_client.followed_artists)  # pyright: ignore
 
 
 async def get_playlist(spotify_client: Spotify, playlist_id: str) -> FullPlaylist:
@@ -137,7 +141,7 @@ async def unfollow_playlist(spotify_client: Spotify, playlist_id: str) -> None:
 
 async def get_playlist_items(spotify_client: Spotify, playlist_id: str) -> list[PlaylistTrack]:
     func = partial(spotify_client.playlist_items, playlist_id)
-    return await get_all_paging_items(func)  # pyright: ignore
+    return await get_all_offset_paging_items(func)  # pyright: ignore
 
 
 # def find_duplicate_tracks_in_playlist(spotify_client: Spotify, playlist_id: str) -> list[PlaylistTrack]:
@@ -169,13 +173,17 @@ async def get_playlist_items(spotify_client: Spotify, playlist_id: str) -> list[
 #     return res
 
 
-async def get_all_paging_items(func: Callable) -> list[Model]:
-    items = []
+async def get_all_offset_paging_items(func: Callable) -> list[Model]:
+    items: list[Model] = []
 
     try:
         paging = await func()
     except Exception as e:
         raise MottleException(f"Failed to get items: {e}")
+
+    # TODO: Handle this case in the template
+    if paging.total == 0:
+        return items
 
     page_size = len(paging.items)
 
@@ -191,6 +199,22 @@ async def get_all_paging_items(func: Callable) -> list[Model]:
         items.extend(page.items)
 
     return items
+
+
+async def get_all_cursor_paging_items(func: Callable) -> list[Model]:
+    # TODO: This does not paralellize the calls
+
+    if isinstance(func, MethodType) and isinstance(func.__self__, Spotify):
+        spotify_client = func.__self__
+    else:
+        raise MottleException("func must be a method of Spotify")
+
+    try:
+        items = spotify_client.all_items(await func())
+    except Exception as e:
+        raise MottleException(f"Failed to get items: {e}")
+
+    return [i async for i in items]  # pyright: ignore
 
 
 def list_has(albums: list[SimpleAlbum], album_type: AlbumType) -> bool:
