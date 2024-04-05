@@ -20,7 +20,9 @@ build:
 	docker build . -t mottle:$(APP_VERSION) -t mottle:latest --build-arg APP_VERSION=$(APP_VERSION)
 
 deploy:
-	sed -i "s/mottle:.*/mottle:$(APP_VERSION)/" ${DEPLOYMENT_DIR}/docker-compose.yml
-	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
+	@$(eval APP_VERSION=$(shell poetry version --short))
+	cd ${DEPLOYMENT_DIR}
+	sed -i "s/mottle:.*/mottle:$(APP_VERSION)/" docker-compose.yml
+	docker-compose up -d
 
 PHONY: release_patch build
