@@ -18,7 +18,7 @@ class SpotifyAuth(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"SpotifyAuth {self.id} state={self.state} expires_at={self.expires_at}"
+        return f"SpotifyAuth {self.id} redirect_uri={self.redirect_uri} state={self.state} expires_at={self.expires_at}"
 
     @property
     def expires_in(self) -> float:
