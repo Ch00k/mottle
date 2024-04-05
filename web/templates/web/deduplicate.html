@@ -1,0 +1,18 @@
+{% extends "web/base.html" %}
+{% block page_title %}
+    {{ playlist_name }}
+{% endblock page_title %}
+{% block content %}
+    <article>
+        <aside>
+            <h3>{{ message }}</h3>
+        </aside>
+    </article>
+    <br>
+    {% if playlist_items %}
+        {% include "web/tables/playlist_items_duplicate.html" %}
+        <br>
+        <button hx-post="." hx-include="input" hx-target="main">
+            <b>Remove duplicates</b></a>
+    {% endif %}
+{% endblock content %}

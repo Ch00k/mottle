@@ -8,6 +8,11 @@
     </td>
     <td>{{ playlist.tracks.total }} tracks</td>
     <td>
+        {% if playlist.owner.id == request.session.spotify_user_id %}
+            <a href="{% url 'deduplicate' playlist.id %}">Deduplicate tracks</a>
+        {% else %}
+            <b>Deduplicate tracks</b>
+        {% endif %}
         <a href=""
            hx-delete="{% url 'playlist' playlist.id %}"
            hx-target="this"

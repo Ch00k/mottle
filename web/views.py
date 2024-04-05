@@ -14,7 +14,8 @@ from .spotify import get_auth
 from .utils import (
     HttpRequestWithSpotifyClient,
     MottleException,
-    create_playlist,
+    create_playlist_with_tracks,
+    find_duplicate_tracks_in_playlist,
     follow_playlist,
     get_artist,
     get_artist_albums,
@@ -25,6 +26,7 @@ from .utils import (
     get_playlist_items,
     get_tracks_in_albums,
     list_has,
+    remove_tracks_at_positions_from_playlist,
     unfollow_playlist,
 )
 
@@ -131,6 +133,7 @@ async def callback(request: HttpRequestWithSpotifyClient) -> HttpResponse:
     user = await spotify_client.current_user()  # pyright: ignore
 
     request.session["spotify_auth_id"] = str(spotify_auth.id)
+    request.session["spotify_user_id"] = user.id
     request.session["spotify_user_display_name"] = user.display_name
 
     return redirect(spotify_auth.redirect_uri or "index")
@@ -202,7 +205,7 @@ async def albums(request: HttpRequestWithSpotifyClient, artist_id: str) -> HttpR
             return HttpResponseServerError("Failed to get album tracks")
 
         try:
-            playlist = await create_playlist(
+            playlist = await create_playlist_with_tracks(
                 request.spotify_client,
                 name=f"{artist.name} discography",
                 track_uris=[track.uri for track in tracks],
@@ -271,3 +274,59 @@ async def playlist(request: HttpRequestWithSpotifyClient, playlist_id: str) -> H
 
         html = f"""<a href="" hx-delete="/playlist/{playlist.id}/" hx-target="this" hx-swap="outerHTML">Delete</a>"""
         return HttpResponse(html)
+
+
+@require_http_methods(["GET", "POST"])
+async def deduplicate(request: HttpRequestWithSpotifyClient, playlist_id: str) -> HttpResponse:
+    # TODO: This call is too expensive. Return only the fields that we need
+    playlist = await get_playlist(request.spotify_client, playlist_id)
+
+    if request.method == "POST":
+        track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
+        tracks_to_remove = {k: [int(i) for i in v.split(",")][1:] for k, v in track_data.items()}
+
+        logger.debug(f"Tracks: {tracks_to_remove}")
+        logger.debug(f"Removing {len(tracks_to_remove)} tracks from playlist {playlist_id}")
+
+        try:
+            await remove_tracks_at_positions_from_playlist(request.spotify_client, playlist.id, tracks_to_remove)
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to remove duplicate track from playlist")
+
+    else:
+        if playlist.owner.id != request.session["spotify_user_id"]:
+            return render(
+                request,
+                "web/deduplicate.html",
+                context={
+                    "playlist_id": playlist.id,
+                    "playlist_name": playlist.name,
+                    "playlist_items": [],
+                    "message": "You can only deduplicate your own playlists",
+                },
+            )
+
+    playlist_items = await find_duplicate_tracks_in_playlist(request.spotify_client, playlist_id)
+    num_duplicates = len(playlist_items)
+
+    if not num_duplicates:
+        message = "No duplicates found"
+    elif num_duplicates == 1:
+        message = "1 track has duplicates"
+    else:
+        if num_duplicates % 10 == 1:
+            message = f"{len(playlist_items)} track has duplicates"
+        else:
+            message = f"{len(playlist_items)} tracks have duplicates"
+
+    return render(
+        request,
+        "web/deduplicate.html",
+        context={
+            "playlist_id": playlist.id,
+            "playlist_name": playlist.name,
+            "playlist_items": playlist_items,
+            "message": message,
+        },
+    )

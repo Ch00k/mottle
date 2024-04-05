@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections import Counter
 from functools import partial
 from types import MethodType
 from typing import Callable, Optional
@@ -82,7 +83,32 @@ async def get_tracks_in_albums(spotify_client: Spotify, album_ids: list[str]) ->
     return tracks
 
 
-async def create_playlist(
+async def add_tracks_to_playlist(
+    spotify_client: Spotify, playlist_id: str, track_uris: list[str], position: Optional[int] = None
+) -> None:
+    try:
+        await spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
+    except Exception as e:
+        raise MottleException(f"Failed to add tracks to playlist {playlist_id}: {e}")
+
+
+async def remove_tracks_from_playlist(spotify_client: Spotify, playlist_id: str, track_uris: list[str]) -> None:
+    try:
+        await spotify_client.playlist_remove(playlist_id, track_uris)  # pyright: ignore
+    except Exception as e:
+        raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
+
+
+async def remove_tracks_at_positions_from_playlist(
+    spotify_client: Spotify, playlist_id: str, tracks: dict[str, list[int]]
+) -> None:
+    try:
+        await spotify_client.playlist_remove_occurrences(playlist_id, tracks)  # pyright: ignore
+    except Exception as e:
+        raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
+
+
+async def create_playlist_with_tracks(
     spotify_client: Spotify, name: str, track_uris: list[str], is_public: bool = True
 ) -> FullPlaylist:
     if not track_uris:
@@ -102,10 +128,7 @@ async def create_playlist(
     except Exception as e:
         raise MottleException(f"Failed to create playlist: {e}")
 
-    try:
-        await spotify_client.playlist_add(playlist.id, track_uris)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to add tracks to playlist {playlist.id}: {e}")
+    await add_tracks_to_playlist(spotify_client, playlist.id, track_uris)
 
     return playlist
 
@@ -144,33 +167,23 @@ async def get_playlist_items(spotify_client: Spotify, playlist_id: str) -> list[
     return await get_all_offset_paging_items(func)  # pyright: ignore
 
 
-# def find_duplicate_tracks_in_playlist(spotify_client: Spotify, playlist_id: str) -> list[PlaylistTrack]:
-#     """
-#     {
-#         "name_1": {"probability": 1, "items": [PlaylistTrack(), PlaylistTrack()]},
-#         "name_2": {"probability": 0.5, "items": [PlaylistTrack(), PlaylistTrack()]},
+async def find_duplicate_tracks_in_playlist(spotify_client: Spotify, playlist_id: str) -> dict[str, dict]:
+    playlist_items = await get_playlist_items(spotify_client, playlist_id)
+    counter = Counter(
+        [item.track.id for item in playlist_items if item.track is not None and item.track.id is not None]
+    )
+    duplicates = [track_id for track_id, count in counter.items() if count > 1]
 
-#     }
-#     """
-#     playlist_items = get_playlist_items(spotify_client, playlist_id)
+    duplicate_dict: dict[str, dict] = {}
 
-#     tracks: dict[str, dict] = {}
+    for index, item in enumerate(playlist_items):
+        if item.track is not None and item.track.id in duplicates:
+            if item.track.id in duplicate_dict:
+                duplicate_dict[item.track.id]["positions"].append(index)
+            else:
+                duplicate_dict[item.track.id] = {"track": item, "positions": [index]}
 
-#     for item in playlist_items:
-#         if item.track is None:
-#             continue
-
-#         if item.track.name in tracks:
-#             tracks[item.track.name].append(item)
-#         else:
-#             tracks[item.track.name] = [item]
-
-#     res = []
-#     for items in tracks.values():
-#         if len(items) > 1:
-#             res.extend(items)
-
-#     return res
+    return duplicate_dict
 
 
 async def get_all_offset_paging_items(func: Callable) -> list[Model]:

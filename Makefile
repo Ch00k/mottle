@@ -1,6 +1,7 @@
 SHELL := bash
-release_patch:
-	@$(eval APP_VERSION=$(shell poetry version patch --short))
+
+release:
+	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))
 	@echo Releasing version: $(APP_VERSION)
 	git add pyproject.toml
 	git commit -m "Release $(APP_VERSION)"
@@ -18,5 +19,8 @@ build:
 	@echo Building image from tag $(TAG_NAME), app version: $(APP_VERSION)
 	docker build . -t mottle:$(APP_VERSION) -t mottle:latest --build-arg APP_VERSION=$(APP_VERSION)
 
+deploy:
+	sed -i "s/mottle:.*/mottle:$(APP_VERSION)/" ${DEPLOYMENT_DIR}/docker-compose.yml
+	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
 PHONY: release_patch build

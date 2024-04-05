@@ -67,3 +67,15 @@ def duration_humanized(duration_ms: int) -> str:
     duration_s = duration_ms // 1000
     minutes, seconds = divmod(duration_s, 60)
     return f"{minutes}:{seconds:02d}"
+
+
+@register.filter
+def times(sequence: list) -> str:
+    if len(sequence) == 0:
+        return "never"
+    elif len(sequence) == 1:
+        return "once"
+    elif len(sequence) == 2:
+        return "twice"
+    else:
+        return f"{len(sequence)} times"

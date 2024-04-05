@@ -5,9 +5,10 @@ from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_asy
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpResponse
-from tekore import AsyncSender, RetryingSender, Spotify
+from tekore import AsyncSender, RetryingSender
 
 from .models import SpotifyAuth
+from .spotify import SpotifyClient as Spotify
 from .utils import HttpRequestWithSpotifyClient
 
 logger = logging.getLogger(__name__)
