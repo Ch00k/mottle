@@ -21,8 +21,8 @@ build:
 
 deploy:
 	@$(eval APP_VERSION=$(shell poetry version --short))
-	cd ${DEPLOYMENT_DIR}
-	sed -i "s/mottle:.*/mottle:$(APP_VERSION)/" docker-compose.yml
-	docker-compose up -d
+	@echo Deploying version: $(APP_VERSION)
+	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
+	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
-PHONY: release_patch build
+PHONY: release_patch build deploy
