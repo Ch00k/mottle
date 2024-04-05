@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import sentry_sdk
 from environs import Env
+from sentry_sdk.integrations.django import DjangoIntegration
 from tekore import Credentials
 
 env = Env()
@@ -135,4 +137,18 @@ SPOTIFY_CREDEINTIALS = Credentials(
     client_id=SPOTIFY_CLIENT_ID,
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
+)
+
+sentry_sdk.init(
+    dsn=env.str("SENTRY_DSN", ""),
+    enable_tracing=True,
+    release=APP_VERSION,
+    integrations=[
+        DjangoIntegration(
+            transaction_style="url",
+            middleware_spans=True,
+            signals_spans=False,
+            cache_spans=False,
+        ),
+    ],
 )
