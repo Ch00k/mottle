@@ -177,7 +177,7 @@ async def find_duplicate_tracks_in_playlist(spotify_client: Spotify, playlist_id
     duplicate_dict: dict[str, dict] = {}
 
     for index, item in enumerate(playlist_items):
-        if item.track is not None and item.track.id in duplicates:
+        if item.track is not None and item.track.track and item.track.id in duplicates:
             if item.track.id in duplicate_dict:
                 duplicate_dict[item.track.id]["positions"].append(index)
             else:
