@@ -130,22 +130,21 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 async def search(request: HttpRequest) -> HttpResponse:
-    if request.GET:
-        query = request.GET.get("query")
+    query = request.GET.get("query")
 
-        try:
-            artists = await request.spotify_client.get_artists(query)  # type: ignore[attr-defined]
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to search for artists")
+    if query is None:
+        return render(request, "web/search_artists.html", context={"artists": [], "query": ""})
 
-        if request.htmx:  # type: ignore[attr-defined]
-            return render(request, "web/tables/artists.html", context={"artists": artists, "query": query})
-        else:
-            return render(request, "web/search_artists.html", context={"artists": artists, "query": query})
+    try:
+        artists = await request.spotify_client.get_artists(query)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to search for artists")
 
+    if request.htmx:  # type: ignore[attr-defined]
+        return render(request, "web/tables/artists.html", context={"artists": artists, "query": query})
     else:
-        return render(request, "web/search_artists.html")
+        return render(request, "web/search_artists.html", context={"artists": artists, "query": query})
 
 
 @require_http_methods(["GET", "POST"])
