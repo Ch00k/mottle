@@ -1,4 +1,5 @@
 {% extends "web/base.html" %}
+{% load tekore_model_extras %}
 {% block page_title %}
     {{ playlist_name }}
 {% endblock page_title %}
@@ -8,11 +9,48 @@
             <h3>{{ message }}</h3>
         </aside>
     </article>
-    <br>
     {% if playlist_items %}
-        {% include "web/tables/playlist_items_duplicate.html" %}
         <br>
-        <button hx-post="." hx-include="input" hx-target="main">
+        <table>
+            <thead>
+                <tr>
+                    <th>Artwork</th>
+                    <th>Artist</th>
+                    <th>Album</th>
+                    <th>Track</th>
+                    <th>Duration</th>
+                    <th>Occurs</th>
+                </tr>
+            </thead>
+            {% for id, data in playlist_items.items %}
+                {% if data.track.track.track %}
+                    <tr>
+                        <td>
+                            <img src="{{ data.track.track.album.images | pick_image | default_image:70 }}" />
+                        </td>
+                        <td>{{ data.track.track | artists }}</td>
+                        <td>{{ data.track.track.album.name }}</td>
+                        <td>{{ data.track.track.name }}</td>
+                        <td>{{ data.track.track.duration_ms | duration_humanized }}</td>
+                        <td>{{ data.positions | times | capfirst }}</td>
+                        <td style="display:none;">
+                            <input type="hidden"
+                                   name="track-meta"
+                                   value="{{ data.track.track.uri }}::{{ data.positions | join:',' }}">
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>This item is not a track</td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </table>
+        <br>
+        <button hx-post="."
+                hx-include="input"
+                hx-target="#content"
+                hx-indicator="#spinner">
             <b>Remove duplicates</b></a>
     {% endif %}
 {% endblock content %}

@@ -6,7 +6,10 @@
                 <img src="{{ artist.images | pick_image | default_image:70 }}">
             </td>
             <td>
-                <a href="{% url 'albums' artist.id %}">{{ artist.name }}</a>
+                <a href="{% url 'albums' artist.id %}"
+                   hx-boost="true"
+                   hx-indicator="#spinner"
+                   hx-headers='{"M-ArtistName": "{{ artist.name }}"}'>{{ artist.name }}</a>
             </td>
             <td>{{ artist | genres }}</td>
         </tr>

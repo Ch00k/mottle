@@ -5,14 +5,11 @@
     --width-content: 1080px;
 }
 
-form {
-    min-width: var(--width-content);
-}
-
 table {
     display: table;
     white-space: normal;
     width: 100%;
+    min-width: var(--width-content);
 }
 
 table td,
@@ -26,4 +23,39 @@ img:not(.logo) {
     min-width: 70px;
     width: 70px;
     height: 70px;
+}
+
+tr.htmx-swapping td {
+  opacity: 0;
+  transition: opacity 1s ease-out;
+}
+
+.htmx-indicator {
+    display: none;
+}
+
+.htmx-request {
+    display: block;
+}
+
+#spinner {
+    height: 100%;
+    width: 100%;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: rgba(1,1,1, 0.1);
+}
+
+#spinner-img{
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+#spinner-img::selection  {
+    background-color: rgba(0,0,0,0);
 }

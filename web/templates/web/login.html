@@ -3,7 +3,11 @@
     Login
 {% endblock page_title %}
 {% block content %}
-    <form action="." method="post">
-        {% include "web/forms/login.html" %}
-    </form>
+    <section>
+        <form action="." method="post">
+            {% csrf_token %}
+            <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+            <button>Login with Spotify</button>
+        </form>
+    </section>
 {% endblock content %}

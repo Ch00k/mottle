@@ -12,7 +12,7 @@ DEFAULT_IMAGE_SIZE = 70
 
 
 @register.filter
-def pick_image(images: list[Image]) -> Optional[str]:
+def pick_image(images: list[Image], size: int = 70) -> Optional[str]:
     """Given a list of images, return the URL of the smallest image, or None"""
     if not images:
         return None

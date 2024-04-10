@@ -4,12 +4,13 @@ from typing import Any
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from tekore import AsyncSender, RetryingSender
+
+from web.utils import MottleSpotifyClient
 
 from .models import SpotifyAuth
 from .spotify import SpotifyClient as Spotify
-from .utils import HttpRequestWithSpotifyClient
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class SpotifyAuthMiddleware:
         if iscoroutinefunction(self.get_response):
             markcoroutinefunction(self)
 
-    async def __call__(self, request: HttpRequestWithSpotifyClient) -> HttpResponse:
+    async def __call__(self, request: HttpRequest) -> HttpResponse:
         logger.debug(f"Request path: {request.path_info}")
 
         if request.path_info in settings.AUTH_EXEMPT_PATHS:
@@ -62,6 +63,6 @@ class SpotifyAuthMiddleware:
         sender = RetryingSender(sender=AsyncSender())
         spotify_client = Spotify(token=spotify_auth.access_token, sender=sender, max_limits_on=True, chunked_on=True)
 
-        request.spotify_client = spotify_client
+        request.spotify_client = MottleSpotifyClient(spotify_client=spotify_client)  # type: ignore[attr-defined]
         response = await self.get_response(request)
         return response

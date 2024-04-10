@@ -5,7 +5,6 @@ from functools import partial
 from types import MethodType
 from typing import Callable, Optional
 
-from django.http import HttpRequest
 from tekore import Spotify
 from tekore.model import (
     AlbumType,
@@ -26,164 +25,140 @@ class MottleException(Exception):
     pass
 
 
-class HttpRequestWithSpotifyClient(HttpRequest):
-    spotify_client: Spotify
+class MottleSpotifyClient:
+    def __init__(self, spotify_client: Spotify):
+        self.spotify_client = spotify_client
 
+    async def get_artists(self, query: str) -> list[FullArtist]:
+        self.spotify_client.max_limits_on = False
 
-async def get_artists(spotify_client: Spotify, query: str) -> list[FullArtist]:
-    spotify_client.max_limits_on = False
+        try:
+            artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(
+                query, types=("artist",), limit=20
+            )  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to search for artists with query {query}: {e}")
+        else:
+            ret: list[FullArtist] = artists[0].items
+            return ret
 
-    try:
-        artists: tuple[FullArtistOffsetPaging] = await spotify_client.search(
-            query, types=("artist",), limit=20
-        )  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to search for artists with query {query}: {e}")
-    else:
-        ret: list[FullArtist] = artists[0].items
-        return ret
+    async def get_artist(self, artist_id: str) -> FullArtist:
+        try:
+            artist = await self.spotify_client.artist(artist_id)  # pyright: ignore
+            return artist
+        except Exception as e:
+            raise MottleException(f"Failed to get artist {artist_id}: {e}")
 
-
-async def get_artist(spotify_client: Spotify, artist_id: str) -> FullArtist:
-    try:
-        artist = await spotify_client.artist(artist_id)  # pyright: ignore
-        return artist
-    except Exception as e:
-        raise MottleException(f"Failed to get artist {artist_id}: {e}")
-
-
-async def get_artist_albums(
-    spotify_client: Spotify, artist_id: str, album_types: Optional[list[str]] = None
-) -> list[SimpleAlbum]:
-    func = partial(
-        spotify_client.artist_albums,
-        artist_id=artist_id,
-        include_groups=album_types or ["album", "single", "compilation"],
-    )
-    return await get_all_offset_paging_items(func)  # pyright: ignore
-
-
-async def get_album_tracks(spotify_client: Spotify, album_id: str) -> list[SimpleTrack]:
-    func = partial(spotify_client.album_tracks, album_id)
-    return await get_all_offset_paging_items(func)  # pyright: ignore
-
-
-async def get_tracks_in_albums(spotify_client: Spotify, album_ids: list[str]) -> list[SimpleTrack]:
-    tracks = []
-    calls = [get_album_tracks(spotify_client, album_id) for album_id in album_ids]
-
-    try:
-        album_tracks = await asyncio.gather(*calls)
-    except Exception as e:
-        raise MottleException(f"Failed to get items: {e}")
-
-    for album in album_tracks:
-        tracks.extend(album)
-
-    return tracks
-
-
-async def add_tracks_to_playlist(
-    spotify_client: Spotify, playlist_id: str, track_uris: list[str], position: Optional[int] = None
-) -> None:
-    try:
-        await spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to add tracks to playlist {playlist_id}: {e}")
-
-
-async def remove_tracks_from_playlist(spotify_client: Spotify, playlist_id: str, track_uris: list[str]) -> None:
-    try:
-        await spotify_client.playlist_remove(playlist_id, track_uris)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
-
-
-async def remove_tracks_at_positions_from_playlist(
-    spotify_client: Spotify, playlist_id: str, tracks: dict[str, list[int]]
-) -> None:
-    try:
-        await spotify_client.playlist_remove_occurrences(playlist_id, tracks)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
-
-
-async def create_playlist_with_tracks(
-    spotify_client: Spotify, name: str, track_uris: list[str], is_public: bool = True
-) -> FullPlaylist:
-    if not track_uris:
-        raise MottleException("No tracks to add to playlist")
-
-    try:
-        user = await spotify_client.current_user()  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to get current user: {e}")
-
-    try:
-        playlist = await spotify_client.playlist_create(  # pyright: ignore
-            user_id=user.id,
-            name=name,
-            public=is_public,
+    async def get_artist_albums(self, artist_id: str, album_types: Optional[list[str]] = None) -> list[SimpleAlbum]:
+        func = partial(
+            self.spotify_client.artist_albums,
+            artist_id=artist_id,
+            include_groups=album_types or ["album", "single", "compilation"],
         )
-    except Exception as e:
-        raise MottleException(f"Failed to create playlist: {e}")
+        return await get_all_offset_paging_items(func)  # pyright: ignore
 
-    await add_tracks_to_playlist(spotify_client, playlist.id, track_uris)
+    async def get_album_tracks(self, album_id: str) -> list[SimpleTrack]:
+        func = partial(self.spotify_client.album_tracks, album_id)
+        return await get_all_offset_paging_items(func)  # pyright: ignore
 
-    return playlist
+    async def get_tracks_in_albums(self, album_ids: list[str]) -> list[SimpleTrack]:
+        tracks = []
+        calls = [self.get_album_tracks(album_id) for album_id in album_ids]
 
+        try:
+            album_tracks = await asyncio.gather(*calls)
+        except Exception as e:
+            raise MottleException(f"Failed to get items: {e}")
 
-async def get_current_user_playlists(spotify_client: Spotify) -> list[SimplePlaylist]:
-    return await get_all_offset_paging_items(spotify_client.followed_playlists)  # pyright: ignore
+        for album in album_tracks:
+            tracks.extend(album)
 
+        return tracks
 
-async def get_current_user_followed_artists(spotify_client: Spotify) -> list[FullArtist]:
-    return await get_all_cursor_paging_items(spotify_client.followed_artists)  # pyright: ignore
+    async def add_tracks_to_playlist(
+        self, playlist_id: str, track_uris: list[str], position: Optional[int] = None
+    ) -> None:
+        try:
+            await self.spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to add tracks to playlist {playlist_id}: {e}")
 
+    async def remove_tracks_from_playlist(self, playlist_id: str, track_uris: list[str]) -> None:
+        try:
+            await self.spotify_client.playlist_remove(playlist_id, track_uris)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
-async def get_playlist(spotify_client: Spotify, playlist_id: str) -> FullPlaylist:
-    try:
-        return await spotify_client.playlist(playlist_id)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to get playlist {playlist_id}: {e}")
+    async def remove_tracks_at_positions_from_playlist(self, playlist_id: str, tracks: dict[str, list[int]]) -> None:
+        try:
+            await self.spotify_client.playlist_remove_occurrences(playlist_id, tracks)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
+    async def create_playlist_with_tracks(
+        self, current_user_id: str, name: str, track_uris: list[str], is_public: bool = True
+    ) -> FullPlaylist:
+        if not track_uris:
+            raise MottleException("No tracks to add to playlist")
 
-async def follow_playlist(spotify_client: Spotify, playlist_id: str) -> None:
-    try:
-        await spotify_client.playlist_follow(playlist_id)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to follow playlist {playlist_id}: {e}")
+        try:
+            playlist = await self.spotify_client.playlist_create(  # pyright: ignore
+                user_id=current_user_id,
+                name=name,
+                public=is_public,
+            )
+        except Exception as e:
+            raise MottleException(f"Failed to create playlist: {e}")
 
+        await self.add_tracks_to_playlist(playlist.id, track_uris)
 
-async def unfollow_playlist(spotify_client: Spotify, playlist_id: str) -> None:
-    try:
-        await spotify_client.playlist_unfollow(playlist_id)  # pyright: ignore
-    except Exception as e:
-        raise MottleException(f"Failed to unfollow playlist {playlist_id}: {e}")
+        return playlist
 
+    async def get_current_user_playlists(self) -> list[SimplePlaylist]:
+        return await get_all_offset_paging_items(self.spotify_client.followed_playlists)  # pyright: ignore
 
-async def get_playlist_items(spotify_client: Spotify, playlist_id: str) -> list[PlaylistTrack]:
-    func = partial(spotify_client.playlist_items, playlist_id)
-    return await get_all_offset_paging_items(func)  # pyright: ignore
+    async def get_current_user_followed_artists(self) -> list[FullArtist]:
+        return await get_all_cursor_paging_items(self.spotify_client.followed_artists)  # pyright: ignore
 
+    async def get_playlist(self, playlist_id: str) -> FullPlaylist:
+        try:
+            return await self.spotify_client.playlist(playlist_id)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to get playlist {playlist_id}: {e}")
 
-async def find_duplicate_tracks_in_playlist(spotify_client: Spotify, playlist_id: str) -> dict[str, dict]:
-    playlist_items = await get_playlist_items(spotify_client, playlist_id)
-    counter = Counter(
-        [item.track.id for item in playlist_items if item.track is not None and item.track.id is not None]
-    )
-    duplicates = [track_id for track_id, count in counter.items() if count > 1]
+    async def follow_playlist(self, playlist_id: str) -> None:
+        try:
+            await self.spotify_client.playlist_follow(playlist_id)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to follow playlist {playlist_id}: {e}")
 
-    duplicate_dict: dict[str, dict] = {}
+    async def unfollow_playlist(self, playlist_id: str) -> None:
+        try:
+            await self.spotify_client.playlist_unfollow(playlist_id)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to unfollow playlist {playlist_id}: {e}")
 
-    for index, item in enumerate(playlist_items):
-        if item.track is not None and item.track.track and item.track.id in duplicates:
-            if item.track.id in duplicate_dict:
-                duplicate_dict[item.track.id]["positions"].append(index)
-            else:
-                duplicate_dict[item.track.id] = {"track": item, "positions": [index]}
+    async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
+        func = partial(self.spotify_client.playlist_items, playlist_id)
+        return await get_all_offset_paging_items(func)  # pyright: ignore
 
-    return duplicate_dict
+    async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> dict[str, dict]:
+        playlist_items = await self.get_playlist_items(playlist_id)
+        counter = Counter(
+            [item.track.id for item in playlist_items if item.track is not None and item.track.id is not None]
+        )
+        duplicates = [track_id for track_id, count in counter.items() if count > 1]
+
+        duplicate_dict: dict[str, dict] = {}
+
+        for index, item in enumerate(playlist_items):
+            if item.track is not None and item.track.track and item.track.id in duplicates:
+                if item.track.id in duplicate_dict:
+                    duplicate_dict[item.track.id]["positions"].append(index)
+                else:
+                    duplicate_dict[item.track.id] = {"track": item, "positions": [index]}
+
+        return duplicate_dict
 
 
 async def get_all_offset_paging_items(func: Callable) -> list[Model]:
@@ -232,11 +207,3 @@ async def get_all_cursor_paging_items(func: Callable) -> list[Model]:
 
 def list_has(albums: list[SimpleAlbum], album_type: AlbumType) -> bool:
     return any([album for album in albums if album.album_type == album_type])  # pyright: ignore
-
-
-def follow_all_artists_in_playlist() -> None:
-    pass
-
-
-def update_discography_playlist() -> None:
-    pass

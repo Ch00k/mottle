@@ -10,9 +10,22 @@
 {% block content %}
     <section>
         <form>
-            {% csrf_token %}
-            {% include "web/forms/search_artists.html" %}
-            <div id="search-results"></div>
+            <label for="query">Artist name</label>
+            <input type="search"
+                   name="query"
+                   value="{{ query }}"
+                   placeholder="Start typing an artist name..."
+                   hx-get="."
+                   hx-trigger="input changed delay:500ms, search"
+                   hx-target="#search-results"
+                   hx-push-url="true"
+                   hx-indicator="#spinner">
         </form>
+    </section>
+    <br>
+    <section id="search-results">
+        {% if artists %}
+            {% include "web/tables/artists.html" %}
+        {% endif %}
     </section>
 {% endblock content %}

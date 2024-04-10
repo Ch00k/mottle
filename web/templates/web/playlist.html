@@ -1,7 +1,35 @@
 {% extends "web/base.html" %}
+{% load tekore_model_extras %}
 {% block page_title %}
     {{ playlist_name }}
 {% endblock page_title %}
 {% block content %}
-    {% include "web/tables/playlist_items.html" %}
+    <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th>Artist</th>
+                <th>Album</th>
+                <th>Track</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        {% for item in playlist_items %}
+            {% if item.track.track %}
+                <tr>
+                    <td>
+                        <img src="{{ item.track.album.images | pick_image | default_image:70 }}" />
+                    </td>
+                    <td>{{ item.track | artists }}</td>
+                    <td>{{ item.track.album.name }}</td>
+                    <td>{{ item.track.name }}</td>
+                    <td>{{ item.track.duration_ms | duration_humanized }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td>This item is not a track</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </table>
 {% endblock content %}

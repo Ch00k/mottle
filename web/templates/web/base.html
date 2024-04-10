@@ -51,13 +51,17 @@
             </nav>
             <h1>
                 {% block page_title %}
-                    {% comment %}mottle{% endcomment %}
                 {% endblock page_title %}
             </h1>
         </header>
         <main>
-            {% block content %}
-            {% endblock content %}
+            <div id="spinner" class="htmx-indicator">
+                <img id="spinner-img" src="{% static 'web/spinner.gif' %}" />
+            </div>
+            <div id="content">
+                {% block content %}
+                {% endblock content %}
+            </div>
         </main>
         <footer>
             <hr>
