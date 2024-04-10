@@ -45,9 +45,9 @@ def spotify_url(item: Artist | Album | Track) -> str:
 
 
 @register.filter
-def artists(track: Track) -> str:
+def artists(track: Track) -> list[tuple[str, str]]:
     """Given a track, return a comma-separated string of artist names"""
-    return ", ".join(artist.name for artist in track.artists)
+    return [(artist.name, spotify_url(artist)) for artist in track.artists]
 
 
 @register.filter
