@@ -5,7 +5,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods, require_safe
 from tekore import AsyncSender, RetryingSender, Spotify
 from tekore.model import AlbumType
 
@@ -123,7 +123,7 @@ async def callback(request: HttpRequest) -> HttpResponse:
     return redirect(spotify_auth.redirect_uri or "index")
 
 
-@require_GET
+@require_safe  # Accept HEAD requests from UptimeRobot
 def index(request: HttpRequest) -> HttpResponse:
     return render(request, "web/index.html")
 
