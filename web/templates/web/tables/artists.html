@@ -1,17 +1,19 @@
 {% load tekore_model_extras %}
 <table>
-    {% for artist in artists %}
-        <tr>
-            <td>
-                <img src="{{ artist.images | pick_image | default_image:70 }}">
-            </td>
-            <td>
-                <a href="{% url 'albums' artist.id %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"
-                   hx-headers='{"M-ArtistName": "{{ artist.name }}"}'>{{ artist.name }}</a>
-            </td>
-            <td>{{ artist | genres }}</td>
-        </tr>
-    {% endfor %}
+    <tbody>
+        {% for artist in artists %}
+            <tr>
+                <td>
+                    <img src="{{ artist.images | pick_image | default_image:70 }}">
+                </td>
+                <td>
+                    <a href="{% url 'albums' artist.id %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       hx-headers='{"M-ArtistName": "{{ artist.name }}"}'>{{ artist.name }}</a>
+                </td>
+                <td>{{ artist | genres }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
 </table>

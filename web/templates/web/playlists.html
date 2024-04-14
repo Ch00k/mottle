@@ -5,34 +5,36 @@
 {% endblock page_title %}
 {% block content %}
     <table>
-        {% for playlist in playlists %}
-            <tr>
-                <td>
-                    <img src="{{ playlist.images | pick_image | default_image:70 }}">
-                </td>
-                <td>
-                    <a href="{% url 'playlist' playlist.id %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       hx-headers='{"M-PlaylistName": "{{ playlist.name }}"}'>{{ playlist.name }}</a>
-                </td>
-                <td>{{ playlist.tracks.total }} tracks</td>
-                <td>
-                    {% if playlist.owner.id == request.session.spotify_user_id %}
-                        <a href="{% url 'deduplicate' playlist.id %}"
+        <tbody>
+            {% for playlist in playlists %}
+                <tr>
+                    <td>
+                        <img src="{{ playlist.images | pick_image | default_image:70 }}">
+                    </td>
+                    <td>
+                        <a href="{% url 'playlist' playlist.id %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
-                           hx-headers='{"M-PlaylistName": "{{ playlist.name }}", "M-PlaylistOwnerID": "{{ playlist.owner.id }}"}'>Deduplicate tracks</a>
-                    {% else %}
-                        <b><i>Deduplicate tracks</i></b>
-                    {% endif %}
-                    <a href=""
-                       hx-delete="{% url 'playlist' playlist.id %}"
-                       hx-confirm="Are you sure?"
-                       hx-target="closest tr"
-                       hx-swap="outerHTML swap:1s">Delete</a>
-                </td>
-            </tr>
-        {% endfor %}
+                           hx-headers='{"M-PlaylistName": "{{ playlist.name }}"}'>{{ playlist.name }}</a>
+                    </td>
+                    <td>{{ playlist.tracks.total }} tracks</td>
+                    <td>
+                        {% if playlist.owner.id == request.session.spotify_user_id %}
+                            <a href="{% url 'deduplicate' playlist.id %}"
+                               hx-boost="true"
+                               hx-indicator="#spinner"
+                               hx-headers='{"M-PlaylistName": "{{ playlist.name }}", "M-PlaylistOwnerID": "{{ playlist.owner.id }}"}'>Deduplicate tracks</a>
+                        {% else %}
+                            <b><i>Deduplicate tracks</i></b>
+                        {% endif %}
+                        <a href=""
+                           hx-delete="{% url 'playlist' playlist.id %}"
+                           hx-confirm="Are you sure?"
+                           hx-target="closest tr"
+                           hx-swap="outerHTML swap:1s">Delete</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
     </table>
 {% endblock content %}

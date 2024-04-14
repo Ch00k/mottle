@@ -5,19 +5,21 @@
 {% endblock page_title %}
 {% block content %}
     <table>
-        {% for artist in artists %}
-            <tr>
-                <td>
-                    <img src="{{ artist.images | pick_image | default_image:70 }}">
-                </td>
-                <td>
-                    <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
-                </td>
-                <td>{{ artist | genres }}</td>
-                <td>
-                    <a href="" hx-delete="#" hx-target="this" hx-swap="outerHTML">Unfollow</a>
-                </td>
-            </tr>
-        {% endfor %}
+        <tbody>
+            {% for artist in artists %}
+                <tr>
+                    <td>
+                        <img src="{{ artist.images | pick_image | default_image:70 }}">
+                    </td>
+                    <td>
+                        <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                    </td>
+                    <td>{{ artist | genres }}</td>
+                    <td>
+                        <a href="" hx-delete="#" hx-target="this" hx-swap="outerHTML">Unfollow</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
     </table>
 {% endblock content %}

@@ -14,31 +14,33 @@
                 <th>Duration</th>
             </tr>
         </thead>
-        {% for item in playlist_items %}
-            {% if item.track.track %}
-                <tr>
-                    <td>
-                        <img src="{{ item.track.album.images | pick_image | default_image:70 }}" />
-                    </td>
-                    <td>
-                        {% for artist in item.track.artists %}
-                            <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
-                            <br>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <a href="{{ item.track.album | spotify_url }}">{{ item.track.album.name }}</a>
-                    </td>
-                    <td>
-                        <a href="{{ item.track | spotify_url }}">{{ item.track.name }}</a>
-                    </td>
-                    <td>{{ item.track.duration_ms | duration_humanized }}</td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td>This item is not a track</td>
-                </tr>
-            {% endif %}
-        {% endfor %}
+        <tbody>
+            {% for item in playlist_items %}
+                {% if item.track.track %}
+                    <tr>
+                        <td>
+                            <img src="{{ item.track.album.images | pick_image | default_image:70 }}" />
+                        </td>
+                        <td>
+                            {% for artist in item.track.artists %}
+                                <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                                <br>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{{ item.track.album | spotify_url }}">{{ item.track.album.name }}</a>
+                        </td>
+                        <td>
+                            <a href="{{ item.track | spotify_url }}">{{ item.track.name }}</a>
+                        </td>
+                        <td>{{ item.track.duration_ms | duration_humanized }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td>This item is not a track</td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody>
     </table>
 {% endblock content %}
