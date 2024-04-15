@@ -1,6 +1,7 @@
 SHELL := bash
 
-release:
+tag:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
 	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))
 	@echo Releasing version: $(APP_VERSION)
 	git add pyproject.toml
@@ -25,4 +26,4 @@ deploy:
 	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
-PHONY: release_patch build deploy
+release: tag build deploy
