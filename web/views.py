@@ -113,7 +113,11 @@ async def callback(request: HttpRequest) -> HttpResponse:
     sender = RetryingSender(sender=AsyncSender())
     spotify_client = Spotify(token=spotify_auth.access_token, sender=sender)
 
-    user = await spotify_client.current_user()  # pyright: ignore
+    try:
+        user = await spotify_client.current_user()  # pyright: ignore
+    except Exception as e:
+        logger.error(f"Failed to get user: {e}")
+        return HttpResponseServerError("Failed to get user")
 
     # TODO: New versions of Django should suppport async methods on sessions (aget, aset, aupdate etc.)
     request.session["spotify_auth_id"] = str(spotify_auth.id)

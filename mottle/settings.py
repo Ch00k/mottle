@@ -143,7 +143,7 @@ SPOTIFY_CREDEINTIALS = Credentials(
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
     enable_tracing=True,
-    release=APP_VERSION,
+    release=f"mottle@{APP_VERSION}",
     integrations=[
         DjangoIntegration(
             transaction_style="url",
