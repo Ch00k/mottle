@@ -1,0 +1,58 @@
+{% extends "web/base.html" %}
+{% load tekore_model_extras %}
+{% comment %}{% block page_title %}{% endcomment %}
+{% comment %}    {{ playlist_name }}{% endcomment %}
+{% comment %}{% endblock page_title %}{% endcomment %}
+{% block content %}
+    <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th class="sortable" onClick="sortTable(this)">Artist</th>
+                <th class="sortable" onClick="sortTable(this)">Album</th>
+                <th class="sortable" onClick="sortTable(this)">Track</th>
+                <th class="sortable" onClick="sortTable(this)">Duration</th>
+                <th class="sortable" onClick="sortTable(this)">Acou</th>
+                <th class="sortable" onClick="sortTable(this)">Danc</th>
+                <th class="sortable" onClick="sortTable(this)">Ener</th>
+                <th class="sortable" onClick="sortTable(this)">Inst</th>
+                <th class="sortable" onClick="sortTable(this)">Live</th>
+                <th class="sortable" onClick="sortTable(this)">Loud</th>
+                <th class="sortable" onClick="sortTable(this)">Spee</th>
+                <th class="sortable" onClick="sortTable(this)">Temp</th>
+                <th class="sortable" onClick="sortTable(this)">Vale</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in tracks_with_features %}
+                <tr>
+                    <td>
+                        <img src="{{ item.0.album.images | pick_image | default_image:70 }}" />
+                    </td>
+                    <td>
+                        {% for artist in item.0.artists %}
+                            <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                            <br>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ item.0.album | spotify_url }}">{{ item.0.album.name }}</a>
+                    </td>
+                    <td>
+                        <a href="{{ item.0 | spotify_url }}">{{ item.0.name }}</a>
+                    </td>
+                    <td>{{ item.0.duration_ms | duration_humanized }}</td>
+                    <td>{{ item.1.acousticness | floatformat:-3 }}</td>
+                    <td>{{ item.1.danceability | floatformat:-3 }}</td>
+                    <td>{{ item.1.energy | floatformat:-3 }}</td>
+                    <td>{{ item.1.instrumentalness | floatformat:-3 }}</td>
+                    <td>{{ item.1.liveness | floatformat:-3 }}</td>
+                    <td>{{ item.1.loudness | floatformat:-3 }}</td>
+                    <td>{{ item.1.speechiness | floatformat:-3 }}</td>
+                    <td>{{ item.1.tempo | floatformat:0 }}</td>
+                    <td>{{ item.1.valence | floatformat:-3 }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock content %}

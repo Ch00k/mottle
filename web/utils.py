@@ -1,16 +1,20 @@
 import asyncio
+import itertools
 import logging
 from collections import Counter
+from contextlib import contextmanager
 from functools import partial
 from types import MethodType
-from typing import Callable, Optional
+from typing import Any, Callable, Generator, Optional
 
 from tekore import Spotify
 from tekore.model import (
     AlbumType,
+    AudioFeatures,
     FullArtist,
     FullArtistOffsetPaging,
     FullPlaylist,
+    FullPlaylistTrack,
     Model,
     PlaylistTrack,
     SimpleAlbum,
@@ -30,17 +34,19 @@ class MottleSpotifyClient:
         self.spotify_client = spotify_client
 
     async def get_artists(self, query: str) -> list[FullArtist]:
-        self.spotify_client.max_limits_on = False
-
         try:
             artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(
-                query, types=("artist",), limit=20
+                query, types=("artist",)
             )  # pyright: ignore
         except Exception as e:
             raise MottleException(f"Failed to search for artists with query {query}: {e}")
         else:
             ret: list[FullArtist] = artists[0].items
             return ret
+
+    # async def get_playlists(self, query: str) -> list[SimplePlaylist]:
+    #     func = partial(self.spotify_client.search, query, types=("playlist",))
+    #     return await get_all_offset_paging_items(func)
 
     async def get_artist(self, artist_id: str) -> FullArtist:
         try:
@@ -142,6 +148,13 @@ class MottleSpotifyClient:
         func = partial(self.spotify_client.playlist_items, playlist_id)
         return await get_all_offset_paging_items(func)  # pyright: ignore
 
+    async def get_playlist_tracks_audio_features(self, track_ids: list[str]) -> list[AudioFeatures]:
+        try:
+            with chunked_off(self.spotify_client):
+                return await get_all_chunked(self.spotify_client.tracks_audio_features, track_ids)
+        except Exception as e:
+            raise MottleException(f"Failed to get audio features for tracks: {e}")
+
     async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> dict[str, dict]:
         playlist_items = await self.get_playlist_items(playlist_id)
         counter = Counter(
@@ -161,6 +174,23 @@ class MottleSpotifyClient:
         return duplicate_dict
 
 
+async def perform_parallel_chunked_requests(func: Callable, items: list[str], chunk_size: int = 100) -> Any:
+    chunks = itertools.batched(items, chunk_size)
+    calls = [func(chunk) for chunk in chunks]
+
+    try:
+        results = await asyncio.gather(*calls)
+    except Exception as e:
+        raise MottleException(f"Failed to perform chunked requests: {e}")
+
+    return results
+
+
+async def get_all_chunked(func: Callable, items: list[str], chunk_size: int = 100) -> list:
+    results: list[list[Model]] = await perform_parallel_chunked_requests(func, items, chunk_size)
+    return list(itertools.chain(*results))
+
+
 async def get_all_offset_paging_items(func: Callable) -> list[Model]:
     items: list[Model] = []
 
@@ -169,13 +199,14 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
     except Exception as e:
         raise MottleException(f"Failed to get items: {e}")
 
+    paging_total = paging[0].total if isinstance(paging, tuple) else paging.total
+    page_size = len(paging[0].items) if isinstance(paging, tuple) else len(paging.items)
+
     # TODO: Handle this case in the template
-    if paging.total == 0:
+    if paging_total == 0:
         return items
 
-    page_size = len(paging.items)
-
-    calls = [func(offset=offset) for offset in range(page_size, paging.total, page_size)]
+    calls = [func(offset=offset) for offset in range(page_size, paging_total, page_size)]
     logger.debug(f"Paralellized into {len(calls) + 1} calls")
 
     try:
@@ -184,7 +215,7 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
         raise MottleException(f"Failed to get items: {e}")
 
     for page in pages:
-        items.extend(page.items)
+        items.extend(page[0].items if isinstance(page, tuple) else page.items)
 
     return items
 
@@ -207,3 +238,29 @@ async def get_all_cursor_paging_items(func: Callable) -> list[Model]:
 
 def list_has(albums: list[SimpleAlbum], album_type: AlbumType) -> bool:
     return any([album for album in albums if album.album_type == album_type])  # pyright: ignore
+
+
+@contextmanager
+def chunked_off(spotify_client: Spotify) -> Generator:
+    if not spotify_client.chunked_on:
+        yield
+
+    spotify_client.chunked_on = False
+    try:
+        yield
+    finally:
+        spotify_client.chunked_on = True
+
+
+async def augment_tracks_with_audio_features(
+    playlist_tracks: list[FullPlaylistTrack], tracks_audio_features: list[AudioFeatures]
+) -> list[tuple[FullPlaylistTrack, AudioFeatures]]:
+    original_order = {t.id: i for i, t in enumerate(playlist_tracks)}
+
+    sorted_tracks = sorted(playlist_tracks, key=lambda x: x.id)
+    sorted_features = sorted(tracks_audio_features, key=lambda x: x.id)
+
+    if [t.id for t in sorted_tracks] != [f.id for f in sorted_features]:
+        raise MottleException("Tracks and features do not match")
+
+    return sorted(list(zip(sorted_tracks, sorted_features)), key=lambda x: original_order[x[0].id])

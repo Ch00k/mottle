@@ -7,11 +7,11 @@
 {% block content %}
     <section>
         <form>
-            <label for="query">Artist name</label>
+            <label for="query">Playlist name</label>
             <input type="search"
                    name="query"
                    value="{{ query }}"
-                   placeholder="Start typing an artist name..."
+                   placeholder="Start typing a playlist name..."
                    hx-get="."
                    hx-trigger="input changed delay:500ms, search"
                    hx-target="#search-results"
@@ -21,8 +21,8 @@
     </section>
     <br>
     <section id="search-results">
-        {% if artists %}
-            {% include "web/tables/artists.html" %}
+        {% if playlists %}
+            {% include "web/tables/playlists.html" %}
         {% endif %}
     </section>
 {% endblock content %}

@@ -5,6 +5,15 @@
 {% endblock page_title %}
 {% block content %}
     <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th class="sortable" onClick="sortTable(this)">Title</th>
+                <th class="sortable" onClick="sortTable(this)">Tracks</th>
+                <th class="sortable" onClick="sortTable(this)">Owner</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
         <tbody>
             {% for playlist in playlists %}
                 <tr>
@@ -17,16 +26,22 @@
                            hx-indicator="#spinner"
                            hx-headers='{"M-PlaylistName": "{{ playlist.name }}"}'>{{ playlist.name }}</a>
                     </td>
-                    <td>{{ playlist.tracks.total }} tracks</td>
+                    <td>{{ playlist.tracks.total }}</td>
                     <td>
+                        <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>
+                    </td>
+                    <td>
+                        {% comment %}<a href="#">Follow all</a>{% endcomment %}
+                        {% comment %}<br>{% endcomment %}
                         {% if playlist.owner.id == request.session.spotify_user_id %}
                             <a href="{% url 'deduplicate' playlist.id %}"
                                hx-boost="true"
                                hx-indicator="#spinner"
-                               hx-headers='{"M-PlaylistName": "{{ playlist.name }}", "M-PlaylistOwnerID": "{{ playlist.owner.id }}"}'>Deduplicate tracks</a>
+                               hx-headers='{"M-PlaylistName": "{{ playlist.name }}", "M-PlaylistOwnerID": "{{ playlist.owner.id }}"}'>Deduplicate</a>
                         {% else %}
-                            <b><i>Deduplicate tracks</i></b>
+                            <b><i>Deduplicate</i></b>
                         {% endif %}
+                        <br>
                         <a href=""
                            hx-delete="{% url 'playlist' playlist.id %}"
                            hx-confirm="Are you sure?"

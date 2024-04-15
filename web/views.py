@@ -11,7 +11,7 @@ from tekore.model import AlbumType
 
 from .models import SpotifyAuth
 from .spotify import get_auth
-from .utils import MottleException, list_has
+from .utils import MottleException, augment_tracks_with_audio_features, list_has
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -130,6 +130,11 @@ def index(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 async def search(request: HttpRequest) -> HttpResponse:
+    return render(request, "web/search.html")
+
+
+@require_GET
+async def search_artists(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("query")
 
     if query is None:
@@ -145,6 +150,25 @@ async def search(request: HttpRequest) -> HttpResponse:
         return render(request, "web/tables/artists.html", context={"artists": artists, "query": query})
     else:
         return render(request, "web/search_artists.html", context={"artists": artists, "query": query})
+
+
+@require_GET
+async def search_playlists(request: HttpRequest) -> HttpResponse:
+    query = request.GET.get("query")
+
+    if query is None:
+        return render(request, "web/search_playlists.html", context={"playlists": [], "query": ""})
+
+    try:
+        playlists = await request.spotify_client.get_playlists(query)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to search for playlists")
+
+    if request.htmx:  # type: ignore[attr-defined]
+        return render(request, "web/tables/playlists.html", context={"playlists": playlists, "query": query})
+    else:
+        return render(request, "web/search_playlists.html", context={"playlists": playlists, "query": query})
 
 
 @require_http_methods(["GET", "POST"])
@@ -334,3 +358,28 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
                     "message": "You can only deduplicate your own playlists",
                 },
             )
+
+
+@require_GET
+async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    # TODO: This view will be navigated to from the playlist view, so the playlist name will be available in the headers
+    try:
+        playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get playlist items")
+
+    tracks = [item.track for item in playlist_items if item.track is not None and item.track.id is not None]
+
+    track_ids = [track.id for track in tracks]
+    tracks_features = await request.spotify_client.get_playlist_tracks_audio_features(  # type: ignore[attr-defined]
+        track_ids
+    )
+
+    tracks_with_features = await augment_tracks_with_audio_features(tracks, tracks_features)
+
+    return render(
+        request,
+        "web/playlist_audio_features.html",
+        context={"tracks_with_features": tracks_with_features, "use_max_width": True},
+    )

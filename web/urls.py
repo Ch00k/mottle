@@ -9,10 +9,13 @@ from . import views
 urlpatterns = [
     path("", views.index, name="index"),
     path("search/", views.search, name="search"),
+    path("search/artists/", views.search_artists, name="search_artists"),
+    path("search/playlists/", views.search_playlists, name="search_playlists"),
     path("artist/<str:artist_id>/", views.albums, name="albums"),
     path("playlists/", views.playlists, name="playlists"),
     path("artists/", views.followed_artists, name="artists"),
     path("playlist/<str:playlist_id>/", views.playlist, name="playlist"),
+    path("playlist/<str:playlist_id>/audio-features/", views.playlist_audio_features, name="playlist_audio_features"),
     path("deduplicate/<str:playlist_id>/", views.deduplicate, name="deduplicate"),
     path("login/", views.login, name="login"),
     path("logout/", views.logout, name="logout"),

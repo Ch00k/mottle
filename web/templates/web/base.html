@@ -15,7 +15,9 @@
                 mottle
             {% endblock title %}
         </title>
-        {% block script %}{% endblock %}
+        {% block script %}
+            <script src="{% static 'web/script.js' %}"></script>
+        {% endblock script %}
     </head>
     <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <header>
@@ -54,7 +56,7 @@
                 {% endblock page_title %}
             </h1>
         </header>
-        <main>
+        <main {% if use_max_width is not None %}class="max-width"{% endif %}>
             <div id="spinner" class="htmx-indicator">
                 <img id="spinner-img" src="{% static 'web/spinner.gif' %}" />
             </div>
