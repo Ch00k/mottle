@@ -55,6 +55,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "web.context_processors.app_version",
+                "web.context_processors.global_template_vars",
             ],
         },
     },
