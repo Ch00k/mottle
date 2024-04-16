@@ -36,10 +36,10 @@
                                 {% endfor %}
                             </td>
                             <td>
-                                <a href="{{ item.track.album | spotify_url }}">{{ data.track.track.album.name }}</a>
+                                <a href="{{ data.track.track.album | spotify_url }}">{{ data.track.track.album.name }}</a>
                             </td>
                             <td>
-                                <a href="{{ item.track | spotify_url }}">{{ data.track.track.name }}</a>
+                                <a href="{{ data.track.track | spotify_url }}">{{ data.track.track.name }}</a>
                             </td>
                             <td>{{ data.track.track.duration_ms | duration_humanized }}</td>
                             <td>{{ data.positions | length }}</td>
@@ -57,7 +57,7 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% if playlist.owner.id == request.session.spotify_user_id %}
+        {% if playlist_owner_id == request.session.spotify_user_id %}
             <br>
             <button hx-post="."
                     hx-include="input"

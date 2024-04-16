@@ -350,6 +350,7 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
             request,
             "web/deduplicate.html",
             context={
+                "playlist_owner_id": playlist_owner_id,
                 "playlist_id": playlist_id,
                 "playlist_name": playlist_name,
                 "playlist_items": playlist_items,
