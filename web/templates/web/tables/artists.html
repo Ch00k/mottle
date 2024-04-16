@@ -10,7 +10,7 @@
                     <a href="{% url 'albums' artist.id %}"
                        hx-boost="true"
                        hx-indicator="#spinner"
-                       hx-headers='{"M-ArtistName": "{{ artist.name }}"}'>{{ artist.name }}</a>
+                       hx-headers='{"M-ArtistName": "{{ artist.name | urlencode }}"}'>{{ artist.name }}</a>
                 </td>
                 <td>{{ artist | genres }}</td>
             </tr>

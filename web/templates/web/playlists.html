@@ -24,7 +24,7 @@
                         <a href="{% url 'playlist' playlist.id %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
-                           hx-headers='{"M-PlaylistName": "{{ playlist.name }}"}'>{{ playlist.name }}</a>
+                           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{{ playlist.name }}</a>
                     </td>
                     <td>{{ playlist.tracks.total }}</td>
                     <td>
@@ -37,7 +37,7 @@
                             <a href="{% url 'deduplicate' playlist.id %}"
                                hx-boost="true"
                                hx-indicator="#spinner"
-                               hx-headers='{"M-PlaylistName": "{{ playlist.name }}", "M-PlaylistOwnerID": "{{ playlist.owner.id }}"}'>Deduplicate</a>
+                               hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>Deduplicate</a>
                         {% else %}
                             <b><i>Deduplicate</i></b>
                         {% endif %}

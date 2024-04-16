@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -183,6 +184,8 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
         logger.error("Artist name not found in headers")
         artist = await request.spotify_client.get_artist(artist_id)  # type: ignore[attr-defined]
         artist_name = artist.name
+    else:
+        artist_name = unquote(artist_name)
 
     try:
         albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]
@@ -273,6 +276,8 @@ async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
         logger.warning("Playlist name not found in headers")
         playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
         playlist_name = playlist.name
+    else:
+        playlist_name = unquote(playlist_name)
 
     if request.method == "GET":
         try:
@@ -298,12 +303,15 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name = request.headers.get("M-PlaylistName")
     playlist_owner_id = request.headers.get("M-PlaylistOwnerID")
 
-    if None in (playlist_name, playlist_owner_id):
+    if playlist_name is None or playlist_owner_id is None:
         logger.warning("Playlist name or owner ID not found in headers")
 
         playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
         playlist_name = playlist.name
         playlist_owner_id = playlist.owner.id
+    else:
+        playlist_name = unquote(playlist_name)
+        playlist_owner_id = unquote(playlist_owner_id)
 
     if request.method == "POST":
         track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
