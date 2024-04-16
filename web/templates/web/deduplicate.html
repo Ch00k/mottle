@@ -19,7 +19,7 @@
                     <th>Album</th>
                     <th>Track</th>
                     <th>Duration</th>
-                    <th>Occurs</th>
+                    <th>Occurrences</th>
                 </tr>
             </thead>
             <tbody>
@@ -29,11 +29,20 @@
                             <td>
                                 <img src="{{ data.track.track.album.images | pick_image | default_image:70 }}" />
                             </td>
-                            <td>{{ data.track.track | artists }}</td>
-                            <td>{{ data.track.track.album.name }}</td>
-                            <td>{{ data.track.track.name }}</td>
+                            <td>
+                                {% for artist in data.track.track.artists %}
+                                    <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                                    <br>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <a href="{{ item.track.album | spotify_url }}">{{ data.track.track.album.name }}</a>
+                            </td>
+                            <td>
+                                <a href="{{ item.track | spotify_url }}">{{ data.track.track.name }}</a>
+                            </td>
                             <td>{{ data.track.track.duration_ms | duration_humanized }}</td>
-                            <td>{{ data.positions | times | capfirst }}</td>
+                            <td>{{ data.positions | length }}</td>
                             <td style="display:none;">
                                 <input type="hidden"
                                        name="track-meta"
@@ -48,11 +57,13 @@
                 {% endfor %}
             </tbody>
         </table>
-        <br>
-        <button hx-post="."
-                hx-include="input"
-                hx-target="#content"
-                hx-indicator="#spinner">
-            <b>Remove duplicates</b></a>
+        {% if playlist.owner.id == request.session.spotify_user_id %}
+            <br>
+            <button hx-post="."
+                    hx-include="input"
+                    hx-target="#content"
+                    hx-indicator="#spinner">
+                <b>Remove duplicates</b></a>
+        {% endif %}
     {% endif %}
 {% endblock content %}

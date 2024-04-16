@@ -33,14 +33,10 @@
                     <td>
                         {% comment %}<a href="#">Follow all</a>{% endcomment %}
                         {% comment %}<br>{% endcomment %}
-                        {% if playlist.owner.id == request.session.spotify_user_id %}
-                            <a href="{% url 'deduplicate' playlist.id %}"
-                               hx-boost="true"
-                               hx-indicator="#spinner"
-                               hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>Deduplicate</a>
-                        {% else %}
-                            <b><i>Deduplicate</i></b>
-                        {% endif %}
+                        <a href="{% url 'deduplicate' playlist.id %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner"
+                           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>Find duplicates</a>
                         <br>
                         <a href=""
                            hx-delete="{% url 'playlist' playlist.id %}"

@@ -331,45 +331,31 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
             return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
 
     else:
-        if playlist_owner_id == request.session["spotify_user_id"]:
-            playlist_items = (
-                await request.spotify_client.find_duplicate_tracks_in_playlist(  # type: ignore[attr-defined]
-                    playlist_id
-                )
-            )
-            num_duplicates = len(playlist_items)
+        playlist_items = await request.spotify_client.find_duplicate_tracks_in_playlist(  # type: ignore[attr-defined]
+            playlist_id
+        )
+        num_duplicates = len(playlist_items)
 
-            if not num_duplicates:
-                message = "No duplicates found"
-            elif num_duplicates == 1:
-                message = "1 track has duplicates"
-            else:
-                if num_duplicates % 10 == 1:
-                    message = f"{len(playlist_items)} track has duplicates"
-                else:
-                    message = f"{len(playlist_items)} tracks have duplicates"
-
-            return render(
-                request,
-                "web/deduplicate.html",
-                context={
-                    "playlist_id": playlist_id,
-                    "playlist_name": playlist_name,
-                    "playlist_items": playlist_items,
-                    "message": message,
-                },
-            )
+        if not num_duplicates:
+            message = "No duplicates found"
+        elif num_duplicates == 1:
+            message = "1 track has duplicates"
         else:
-            return render(
-                request,
-                "web/deduplicate.html",
-                context={
-                    "playlist_id": playlist_id,
-                    "playlist_name": playlist_name,
-                    "playlist_items": [],
-                    "message": "You can only deduplicate your own playlists",
-                },
-            )
+            if num_duplicates % 10 == 1:
+                message = f"{len(playlist_items)} track has duplicates"
+            else:
+                message = f"{len(playlist_items)} tracks have duplicates"
+
+        return render(
+            request,
+            "web/deduplicate.html",
+            context={
+                "playlist_id": playlist_id,
+                "playlist_name": playlist_name,
+                "playlist_items": playlist_items,
+                "message": message,
+            },
+        )
 
 
 @require_GET

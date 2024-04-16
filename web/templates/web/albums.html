@@ -68,7 +68,9 @@
                         <td>
                             <img src="{{ item.images | pick_image | default_image:70 }}">
                         </td>
-                        <td>{{ item.name }}</td>
+                        <td>
+                            <a href="{{ item | spotify_url }}">{{ item.name }}</a>
+                        </td>
                         <td>{{ item.release_date | year }}</td>
                         <td>{{ item.album_type }}</td>
                     </tr>
