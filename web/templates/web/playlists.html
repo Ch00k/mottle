@@ -36,13 +36,20 @@
                         <a href="{% url 'deduplicate' playlist.id %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
-                           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>Find duplicates</a>
-                        <br>
+                           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+                            {% include "web/icons/find_duplicates.html" %}
+                        </a>
                         <a href=""
                            hx-delete="{% url 'playlist' playlist.id %}"
                            hx-confirm="Are you sure?"
                            hx-target="closest tr"
-                           hx-swap="outerHTML swap:1s">Delete</a>
+                           hx-swap="outerHTML swap:1s">
+                            {% if playlist.owner.id == request.session.spotify_user_id %}
+                                {% include "web/icons/delete.html" %}
+                            {% else %}
+                                {% include "web/icons/unfollow.html" %}
+                            {% endif %}
+                        </a>
                     </td>
                 </tr>
             {% endfor %}
