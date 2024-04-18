@@ -361,7 +361,16 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
 
 @require_GET
 async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    # TODO: This view will be navigated to from the playlist view, so the playlist name will be available in the headers
+    playlist_name = request.headers.get("M-PlaylistName")
+
+    if playlist_name is None:
+        logger.warning("Playlist name not found in headers")
+        playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
+        playlist_name = playlist.name
+    else:
+        playlist_name = unquote(playlist_name)
+
+    # TODO: This view will be navigated to from the playlist view, so playlist items could could be passed from there?
     try:
         playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
     except MottleException as e:
@@ -380,5 +389,9 @@ async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> Htt
     return render(
         request,
         "web/playlist_audio_features.html",
-        context={"tracks_with_features": tracks_with_features, "use_max_width": True},
+        context={
+            "playlist_name": playlist_name,
+            "tracks_with_features": tracks_with_features,
+            "use_max_width": True,
+        },
     )

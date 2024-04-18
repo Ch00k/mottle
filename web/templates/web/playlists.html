@@ -30,7 +30,7 @@
                     <td>
                         <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>
                     </td>
-                    <td>
+                    <td class="nowrap">
                         {% comment %}<a href="#">Follow all</a>{% endcomment %}
                         {% comment %}<br>{% endcomment %}
                         <a href="{% url 'deduplicate' playlist.id %}"
@@ -38,6 +38,12 @@
                            hx-indicator="#spinner"
                            hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
                             {% include "web/icons/find_duplicates.html" %}
+                        </a>
+                        <a href="{% url 'playlist_audio_features' playlist.id %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner"
+                           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+                            {% include "web/icons/audio_features.html" %}
                         </a>
                         <a href=""
                            hx-delete="{% url 'playlist' playlist.id %}"

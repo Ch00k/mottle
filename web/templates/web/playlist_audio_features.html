@@ -1,8 +1,8 @@
 {% extends "web/base.html" %}
 {% load tekore_model_extras %}
-{% comment %}{% block page_title %}{% endcomment %}
-{% comment %}    {{ playlist_name }}{% endcomment %}
-{% comment %}{% endblock page_title %}{% endcomment %}
+{% block page_title %}
+    {{ playlist_name }}
+{% endblock page_title %}
 {% block content %}
     <table>
         <thead>
@@ -12,15 +12,15 @@
                 <th class="sortable" onClick="sortTable(this)">Album</th>
                 <th class="sortable" onClick="sortTable(this)">Track</th>
                 <th class="sortable" onClick="sortTable(this)">Duration</th>
-                <th class="sortable" onClick="sortTable(this)">Acou</th>
-                <th class="sortable" onClick="sortTable(this)">Danc</th>
-                <th class="sortable" onClick="sortTable(this)">Ener</th>
-                <th class="sortable" onClick="sortTable(this)">Inst</th>
-                <th class="sortable" onClick="sortTable(this)">Live</th>
-                <th class="sortable" onClick="sortTable(this)">Loud</th>
-                <th class="sortable" onClick="sortTable(this)">Spee</th>
-                <th class="sortable" onClick="sortTable(this)">Temp</th>
-                <th class="sortable" onClick="sortTable(this)">Vale</th>
+                <th class="sortable" onClick="sortTable(this)">BPM</th>
+                <th title="Acousticness" class="sortable" onClick="sortTable(this)">Acou</th>
+                <th title="Danceability" class="sortable" onClick="sortTable(this)">Danc</th>
+                <th title="Energy" class="sortable" onClick="sortTable(this)">Ener</th>
+                <th title="Instrumentalness" class="sortable" onClick="sortTable(this)">Inst</th>
+                <th title="Liveness" class="sortable" onClick="sortTable(this)">Live</th>
+                <th title="Loudness" class="sortable" onClick="sortTable(this)">Loud</th>
+                <th title="Speechiness" class="sortable" onClick="sortTable(this)">Spee</th>
+                <th title="Valence" class="sortable" onClick="sortTable(this)">Vale</th>
             </tr>
         </thead>
         <tbody>
@@ -42,6 +42,7 @@
                         <a href="{{ item.0 | spotify_url }}">{{ item.0.name }}</a>
                     </td>
                     <td>{{ item.0.duration_ms | duration_humanized }}</td>
+                    <td>{{ item.1.tempo | floatformat:0 }}</td>
                     <td>{{ item.1.acousticness | floatformat:-3 }}</td>
                     <td>{{ item.1.danceability | floatformat:-3 }}</td>
                     <td>{{ item.1.energy | floatformat:-3 }}</td>
@@ -49,7 +50,6 @@
                     <td>{{ item.1.liveness | floatformat:-3 }}</td>
                     <td>{{ item.1.loudness | floatformat:-3 }}</td>
                     <td>{{ item.1.speechiness | floatformat:-3 }}</td>
-                    <td>{{ item.1.tempo | floatformat:0 }}</td>
                     <td>{{ item.1.valence | floatformat:-3 }}</td>
                 </tr>
             {% endfor %}

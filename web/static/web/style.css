@@ -96,3 +96,7 @@ th.sortable::after {
     border-top-color: #FFF;
     margin-top: 1px;
 }
+
+td.nowrap {
+    white-space: nowrap;
+}
