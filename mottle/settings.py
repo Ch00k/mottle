@@ -12,6 +12,7 @@ SECRET_KEY = env.str("SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
 CSRF_TRUSTED_ORIGINS = ["https://mottle.it", "https://www.mottle.it"]
+SESSION_COOKIE_DOMAIN = ".mottle.it"
 
 APP_VERSION = env.str("APP_VERSION", "dev")
 
