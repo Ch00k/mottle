@@ -42,15 +42,33 @@
                         <a href="{{ item.0 | spotify_url }}">{{ item.0.name }}</a>
                     </td>
                     <td>{{ item.0.duration_ms | duration_humanized }}</td>
-                    <td>{{ item.1.tempo | floatformat:0 }}</td>
-                    <td>{{ item.1.acousticness | floatformat:-3 }}</td>
-                    <td>{{ item.1.danceability | floatformat:-3 }}</td>
-                    <td>{{ item.1.energy | floatformat:-3 }}</td>
-                    <td>{{ item.1.instrumentalness | floatformat:-3 }}</td>
-                    <td>{{ item.1.liveness | floatformat:-3 }}</td>
-                    <td>{{ item.1.loudness | floatformat:-3 }}</td>
-                    <td>{{ item.1.speechiness | floatformat:-3 }}</td>
-                    <td>{{ item.1.valence | floatformat:-3 }}</td>
+                    <td>
+                        {% if item.1 %}{{ item.1.tempo | floatformat:0 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.acousticness | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.danceability | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.energy | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.instrumentalness | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.liveness | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.loudness | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.speechiness | floatformat:-3 }}{% endif %}
+                    </td>
+                    <td>
+                        {% if item.1 %}{{ item.1.valence | floatformat:-3 }}{% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

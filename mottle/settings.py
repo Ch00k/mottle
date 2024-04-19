@@ -132,6 +132,7 @@ SPOTIFY_TOKEN_SCOPE = env.list(
         "playlist-modify-public",
         "user-follow-read",
         "user-follow-modify",
+        "ugc-image-upload",
     ],
 )
 
@@ -140,6 +141,8 @@ SPOTIFY_CREDEINTIALS = Credentials(
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
 )
+
+PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)
 
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),

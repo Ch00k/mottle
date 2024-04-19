@@ -6,13 +6,13 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_http_methods, require_safe
+from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 from tekore import AsyncSender, RetryingSender, Spotify
 from tekore.model import AlbumType
 
 from .models import SpotifyAuth
 from .spotify import get_auth
-from .utils import MottleException, augment_tracks_with_audio_features, list_has
+from .utils import MottleException, list_has
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -384,7 +384,7 @@ async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> Htt
         track_ids
     )
 
-    tracks_with_features = await augment_tracks_with_audio_features(tracks, tracks_features)
+    tracks_with_features = list(zip(tracks, tracks_features))
 
     return render(
         request,
@@ -395,3 +395,61 @@ async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> Htt
             "use_max_width": True,
         },
     )
+
+
+@require_POST
+async def copy_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    playlist_name = request.headers.get("M-PlaylistName")
+
+    if playlist_name is None:
+        logger.warning("Playlist name not found in headers")
+        playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
+        playlist_name = playlist.name
+    else:
+        playlist_name = unquote(playlist_name)
+
+    try:
+        playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get playlist items")
+
+    # TODO: Uploading playlist cover image is weird. Right after playlist is created, the upload returns a 404 for
+    # some time, then it returns a 502 for some time, and only then it returns a 202.
+    # Disabling it for now because the whole thing is very flaky.
+    # try:
+    #     cover_images = await request.spotify_client.get_playlist_cover_images(playlist_id)
+    # except MottleException as e:
+    #     logger.exception(e)
+    #     cover_images = []
+
+    # cover_images = [image for image in cover_images if urlparse(image.url).netloc != "mosaic.scdn.co"]
+    # if cover_images:
+    #     # The assumption is that there are either 3 mosaic images or 1 non-mosaic image
+    #     cover_image = cover_images[0]
+    #     resp = await httpx.AsyncClient().get(cover_image.url)
+    #     cover_image_base64_data = base64.b64encode(resp.content).decode()
+    #     logger.debug(f"Cover image data size: {len(cover_image_base64_data) / 1000} KB")
+    # else:
+    #     cover_image_base64_data = None
+
+    try:
+        playlist = await request.spotify_client.create_playlist_with_tracks(  # type: ignore[attr-defined]
+            request.session["spotify_user_id"],
+            name=f"Copy of {playlist_name}",
+            track_uris=[track.track.uri for track in playlist_items if not track.track.is_local],
+            is_public=True,  # TODO: How do we decide on the value?
+            # cover_image=cover_image_base64_data,
+            cover_image=None,
+            add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
+            fail_on_cover_image_upload_error=False,
+        )
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to create playlist")
+
+    # When the playlist is initially created, it is empty, and its attributes (e.g. owner) are still not defined.
+    # Therefore we fetch it again.
+    playlist = await request.spotify_client.get_playlist(playlist.id)  # type: ignore[attr-defined]
+
+    return render(request, "web/parts/playlist_row.html", context={"playlist": playlist})

@@ -1,0 +1,51 @@
+{% load tekore_model_extras %}
+<tr>
+    <td>
+        <img src="{{ playlist.images | pick_image | default_image:70 }}">
+    </td>
+    <td>
+        <a href="{% url 'playlist' playlist.id %}"
+           hx-boost="true"
+           hx-indicator="#spinner"
+           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{{ playlist.name }}</a>
+    </td>
+    <td>{{ playlist.tracks.total }}</td>
+    <td>
+        <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>
+    </td>
+    <td class="nowrap">
+        {% comment %}<a href="#">Follow all</a>{% endcomment %}
+        {% comment %}<br>{% endcomment %}
+        <a href="{% url 'deduplicate' playlist.id %}"
+           hx-boost="true"
+           hx-indicator="#spinner"
+           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+            {% include "web/icons/find_duplicates.html" %}
+        </a>
+        <a href="{% url 'playlist_audio_features' playlist.id %}"
+           hx-boost="true"
+           hx-indicator="#spinner"
+           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+            {% include "web/icons/audio_features.html" %}
+        </a>
+        <a href=""
+           hx-post="{% url 'copy_playlist' playlist.id %}"
+           hx-confirm="Are you sure you want to create a copy of playlist {{ playlist.name }}?"
+           hx-target="closest tr"
+           hx-swap="afterend"
+           hx-indicator="#spinner"
+           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" %}</a>
+        <a href=""
+           hx-delete="{% url 'playlist' playlist.id %}"
+           hx-confirm="Are you sure you want to {% if playlist.owner.id == request.session.spotify_user_id %}delete{% else %}unfollow{% endif %} playlist {{ playlist.name }}?"
+           hx-target="closest tr"
+           hx-swap="outerHTML"
+           hx-indicator="#spinner">
+            {% if playlist.owner.id == request.session.spotify_user_id %}
+                {% include "web/icons/delete.html" %}
+            {% else %}
+                {% include "web/icons/unfollow.html" %}
+            {% endif %}
+        </a>
+    </td>
+</tr>

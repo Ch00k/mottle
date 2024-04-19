@@ -16,6 +16,7 @@ urlpatterns = [
     path("artists/", views.followed_artists, name="artists"),
     path("playlist/<str:playlist_id>/", views.playlist, name="playlist"),
     path("playlist/<str:playlist_id>/audio-features/", views.playlist_audio_features, name="playlist_audio_features"),
+    path("playlist/<str:playlist_id>/copy/", views.copy_playlist, name="copy_playlist"),
     path("deduplicate/<str:playlist_id>/", views.deduplicate, name="deduplicate"),
     path("login/", views.login, name="login"),
     path("logout/", views.logout, name="logout"),

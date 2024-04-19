@@ -14,7 +14,7 @@ from tekore.model import (
     FullArtist,
     FullArtistOffsetPaging,
     FullPlaylist,
-    FullPlaylistTrack,
+    Image,
     Model,
     PlaylistTrack,
     SimpleAlbum,
@@ -102,7 +102,14 @@ class MottleSpotifyClient:
             raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
     async def create_playlist_with_tracks(
-        self, current_user_id: str, name: str, track_uris: list[str], is_public: bool = True
+        self,
+        current_user_id: str,
+        name: str,
+        track_uris: list[str],
+        is_public: bool = True,
+        cover_image: Optional[str] = None,
+        add_tracks_parallelized: bool = False,
+        fail_on_cover_image_upload_error: bool = True,
     ) -> FullPlaylist:
         if not track_uris:
             raise MottleException("No tracks to add to playlist")
@@ -116,7 +123,28 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to create playlist: {e}")
 
-        await self.add_tracks_to_playlist(playlist.id, track_uris)
+        if add_tracks_parallelized:
+            try:
+                with chunked_off(self.spotify_client):
+                    await perform_parallel_chunked_requests(
+                        partial(self.add_tracks_to_playlist, playlist.id), track_uris
+                    )
+            except Exception as e:
+                raise MottleException(f"Failed to add tracks to playlist: {e}")
+        else:
+            try:
+                await self.add_tracks_to_playlist(playlist.id, track_uris)
+            except Exception as e:
+                raise MottleException(f"Failed to add tracks to playlist: {e}")
+
+        if cover_image is not None:
+            try:
+                await self.spotify_client.playlist_cover_image_upload(playlist.id, cover_image)  # pyright: ignore
+            except Exception:
+                if fail_on_cover_image_upload_error:
+                    raise MottleException(f"Failed to upload cover image to playlist {playlist.id}")
+                else:
+                    logger.warning(f"Failed to upload cover image to playlist {playlist.id}")
 
         return playlist
 
@@ -143,6 +171,14 @@ class MottleSpotifyClient:
             await self.spotify_client.playlist_unfollow(playlist_id)  # pyright: ignore
         except Exception as e:
             raise MottleException(f"Failed to unfollow playlist {playlist_id}: {e}")
+
+    async def get_playlist_cover_images(self, playlist_id: str) -> list[Image]:
+        try:
+            images: list[Image] = await self.spotify_client.playlist_cover_image(playlist_id)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to get playlist cover images {playlist_id}: {e}")
+
+        return images
 
     async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
         func = partial(self.spotify_client.playlist_items, playlist_id)
@@ -174,14 +210,27 @@ class MottleSpotifyClient:
         return duplicate_dict
 
 
-async def perform_parallel_chunked_requests(func: Callable, items: list[str], chunk_size: int = 100) -> Any:
-    chunks = itertools.batched(items, chunk_size)
-    calls = [func(chunk) for chunk in chunks]
+async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:
+    calls = [func(item) for item in items]
+    logger.debug(f"Paralellizing into {len(calls)} calls")
 
     try:
         results = await asyncio.gather(*calls)
     except Exception as e:
-        raise MottleException(f"Failed to perform chunked requests: {e}")
+        raise MottleException(f"Failed to perform parallel requests: {e}")
+
+    return results
+
+
+async def perform_parallel_chunked_requests(func: Callable, items: list[str], chunk_size: int = 100) -> Any:
+    chunks = itertools.batched(items, chunk_size)
+    calls = [func(chunk) for chunk in chunks]
+    logger.debug(f"Paralellizing into {len(calls)} chunked calls")
+
+    try:
+        results = await asyncio.gather(*calls)
+    except Exception as e:
+        raise MottleException(f"Failed to perform parallel chunked requests: {e}")
 
     return results
 
@@ -250,17 +299,3 @@ def chunked_off(spotify_client: Spotify) -> Generator:
         yield
     finally:
         spotify_client.chunked_on = True
-
-
-async def augment_tracks_with_audio_features(
-    playlist_tracks: list[FullPlaylistTrack], tracks_audio_features: list[AudioFeatures]
-) -> list[tuple[FullPlaylistTrack, AudioFeatures]]:
-    original_order = {t.id: i for i, t in enumerate(playlist_tracks)}
-
-    sorted_tracks = sorted(playlist_tracks, key=lambda x: x.id)
-    sorted_features = sorted(tracks_audio_features, key=lambda x: x.id)
-
-    if [t.id for t in sorted_tracks] != [f.id for f in sorted_features]:
-        raise MottleException("Tracks and features do not match")
-
-    return sorted(list(zip(sorted_tracks, sorted_features)), key=lambda x: original_order[x[0].id])

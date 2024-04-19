@@ -29,11 +29,6 @@ img:not(.logo) {
     height: 70px;
 }
 
-tr.htmx-swapping td {
-  opacity: 0;
-  transition: opacity 1s ease-out;
-}
-
 .htmx-indicator {
     display: none;
 }
