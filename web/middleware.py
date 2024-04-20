@@ -5,6 +5,7 @@ from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_asy
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse
+from httpx import AsyncClient, Timeout
 from tekore import AsyncSender, RetryingSender
 
 from web.utils import MottleSpotifyClient
@@ -60,7 +61,8 @@ class SpotifyAuthMiddleware:
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
             logger.debug(spotify_auth)
 
-        sender = RetryingSender(retries=3, sender=AsyncSender())
+        client = AsyncClient(timeout=Timeout(settings.TEKORE_HTTP_TIMEOUT))
+        sender = RetryingSender(retries=2, sender=AsyncSender(client))
         spotify_client = Spotify(token=spotify_auth.access_token, sender=sender, max_limits_on=True, chunked_on=True)
 
         request.spotify_client = MottleSpotifyClient(spotify_client=spotify_client)  # type: ignore[attr-defined]
