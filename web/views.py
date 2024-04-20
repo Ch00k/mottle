@@ -302,27 +302,30 @@ async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
 async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name = request.headers.get("M-PlaylistName")
     playlist_owner_id = request.headers.get("M-PlaylistOwnerID")
+    playlist_snapshot_id = request.headers.get("M-PlaylistSnapshotID")
 
-    if playlist_name is None or playlist_owner_id is None:
-        logger.warning("Playlist name or owner ID not found in headers")
+    if playlist_name is None or playlist_owner_id is None or playlist_snapshot_id is None:
+        logger.warning("Playlist name, owner ID, or snapshot ID not found in headers")
 
         playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
         playlist_name = playlist.name
         playlist_owner_id = playlist.owner.id
+        playlist_snapshot_id = playlist.snapshot_id
     else:
         playlist_name = unquote(playlist_name)
         playlist_owner_id = unquote(playlist_owner_id)
+        playlist_snapshot_id = unquote(playlist_snapshot_id)
 
     if request.method == "POST":
         track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
-        tracks_to_remove = {k: [int(i) for i in v.split(",")][1:] for k, v in track_data.items()}
+        tracks_to_remove = [{"uri": k, "positions": [int(i) for i in v.split(",")][1:]} for k, v in track_data.items()]
 
         logger.debug(f"Tracks: {tracks_to_remove}")
         logger.debug(f"Removing {len(tracks_to_remove)} tracks from playlist {playlist_id}")
 
         try:
             await request.spotify_client.remove_tracks_at_positions_from_playlist(  # type: ignore[attr-defined]
-                playlist_id, tracks_to_remove
+                playlist_id, tracks_to_remove, playlist_snapshot_id
             )
         except MottleException as e:
             logger.exception(e)

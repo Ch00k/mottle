@@ -60,7 +60,7 @@ class SpotifyAuthMiddleware:
             logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
             logger.debug(spotify_auth)
 
-        sender = RetryingSender(sender=AsyncSender())
+        sender = RetryingSender(retries=3, sender=AsyncSender())
         spotify_client = Spotify(token=spotify_auth.access_token, sender=sender, max_limits_on=True, chunked_on=True)
 
         request.spotify_client = MottleSpotifyClient(spotify_client=spotify_client)  # type: ignore[attr-defined]

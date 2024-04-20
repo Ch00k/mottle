@@ -19,7 +19,7 @@
         <a href="{% url 'deduplicate' playlist.id %}"
            hx-boost="true"
            hx-indicator="#spinner"
-           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}", "M-PlaylistSnapshotID": "{{ playlist.snapshot_id }}"}'>
             {% include "web/icons/find_duplicates.html" %}
         </a>
         <a href="{% url 'playlist_audio_features' playlist.id %}"
