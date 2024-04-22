@@ -38,11 +38,11 @@ async def login(request: HttpRequest) -> HttpResponse:
             logger.debug(spotify_auth)
 
             if spotify_auth.access_token is None:
-                logger.debug(f"SpotifyAuth ID {spotify_auth_id} access_token is None")
+                logger.debug(f"{spotify_auth} access_token is None")
                 return render(request, "web/login.html", {"redirect_uri": redirect_uri})
             else:
                 if spotify_auth.is_expiring:
-                    logger.debug(f"SpotifyAuth ID {spotify_auth_id} is expiring. Refreshing")
+                    logger.debug(f"Refreshing {spotify_auth}")
                     try:
                         tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(spotify_auth.as_tekore_token)
                     except Exception as e:
@@ -50,7 +50,7 @@ async def login(request: HttpRequest) -> HttpResponse:
                         return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
                     await spotify_auth.update_from_tekore_token(tekore_token)
-                    logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
+                    logger.debug(f"{spotify_auth} refreshed")
                     logger.debug(spotify_auth)
 
                 return redirect("index")

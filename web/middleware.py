@@ -46,11 +46,11 @@ class SpotifyAuthMiddleware:
             return redirect_to_login(request.get_full_path())
 
         if spotify_auth.access_token is None:
-            logger.debug(f"SpotifyAuth ID {spotify_auth_id} access_token is None")
+            logger.debug(f"{spotify_auth} access_token is None")
             return redirect_to_login(request.get_full_path())
 
         if spotify_auth.is_expiring:
-            logger.debug(f"SpotifyAuth ID {spotify_auth_id} is expiring. Refreshing")
+            logger.debug(f"Refreshing {spotify_auth}")
             try:
                 tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(spotify_auth.as_tekore_token)
             except Exception as e:
@@ -58,7 +58,7 @@ class SpotifyAuthMiddleware:
                 return redirect_to_login(request.get_full_path())
 
             await spotify_auth.update_from_tekore_token(tekore_token)
-            logger.debug(f"SpotifyAuth ID {spotify_auth_id} refreshed")
+            logger.debug(f"{spotify_auth} refreshed")
             logger.debug(spotify_auth)
 
         client = AsyncClient(timeout=Timeout(settings.TEKORE_HTTP_TIMEOUT))

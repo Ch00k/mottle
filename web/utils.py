@@ -216,7 +216,8 @@ class MottleSpotifyClient:
 
 async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:
     calls = [func(item) for item in items]
-    logger.debug(f"Paralellizing into {len(calls)} calls")
+    qualname = func.func.__qualname__ if isinstance(func, partial) else func.__qualname__
+    logger.debug(f"Paralellizing {qualname} into {len(calls)} calls")
 
     try:
         results = await asyncio.gather(*calls)
@@ -229,7 +230,8 @@ async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:
 async def perform_parallel_chunked_requests(func: Callable, items: list[str], chunk_size: int = 100) -> Any:
     chunks = itertools.batched(items, chunk_size)
     calls = [func(chunk) for chunk in chunks]
-    logger.debug(f"Paralellizing into {len(calls)} chunked calls")
+    qualname = func.func.__qualname__ if isinstance(func, partial) else func.__qualname__
+    logger.debug(f"Paralellizing {qualname} into {len(calls)} chunked calls")
 
     try:
         results = await asyncio.gather(*calls)
@@ -260,7 +262,8 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
         return items
 
     calls = [func(offset=offset) for offset in range(page_size, paging_total, page_size)]
-    logger.debug(f"Paralellized into {len(calls) + 1} calls")
+    qualname = func.func.__qualname__ if isinstance(func, partial) else func.__qualname__
+    logger.debug(f"Paralellizing {qualname} into {len(calls) + 1} calls")
 
     try:
         pages = [paging] + await asyncio.gather(*calls)

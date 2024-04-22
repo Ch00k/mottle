@@ -1,10 +1,13 @@
 import datetime
+import logging
 import uuid
 
 from django.db import models
 from tekore import Token
 
 TOKEN_EXPIRATION_THRESHOLD = 60
+
+logger = logging.getLogger(__name__)
 
 
 class SpotifyAuth(models.Model):
@@ -18,7 +21,9 @@ class SpotifyAuth(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"SpotifyAuth {self.id} redirect_uri={self.redirect_uri} state={self.state} expires_at={self.expires_at}"
+        return (
+            f"<SpotifyAuth {self.id} redirect_uri={self.redirect_uri} state={self.state} expires_at={self.expires_at}>"
+        )
 
     @property
     def expires_in(self) -> float:
@@ -30,7 +35,14 @@ class SpotifyAuth(models.Model):
 
     @property
     def is_expiring(self) -> bool:
-        return self.expires_in < TOKEN_EXPIRATION_THRESHOLD
+        if self.expires_in <= 0:
+            logger.info(f"{self} is expired")
+            return True
+        elif self.expires_in < TOKEN_EXPIRATION_THRESHOLD:
+            logger.info(f"{self} is expiring in {self.expires_in} seconds")
+            return True
+        else:
+            return False
 
     @property
     def as_tekore_token(self) -> Token:

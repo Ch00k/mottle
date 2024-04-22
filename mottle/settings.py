@@ -108,11 +108,6 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "tekore": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
     },
 }
 
