@@ -26,9 +26,11 @@ function toggleInput(select, selectedOption, inputId) {
     inputElem = document.getElementById(inputId);
     if (select.value == selectedOption) {
         inputElem.style.display = "block";
+        inputElem.required = true;
     } else {
         inputElem.style.display = "none";
         inputElem.value = "";
+        inputElem.required = false;
     }
 }
 

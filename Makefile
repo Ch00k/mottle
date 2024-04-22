@@ -1,5 +1,8 @@
 SHELL := bash
 
+test:
+	poetry run pytest web/tests
+
 tag:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
 	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))

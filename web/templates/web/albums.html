@@ -18,9 +18,6 @@
                    required>
             <label for="playlist-description">Description</label>
             <input type="text" name="description" id="playlist-description">
-            <label for="is-public">Make playlist public</label>
-            <input type="checkbox" name="is-public" id="is-public" checked>
-            <br>
             <label>Include</label>
             <input type="checkbox"
                    name="all-albums"
@@ -48,6 +45,8 @@
                    onchange="toggleSubmitButton()"
                    {% if not has_compilations %}disabled{% endif %}>
             <label for="all-compilations">Compilations</label>
+            <label for="is-public">Make public</label>
+            <input type="checkbox" name="is-public" id="is-public" checked>
         </form>
     </section>
     <br>

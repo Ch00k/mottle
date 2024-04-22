@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 import uuid
 from typing import Any, Optional
@@ -6,6 +7,7 @@ from typing import Any, Optional
 from django.conf import settings
 from django.db import models
 from tekore import Token
+from tekore.model import PrivateUser
 
 from .spotify import authenticate
 from .utils import MottleException
@@ -43,15 +45,21 @@ class EncryptedCharField(models.CharField):
         return encrypt_value(value)
 
 
-class SpotifyAuth(models.Model):
+class BaseModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    redirect_uri = models.CharField(max_length=100, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class SpotifyAuth(BaseModel):
     state = models.CharField(max_length=50, null=True, unique=True)
+    redirect_uri = models.CharField(max_length=100, null=True)
     access_token = EncryptedCharField(max_length=450, null=True)
     refresh_token = EncryptedCharField(max_length=300, null=True)
     expires_at = models.DateTimeField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         return f"<SpotifyAuth {self.id} expires_at={self.expires_at}>"
@@ -120,3 +128,200 @@ class SpotifyAuth(models.Model):
         if self.state is not None:
             self.state = None
         await self.asave()
+
+
+class SpotifyEntityModel(BaseModel):
+    spotify_id = models.CharField(max_length=32, unique=True)
+
+    class Meta:
+        abstract = True
+
+
+class SpotifyUser(SpotifyEntityModel):
+    display_name = models.CharField(max_length=48, null=True)
+    email = models.EmailField(null=True)
+
+    def __str__(self) -> str:
+        return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
+
+    @property
+    def has_playlists(self) -> bool:
+        return self.playlists.exists()  # pyright: ignore
+
+
+class Playlist(SpotifyEntityModel):
+    spotify_user = models.ForeignKey(SpotifyUser, null=True, on_delete=models.CASCADE, related_name="playlists")
+    watched_playlists = models.ManyToManyField("self", symmetrical=False)
+
+    def __str__(self) -> str:
+        return f"<Playlist {self.id} spotify_id={self.spotify_id}>"
+
+    @property
+    def has_owner(self) -> bool:
+        return self.spotify_user is not None
+
+    @property
+    def watches_others(self) -> bool:
+        return self.watched_playlists.exists()
+
+    @property
+    def is_watched_by_others(self) -> bool:
+        return Playlist.objects.filter(watched_playlists=self).exists()
+
+    @property
+    def is_standalone(self) -> bool:
+        return not self.watches_others and not self.is_watched_by_others
+
+    @property
+    def watchers(self) -> models.QuerySet["Playlist"]:
+        return Playlist.objects.filter(watched_playlists=self)
+
+    async def is_watched_by_others_than(self, playlist: "Playlist") -> bool:
+        return await Playlist.objects.filter(watched_playlists=self).exclude(spotify_id=playlist.spotify_id).aexists()
+
+    async def unfollow(self) -> None:
+        await self.watched_playlists.aclear()
+        self.spotify_user = None
+        await self.asave()
+
+    async def watch(self, playlist: "Playlist") -> None:
+        await self.watched_playlists.aadd(playlist)
+
+    async def unwatch(self, playlist: "Playlist") -> None:
+        await self.watched_playlists.aremove(playlist)
+
+
+class PlaylistUpdate(BaseModel):
+    target_playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="updates")
+    source_playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, null=True, related_name="provided_updates")
+    source_artist = models.ForeignKey(Playlist, on_delete=models.CASCADE, null=True)
+
+    albums_added = models.JSONField(null=True)
+    albums_removed = models.JSONField(null=True)
+    tracks_added = models.JSONField(null=True)
+    tracks_removed = models.JSONField(null=True)
+
+    update_hash = models.CharField(max_length=64, unique=True)
+    is_notified_of = models.BooleanField(default=False)
+    is_accepted = models.BooleanField(null=True, default=None)
+    is_overridden_by = models.ForeignKey("self", on_delete=models.CASCADE, null=True, related_name="overrides")
+
+    def __str__(self) -> str:
+        return f"<PlaylistUpdate {self.id} hash={self.update_hash}>"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.update_hash = generate_playlist_update_hash(
+            self.albums_added,
+            self.albums_removed,
+            self.tracks_added,
+            self.tracks_removed,
+        )
+        super().save(*args, **kwargs)
+
+
+def generate_playlist_update_hash(
+    albums_added: Optional[list[str]] = None,
+    albums_removed: Optional[list[str]] = None,
+    tracks_added: Optional[list[str]] = None,
+    tracks_removed: Optional[list[str]] = None,
+) -> str:
+    ids = (
+        ["+album"]
+        + sorted(albums_added or [])
+        + ["-album"]
+        + sorted(albums_removed or [])
+        + ["+track"]
+        + sorted(tracks_added or [])
+        + ["-track"]
+        + sorted(tracks_removed or [])
+    )
+    return hashlib.sha256("".join(ids).encode("utf-8")).hexdigest()
+
+
+async def watch_playlist(
+    watching_playlist_spotify_id: str, watched_playlist_spotify_id: str, spotify_user: PrivateUser
+) -> None:
+    user, created = await SpotifyUser.objects.aupdate_or_create(
+        spotify_id=spotify_user.id, defaults={"display_name": spotify_user.display_name, "email": spotify_user.email}
+    )
+    if created:
+        logger.debug(f"Created user: {user}")
+    else:
+        logger.debug(f"User already existed: {user}")
+
+    watching_playlist, created = await Playlist.objects.aget_or_create(
+        spotify_id=watching_playlist_spotify_id, defaults={"spotify_user": user}
+    )
+    if created:
+        logger.debug(f"Created watching playlist: {watching_playlist}")
+    else:
+        logger.debug(f"Watching playlist already existed: {watching_playlist}")
+
+    watched_playlist, created = await Playlist.objects.aget_or_create(spotify_id=watched_playlist_spotify_id)
+    if created:
+        logger.debug(f"Created watched playlist: {watched_playlist}")
+    else:
+        logger.debug(f"Watched playlist already existed: {watched_playlist}")
+
+    await watching_playlist.watch(watched_playlist)
+
+
+# TODO: This logic is way too complexm and most likey YAGNI
+# async def unfollow_playlist(playlist: Playlist) -> None:
+#     playlist_owner = playlist.spotify_user
+
+#     if playlist.is_standalone:
+#         logger.debug(f"{playlist} has no relations to other playlists. Deleting")
+#         await playlist.adelete()
+#     else:
+#         if playlist.watches_others:
+#             async for watched_playlist in playlist.watched_playlists.all():
+#                 if watched_playlist.is_watched_by_others_than(playlist):
+#                     await playlist.watched_playlists.aremove(watched_playlist)
+#                 else:
+#                     await watched_playlist.adelete()
+
+#         playlist.spotify_user = None
+#         await playlist.asave()
+
+#     if playlist_owner is None:
+#         return
+
+#     # If the user has no playlists, it has no use in the database
+#     if not playlist_owner.has_playlists:
+#         logger.debug(f"Deleting {playlist_owner}")
+#         await playlist_owner.adelete()
+
+
+# async def unwatch_playlist(watching_playlist: Playlist, watched_playlist: Playlist) -> None:
+#     watching_playlist_owner = watching_playlist.spotify_user
+
+#     should_delete_watched_playlist = (
+#         not watched_playlist.has_owner and not await watched_playlist.is_watched_by_others_than(watching_playlist)
+#     )
+
+#     if should_delete_watched_playlist:
+#         logger.debug(f"Deleting watched playlist {watched_playlist}")
+#         await watched_playlist.adelete()
+#     else:
+#         # Otherwise, remove it from the watched playlists of the target playlist
+#         logger.debug(f"Removing {watched_playlist} from those watched by {watching_playlist}")
+#         await watching_playlist.watched_playlists.aremove(watched_playlist)
+
+#     if await sync_to_async(lambda: watching_playlist.is_standalone)():
+#         logger.debug(f"Deleting watching playlist {watching_playlist}")
+#         await watching_playlist.adelete()
+#     else:
+#         if not await sync_to_async(lambda: watching_playlist.watches_others)():
+#             logger.debug(f"{watching_playlist} watches no other playlists. Removing owner")
+#             watching_playlist.spotify_user = None
+#             await watching_playlist.asave()
+
+#     if watching_playlist_owner is None:
+#         # This should never be the case
+#         return
+
+#     # If the user has no playlists, it has no use in the database
+#     if not await sync_to_async(lambda: watching_playlist_owner.has_playlists)():
+#         logger.debug(f"Deleting {watching_playlist_owner}")
+#         await watching_playlist_owner.adelete()

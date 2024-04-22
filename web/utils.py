@@ -5,7 +5,7 @@ from collections import Counter
 from contextlib import contextmanager
 from functools import partial
 from types import MethodType
-from typing import Any, Callable, Generator, Optional
+from typing import Any, Callable, Generator, Iterable, Optional
 
 from django.conf import settings
 from tekore import Spotify
@@ -15,6 +15,7 @@ from tekore.model import (
     FullArtist,
     FullArtistOffsetPaging,
     FullPlaylist,
+    FullTrack,
     Image,
     Model,
     PlaylistTrack,
@@ -34,8 +35,8 @@ class MottleException(Exception):
 
 
 class MottleSpotifyClient:
-    def __init__(self, access_token: str, http_timeout: int = settings.TEKORE_HTTP_TIMEOUT):
-        self.spotify_client = get_client(access_token, http_timeout=http_timeout)
+    def __init__(self, access_token: str, http_timeout: int = settings.TEKORE_HTTP_TIMEOUT, is_async: bool = True):
+        self.spotify_client = get_client(access_token, http_timeout=http_timeout, async_on=is_async)
 
     async def get_current_user(self) -> PrivateUser:
         try:
@@ -73,6 +74,13 @@ class MottleSpotifyClient:
         )
         return await get_all_offset_paging_items(func)  # pyright: ignore
 
+    async def get_tracks(self, track_ids: list[str]) -> list[FullTrack]:
+        try:
+            with chunked_off(self.spotify_client):
+                return await get_all_chunked(self.spotify_client.tracks, track_ids)
+        except Exception as e:
+            raise MottleException(f"Failed to get tracks: {e}")
+
     async def get_album_tracks(self, album_id: str) -> list[SimpleTrack]:
         func = partial(self.spotify_client.album_tracks, album_id)
         return await get_all_offset_paging_items(func)  # pyright: ignore
@@ -92,7 +100,7 @@ class MottleSpotifyClient:
         return tracks
 
     async def add_tracks_to_playlist(
-        self, playlist_id: str, track_uris: list[str], position: Optional[int] = None
+        self, playlist_id: str, track_uris: Iterable[str], position: Optional[int] = None
     ) -> None:
         try:
             await self.spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
@@ -209,6 +217,9 @@ class MottleSpotifyClient:
     async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
         func = partial(self.spotify_client.playlist_items, playlist_id)
         return await get_all_offset_paging_items(func)  # pyright: ignore
+
+    def sget_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
+        return self.spotify_client.all_items(self.spotify_client.playlist_items(playlist_id))  # pyright: ignore
 
     async def get_playlist_tracks_audio_features(self, track_ids: list[str]) -> list[AudioFeatures]:
         try:

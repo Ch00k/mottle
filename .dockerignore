@@ -1,0 +1,4 @@
+.pre-commit-config.yaml
+db.sqlite3
+Makefile
+README.md
