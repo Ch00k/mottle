@@ -1,5 +1,5 @@
 {% load tekore_model_extras %}
-<td class="nowrap">
+<td>
     <a href="{% url 'deduplicate' playlist.id %}"
        hx-boost="true"
        hx-indicator="#spinner"
@@ -23,7 +23,14 @@
        hx-get="{% url 'merge_playlist' playlist.id %}"
        hx-target="body"
        hx-swap="beforeend"
-       hx-indicator="#spinner">{% include "web/icons/merge.html" %}</a>
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/merge.html" %}</a>
+    <a href=""
+       hx-get="{% url 'watch_playlist' playlist.id %}"
+       hx-target="body"
+       hx-swap="beforeend"
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/watch.html" %}</a>
     {% if playlist.owner.id != request.session.spotify_user_id %}
         {% if is_being_followed %}
             <a href=""

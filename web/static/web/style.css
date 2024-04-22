@@ -16,6 +16,10 @@ table {
     min-width: var(--width-content);
 }
 
+table.modal {
+    min-width: unset;
+}
+
 table td,
 table th,
 table tr {

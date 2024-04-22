@@ -121,10 +121,12 @@ SPOTIFY_TOKEN_SCOPE = env.list(
     "SPOTIFY_TOKEN_SCOPE",
     [
         "playlist-read-private",
+        "playlist-read-collaborative",
         "playlist-modify-private",
         "playlist-modify-public",
         "user-follow-read",
         "user-follow-modify",
+        "user-read-email",
         "ugc-image-upload",
     ],
 )
@@ -139,6 +141,11 @@ SPOTIFY_TOKEN_ENCRYPTION_KEYS = env.list("SPOTIFY_TOKEN_ENCRYPTION_KEYS")
 SPOTIFY_TOKEN_CRYPTER = MultiFernet([Fernet(k) for k in SPOTIFY_TOKEN_ENCRYPTION_KEYS])
 
 PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)
+
+MAILERSEND_API_TOKEN = env.str("MAILERSEND_API_TOKEN")
+MAILERSEND_HTTP_TIMEOUT = env.int("MAILERSEND_HTTP_TIMEOUT", 15)
+MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL")
+MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
 
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),

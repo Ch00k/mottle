@@ -3,12 +3,12 @@
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
         <form>
-            <label for="playlist-name">Source playlist</label>
+            <label for="playlist-name">Watched playlist</label>
             {{ playlist_name }}
             <br>
             <br>
-            <label for="playlist-name">Target playlist</label>
-            <select name="merge-target"
+            <label for="playlist-name">Watching playlist</label>
+            <select name="watching-playlist-id"
                     onchange="toggleInput(this, '--- Create new ---', 'new-playlist-name')">
                 <option>--- Create new ---</option>
                 {% for playlist in playlists %}<option value="{{ playlist.id }}">{{ playlist.name }}</option>{% endfor %}
@@ -18,13 +18,10 @@
                    name="new-playlist-name"
                    placeholder="Playlist name..."
                    required>
-            <label for="auto-update">Watch source for new tracks</label>
-            <input type="checkbox" name="auto-update" checked>
-            <br>
-            <button hx-post="{% url 'merge_playlist' playlist_id %}"
+            <button hx-post="{% url 'watch_playlist' playlist_id %}"
                     hx-target="#modal"
                     hx-swap="delete"
-                    hx-indicator="#spinner">Merge</button>
+                    hx-indicator="#spinner">Watch</button>
         </form>
     </div>
 </div>

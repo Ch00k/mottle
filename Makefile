@@ -1,5 +1,8 @@
 SHELL := bash
 
+test:
+	poetry run pytest web/tests
+
 tag:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
 	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))
@@ -26,4 +29,4 @@ deploy:
 	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
-release: tag build deploy
+release: test tag build deploy
