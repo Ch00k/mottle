@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import sentry_sdk
+from cryptography.fernet import Fernet, MultiFernet
 from environs import Env
 from sentry_sdk.integrations.django import DjangoIntegration
 from tekore import Credentials
@@ -133,6 +134,9 @@ SPOTIFY_CREDEINTIALS = Credentials(
     client_secret=SPOTIFY_CLIENT_SECRET,
     redirect_uri=SPOTIFY_REDIRECT_URI,
 )
+
+SPOTIFY_TOKEN_ENCRYPTION_KEYS = env.list("SPOTIFY_TOKEN_ENCRYPTION_KEYS")
+SPOTIFY_TOKEN_CRYPTER = MultiFernet([Fernet(k) for k in SPOTIFY_TOKEN_ENCRYPTION_KEYS])
 
 PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)
 

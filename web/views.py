@@ -86,7 +86,7 @@ async def logout(request: HttpRequest) -> HttpResponse:
 async def callback(request: HttpRequest) -> HttpResponse:
     code = request.GET.get("code")
     state = request.GET.get("state")
-    logger.debug(f"Received callback. Code: {code}, state: {state}")
+    logger.debug(f"Received callback. Code: [REDACTED], state: {state}")
 
     if code is None or state is None:
         return HttpResponseBadRequest("Invalid request")
@@ -102,12 +102,13 @@ async def callback(request: HttpRequest) -> HttpResponse:
 
     try:
         tekore_token = auth.request_token(code, state)
-        logger.debug(f"Tekore token: {tekore_token}")
+        logger.debug("Tekore token: [REDACTED]")
     except Exception as e:
         logger.error(f"Failed to request token: {e}")
         return HttpResponseBadRequest("Invalid request")
 
     await spotify_auth.update_from_tekore_token(tekore_token)  # pyright: ignore[reportArgumentType]
+    await spotify_auth.unset_state()
 
     logger.debug(spotify_auth)
 
@@ -125,7 +126,14 @@ async def callback(request: HttpRequest) -> HttpResponse:
     request.session["spotify_user_id"] = user.id
     request.session["spotify_user_display_name"] = user.display_name
 
-    return redirect(spotify_auth.redirect_uri or "index")
+    if spotify_auth.redirect_uri is None:
+        redirect_target = "index"
+        spotify_auth.redirect_uri = None
+        spotify_auth.save()
+    else:
+        redirect_target = "index"
+
+    return redirect(redirect_target)
 
 
 @require_safe  # Accept HEAD requests from UptimeRobot
