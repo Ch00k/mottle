@@ -7,12 +7,11 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
-from tekore import AsyncSender, RetryingSender, Spotify
 from tekore.model import AlbumType
 
 from .models import SpotifyAuth
 from .spotify import get_auth
-from .utils import MottleException, list_has
+from .utils import MottleException, MottleSpotifyClient, list_has
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -41,17 +40,11 @@ async def login(request: HttpRequest) -> HttpResponse:
                 logger.debug(f"{spotify_auth} access_token is None")
                 return render(request, "web/login.html", {"redirect_uri": redirect_uri})
             else:
-                if spotify_auth.is_expiring:
-                    logger.debug(f"Refreshing {spotify_auth}")
-                    try:
-                        tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(spotify_auth.as_tekore_token)
-                    except Exception as e:
-                        logger.error(f"Failed to refresh token: {e}")
-                        return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-                    await spotify_auth.update_from_tekore_token(tekore_token)
-                    logger.debug(f"{spotify_auth} refreshed")
-                    logger.debug(spotify_auth)
+                try:
+                    await spotify_auth.refresh()
+                except MottleException as e:
+                    logger.error(e)
+                    return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
                 return redirect("index")
     else:
@@ -68,16 +61,18 @@ async def login(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 async def logout(request: HttpRequest) -> HttpResponse:
-    spotify_auth_id = request.session.get("spotify_auth_id")
+    spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
     if spotify_auth_id is None:
         return redirect("login")
 
     try:
         spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
     except SpotifyAuth.DoesNotExist:
+        logger.warning(f"SpotifyAuth ID {spotify_auth_id} does not exist")
         return redirect("login")
+    else:
+        await spotify_auth.adelete()
 
-    await spotify_auth.adelete()
     await sync_to_async(request.session.flush)()
     return redirect("login")
 
@@ -95,30 +90,18 @@ async def callback(request: HttpRequest) -> HttpResponse:
         spotify_auth = await SpotifyAuth.objects.aget(state=state)
         logger.debug(spotify_auth)
     except SpotifyAuth.DoesNotExist:
-        logger.debug(f"SpotifyAuth state {state} does not exist")
+        logger.debug(f"SpotifyAuth with state {state} does not exist")
         return HttpResponseBadRequest("Invalid request")
 
-    auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE, state=state)
-
-    try:
-        tekore_token = auth.request_token(code, state)
-        logger.debug("Tekore token: [REDACTED]")
-    except Exception as e:
-        logger.error(f"Failed to request token: {e}")
-        return HttpResponseBadRequest("Invalid request")
-
-    await spotify_auth.update_from_tekore_token(tekore_token)  # pyright: ignore[reportArgumentType]
-    await spotify_auth.unset_state()
-
+    await spotify_auth.request(code)
     logger.debug(spotify_auth)
 
-    sender = RetryingSender(sender=AsyncSender())
-    spotify_client = Spotify(token=spotify_auth.access_token, sender=sender)
+    spotify_client = MottleSpotifyClient(access_token=spotify_auth.access_token)
 
     try:
-        user = await spotify_client.current_user()  # pyright: ignore
-    except Exception as e:
-        logger.error(f"Failed to get user: {e}")
+        user = await spotify_client.get_current_user()  # pyright: ignore
+    except MottleException as e:
+        logger.error(e)
         return HttpResponseServerError("Failed to get user")
 
     # TODO: New versions of Django should suppport async methods on sessions (aget, aset, aupdate etc.)

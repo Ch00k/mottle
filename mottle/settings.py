@@ -43,7 +43,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = "mottle.urls"
 
 LOGIN_URL = "/login/"
-AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/callback/"]
+AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/"]
 
 TEMPLATES = [
     {

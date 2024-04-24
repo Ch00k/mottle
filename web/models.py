@@ -7,6 +7,9 @@ from django.conf import settings
 from django.db import models
 from tekore import Token
 
+from .spotify import authenticate
+from .utils import MottleException
+
 TOKEN_EXPIRATION_THRESHOLD = 60
 
 logger = logging.getLogger(__name__)
@@ -64,7 +67,7 @@ class SpotifyAuth(models.Model):
     @property
     def is_expiring(self) -> bool:
         if self.expires_in <= 0:
-            logger.info(f"{self} is expired")
+            logger.info(f"{self} has expired")
             return True
         elif self.expires_in < TOKEN_EXPIRATION_THRESHOLD:
             logger.info(f"{self} is expiring in {self.expires_in} seconds")
@@ -84,12 +87,36 @@ class SpotifyAuth(models.Model):
             uses_pkce=False,
         )
 
-    async def unset_state(self) -> None:
-        self.state = None
-        await self.asave()
+    async def request(self, code: str) -> None:
+        if self.state is None:
+            raise MottleException(f"{self}: state is None")
+
+        try:
+            token = authenticate(code, self.state)
+        except Exception as e:
+            raise MottleException(f"Failed to authenticate: {e}")
+
+        await self.update_from_tekore_token(token)
+
+    async def refresh(self) -> None:
+        if not self.is_expiring:
+            logger.info(f"{self} is expiring in {self.expires_in} seconds, no need for a refresh yet")
+            return
+
+        logger.debug(f"Refreshing {self}")
+
+        try:
+            tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(self.as_tekore_token)
+        except Exception as e:
+            raise MottleException(f"Failed to refresh token: {e}")
+
+        await self.update_from_tekore_token(tekore_token)
+        logger.debug(f"{self} refreshed")
 
     async def update_from_tekore_token(self, token: Token) -> None:
         self.access_token = token.access_token
         self.refresh_token = token.refresh_token
         self.expires_at = datetime.datetime.fromtimestamp(token.expires_at)
+        if self.state is not None:
+            self.state = None
         await self.asave()

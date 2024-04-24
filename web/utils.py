@@ -7,6 +7,7 @@ from functools import partial
 from types import MethodType
 from typing import Any, Callable, Generator, Optional
 
+from django.conf import settings
 from tekore import Spotify
 from tekore.model import (
     AlbumType,
@@ -17,10 +18,13 @@ from tekore.model import (
     Image,
     Model,
     PlaylistTrack,
+    PrivateUser,
     SimpleAlbum,
     SimplePlaylist,
     SimpleTrack,
 )
+
+from .spotify import get_client
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +34,14 @@ class MottleException(Exception):
 
 
 class MottleSpotifyClient:
-    def __init__(self, spotify_client: Spotify):
-        self.spotify_client = spotify_client
+    def __init__(self, access_token: str, http_timeout: int = settings.TEKORE_HTTP_TIMEOUT):
+        self.spotify_client = get_client(access_token, http_timeout=http_timeout)
+
+    async def get_current_user(self) -> PrivateUser:
+        try:
+            return await self.spotify_client.current_user()  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to get current user: {e}")
 
     async def get_artists(self, query: str) -> list[FullArtist]:
         try:

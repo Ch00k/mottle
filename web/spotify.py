@@ -1,18 +1,11 @@
 from typing import Optional
 
-from tekore import Credentials, Spotify, UserAuth, scope
+from django.conf import settings
+from httpx import AsyncClient, Timeout
+from tekore import AsyncSender, Credentials, RetryingSender, Spotify, Token, UserAuth, scope
 from tekore._client.chunked import chunked, return_last
 from tekore._client.decor import scopes, send_and_process
 from tekore._client.process import top_item
-
-
-def get_auth(credentials: Credentials, scope: str, state: Optional[str] = None) -> UserAuth:
-    auth = UserAuth(cred=credentials, scope=scope)
-
-    if state is not None:
-        auth.state = state
-
-    return auth
 
 
 # https://github.com/felix-hilden/tekore/issues/321
@@ -41,3 +34,29 @@ class SpotifyClient(Spotify):
         return self._generic_playlist_remove(  # type: ignore[no-any-return]
             playlist_id, {"tracks": refs}, snapshot_id  # pyright: ignore
         )
+
+
+def get_auth(credentials: Credentials, scope: str, state: Optional[str] = None) -> UserAuth:
+    auth = UserAuth(cred=credentials, scope=scope)
+
+    if state is not None:
+        auth.state = state
+
+    return auth
+
+
+def get_client(
+    access_token: str,
+    http_timeout: int,
+    retries: int = 2,
+    max_limits_on: bool = True,
+    chunked_on: bool = True,
+) -> SpotifyClient:
+    client = AsyncClient(timeout=Timeout(http_timeout))
+    sender = RetryingSender(retries=retries, sender=AsyncSender(client))
+    return SpotifyClient(token=access_token, sender=sender, max_limits_on=max_limits_on, chunked_on=chunked_on)
+
+
+def authenticate(code: str, state: str) -> Token:
+    auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE, state=state)
+    return auth.request_token(code, state)  # pyright: ignore
