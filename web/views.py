@@ -162,7 +162,9 @@ async def search_playlists(request: HttpRequest) -> HttpResponse:
         return HttpResponseServerError("Failed to search for playlists")
 
     if request.htmx:  # type: ignore[attr-defined]
-        return render(request, "web/tables/playlists.html", context={"playlists": playlists, "query": query})
+        return render(
+            request, "web/parts/playlists.html", context={"playlists": playlists, "query": query, "actions": "search"}
+        )
     else:
         return render(request, "web/search_playlists.html", context={"playlists": playlists, "query": query})
 
@@ -259,10 +261,11 @@ async def followed_artists(request: HttpRequest) -> HttpResponse:
     return render(request, "web/followed_artists.html", context)
 
 
-@require_http_methods(["GET", "DELETE"])
+@require_http_methods(["GET", "PUT", "DELETE"])
 async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name = request.headers.get("M-PlaylistName")
 
+    # TODO: This does not need to get executed in all cases
     if playlist_name is None:
         logger.warning("Playlist name not found in headers")
         playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
@@ -279,6 +282,19 @@ async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
 
         context = {"playlist_name": playlist_name, "playlist_items": playlist_items}
         return render(request, "web/playlist.html", context)
+    elif request.method == "PUT":
+        # TODO: The status of playlist follow does not survive page refresh
+        try:
+            await request.spotify_client.follow_playlist(playlist_id)  # type: ignore[attr-defined]
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to follow playlist")
+
+        return render(
+            request,
+            "web/parts/playlist_row.html",
+            {"playlist": playlist, "actions": "search", "is_being_followed": True},
+        )
     else:
         try:
             await request.spotify_client.unfollow_playlist(playlist_id)  # type: ignore[attr-defined]
@@ -286,7 +302,14 @@ async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
             logger.exception(e)
             return HttpResponseServerError("Failed to unfollow playlist")
 
-        return HttpResponse()
+        if request.headers.get("M-Operation") == "search_unfollow":
+            return render(
+                request,
+                "web/parts/playlist_row.html",
+                {"playlist": playlist, "actions": "search", "is_being_followed": False},
+            )
+        else:
+            return HttpResponse()
 
 
 @require_http_methods(["GET", "POST"])

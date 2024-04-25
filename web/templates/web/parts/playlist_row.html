@@ -13,39 +13,9 @@
     <td>
         <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>
     </td>
-    <td class="nowrap">
-        {% comment %}<a href="#">Follow all</a>{% endcomment %}
-        {% comment %}<br>{% endcomment %}
-        <a href="{% url 'deduplicate' playlist.id %}"
-           hx-boost="true"
-           hx-indicator="#spinner"
-           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}", "M-PlaylistSnapshotID": "{{ playlist.snapshot_id }}"}'>
-            {% include "web/icons/find_duplicates.html" %}
-        </a>
-        <a href="{% url 'playlist_audio_features' playlist.id %}"
-           hx-boost="true"
-           hx-indicator="#spinner"
-           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
-            {% include "web/icons/audio_features.html" %}
-        </a>
-        <a href=""
-           hx-post="{% url 'copy_playlist' playlist.id %}"
-           hx-confirm="Are you sure you want to create a copy of playlist {{ playlist.name }}?"
-           hx-target="closest tr"
-           hx-swap="afterend"
-           hx-indicator="#spinner"
-           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" %}</a>
-        <a href=""
-           hx-delete="{% url 'playlist' playlist.id %}"
-           hx-confirm="Are you sure you want to {% if playlist.owner.id == request.session.spotify_user_id %}delete{% else %}unfollow{% endif %} playlist {{ playlist.name }}?"
-           hx-target="closest tr"
-           hx-swap="outerHTML"
-           hx-indicator="#spinner">
-            {% if playlist.owner.id == request.session.spotify_user_id %}
-                {% include "web/icons/delete.html" %}
-            {% else %}
-                {% include "web/icons/unfollow.html" %}
-            {% endif %}
-        </a>
-    </td>
+    {% if actions == "my" %}
+        {% include "web/parts/playlist_row_actions_my.html" %}
+    {% elif actions == "search" %}
+        {% include "web/parts/playlist_row_actions_search.html" %}
+    {% endif %}
 </tr>

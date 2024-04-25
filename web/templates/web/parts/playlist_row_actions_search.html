@@ -1,0 +1,40 @@
+{% load tekore_model_extras %}
+<td class="nowrap">
+    <a href="{% url 'deduplicate' playlist.id %}"
+       hx-boost="true"
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}", "M-PlaylistSnapshotID": "{{ playlist.snapshot_id }}"}'>
+        {% include "web/icons/find_duplicates.html" %}
+    </a>
+    <a href="{% url 'playlist_audio_features' playlist.id %}"
+       hx-boost="true"
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}"}'>
+        {% include "web/icons/audio_features.html" %}
+    </a>
+    <a href=""
+       hx-post="{% url 'copy_playlist' playlist.id %}"
+       hx-confirm="Are you sure you want to create a copy of playlist {{ playlist.name }}?"
+       hx-target="closest tr"
+       hx-swap="afterend"
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" %}</a>
+    {% if playlist.owner.id != request.session.spotify_user_id %}
+        {% if is_being_followed %}
+            <a href=""
+               hx-delete="{% url 'playlist' playlist.id %}"
+               hx-confirm="Are you sure you want to unfollow playlist {{ playlist.name }}?"
+               hx-target="closest tr"
+               hx-swap="outerHTML"
+               hx-indicator="#spinner"
+               hx-headers='{"M-Operation": "search_unfollow"}'>{% include "web/icons/unfollow.html" %}</a>
+        {% else %}
+            <a href=""
+               hx-put="{% url 'playlist' playlist.id %}"
+               hx-confirm="Are you sure you want to follow playlist {{ playlist.name }}?"
+               hx-target="closest tr"
+               hx-swap="outerHTML"
+               hx-indicator="#spinner">{% include "web/icons/follow.html" %}</a>
+        {% endif %}
+    {% endif %}
+</td>

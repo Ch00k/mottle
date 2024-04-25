@@ -54,9 +54,9 @@ class MottleSpotifyClient:
             ret: list[FullArtist] = artists[0].items
             return ret
 
-    # async def get_playlists(self, query: str) -> list[SimplePlaylist]:
-    #     func = partial(self.spotify_client.search, query, types=("playlist",))
-    #     return await get_all_offset_paging_items(func)
+    async def get_playlists(self, query: str) -> list[SimplePlaylist]:
+        func = partial(self.spotify_client.search, query, types=("playlist",))
+        return await get_all_offset_paging_items(func)  # pyright: ignore
 
     async def get_artist(self, artist_id: str) -> FullArtist:
         try:

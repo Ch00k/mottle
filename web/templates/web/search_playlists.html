@@ -2,7 +2,7 @@
 {% load static %}
 {% load tekore_model_extras %}
 {% block page_title %}
-    Discography
+    Playlists
 {% endblock page_title %}
 {% block content %}
     <section>
@@ -22,7 +22,7 @@
     <br>
     <section id="search-results">
         {% if playlists %}
-            {% include "web/tables/playlists.html" %}
+            {% include "web/parts/playlists.html" with actions="search" %}
         {% endif %}
     </section>
 {% endblock content %}

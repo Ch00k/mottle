@@ -29,6 +29,17 @@
                     <li>
                         <a href="{% url 'index' %}">Home</a>
                     </li>
+                    <li>
+                        <a href="{% url 'search' %}">Search</a>
+                        <ul>
+                            <li>
+                                <a href="{% url 'search_artists' %}">Artists</a>
+                            </li>
+                            <li>
+                                <a href="{% url 'search_playlists' %}">Playlists</a>
+                            </li>
+                        </ul>
+                    </li>
                     {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
                         <li>
                             <a href="#">{{ request.session.spotify_user_display_name }}</a>
