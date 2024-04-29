@@ -245,8 +245,7 @@ async def playlists(request: HttpRequest) -> HttpResponse:
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlists")
 
-    context = {"playlists": playlists}
-    return render(request, "web/playlists.html", context)
+    return render(request, "web/playlists.html", {"playlists": playlists})
 
 
 @require_GET
@@ -470,3 +469,43 @@ async def copy_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist = await request.spotify_client.get_playlist(playlist.id)  # type: ignore[attr-defined]
 
     return render(request, "web/parts/playlist_row.html", context={"playlist": playlist})
+
+
+@require_http_methods(["GET", "POST"])
+async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    if request.method == "GET":
+        try:
+            playlists = await request.spotify_client.get_current_user_playlists()  # type: ignore[attr-defined]
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to get playlists")
+
+        # TODO: This could probably be made more efficient by filtering playlist inside get_current_user_playlists
+        playlists = [
+            playlist
+            for playlist in playlists
+            if playlist.owner.id == request.session["spotify_user_id"] and playlist.id != playlist_id
+        ]
+        return render(request, "web/modals/playlist_merge.html", {"playlists": playlists, "merge_source": playlist_id})
+    else:
+        target_playlist_id = request.POST.get("merge-target")
+        if target_playlist_id is None:
+            return HttpResponseBadRequest("No merge source provided")
+
+        try:
+            source_playlist_items = await request.spotify_client.get_playlist_items(  # type: ignore[attr-defined]
+                playlist_id
+            )
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to get playlist items")
+
+        try:
+            await request.spotify_client.add_tracks_to_playlist(  # type: ignore[attr-defined]
+                target_playlist_id, [item.track.uri for item in source_playlist_items]
+            )
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to add items to playlist")
+
+        return HttpResponse()

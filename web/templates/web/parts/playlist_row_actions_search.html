@@ -19,6 +19,11 @@
        hx-swap="afterend"
        hx-indicator="#spinner"
        hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" %}</a>
+    <a href=""
+       hx-get="{% url 'merge_playlist' playlist.id %}"
+       hx-target="body"
+       hx-swap="beforeend"
+       hx-indicator="#spinner">{% include "web/icons/merge.html" %}</a>
     {% if playlist.owner.id != request.session.spotify_user_id %}
         {% if is_being_followed %}
             <a href=""
