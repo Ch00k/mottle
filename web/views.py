@@ -114,7 +114,7 @@ async def callback(request: HttpRequest) -> HttpResponse:
         spotify_auth.redirect_uri = None
         await spotify_auth.asave()
     else:
-        redirect_target = "index"
+        redirect_target = spotify_auth.redirect_uri
 
     return redirect(redirect_target)
 
