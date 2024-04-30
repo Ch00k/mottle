@@ -22,6 +22,16 @@ function toggleSubmitButtonInput(inputId, buttonId) {
     }
 }
 
+function toggleInput(select, selectedOption, inputId) {
+    inputElem = document.getElementById(inputId);
+    if (select.value == selectedOption) {
+        inputElem.style.display = "block";
+    } else {
+        inputElem.style.display = "none";
+        inputElem.value = "";
+    }
+}
+
 // https://stackoverflow.com/a/49041392
 function getCellValue(tr, idx) {
     return tr.children[idx].innerText || tr.children[idx].textContent;

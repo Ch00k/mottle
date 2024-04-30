@@ -492,6 +492,13 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
         if target_playlist_id is None:
             return HttpResponseBadRequest("No merge source provided")
 
+        if request.POST.get("new-playlist-name"):
+            target_playlist_name = request.POST.get("new-playlist-name")
+            target_playlist = await request.spotify_client.create_playlist(  # type: ignore[attr-defined]
+                request.session["spotify_user_id"], target_playlist_name, is_public=True
+            )
+            target_playlist_id = target_playlist.id
+
         try:
             source_playlist_items = await request.spotify_client.get_playlist_items(  # type: ignore[attr-defined]
                 playlist_id

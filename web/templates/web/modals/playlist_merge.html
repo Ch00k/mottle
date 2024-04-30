@@ -1,11 +1,18 @@
+{% load static %}
 <div id="modal" _="on closeModal remove me">
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
         <form>
             <label for="playlist-name">Target playlist</label>
-            <select name="merge-target">
+            <select name="merge-target"
+                    onchange="toggleInput(this, '--- Create new ---', 'new-playlist-name')">
+                <option>--- Create new ---</option>
                 {% for playlist in playlists %}<option value="{{ playlist.id }}">{{ playlist.name }}</option>{% endfor %}
             </select>
+            <input id="new-playlist-name"
+                   type="text"
+                   name="new-playlist-name"
+                   placeholder="Playlist name...">
             <button hx-post="{% url 'merge_playlist' merge_source %}"
                     hx-target="#modal"
                     hx-swap="delete"

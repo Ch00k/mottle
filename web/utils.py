@@ -115,6 +115,18 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
+    async def create_playlist(self, current_user_id: str, name: str, is_public: bool = True) -> FullPlaylist:
+        try:
+            playlist = await self.spotify_client.playlist_create(  # pyright: ignore
+                user_id=current_user_id,
+                name=name,
+                public=is_public,
+            )
+        except Exception as e:
+            raise MottleException(f"Failed to create playlist: {e}")
+
+        return playlist
+
     async def create_playlist_with_tracks(
         self,
         current_user_id: str,
