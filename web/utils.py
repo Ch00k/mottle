@@ -77,7 +77,7 @@ class MottleSpotifyClient:
     async def get_tracks(self, track_ids: list[str]) -> list[FullTrack]:
         try:
             with chunked_off(self.spotify_client):
-                return await get_all_chunked(self.spotify_client.tracks, track_ids)
+                return await get_all_chunked(self.spotify_client.tracks, track_ids, chunk_size=50)
         except Exception as e:
             raise MottleException(f"Failed to get tracks: {e}")
 
@@ -217,9 +217,6 @@ class MottleSpotifyClient:
     async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
         func = partial(self.spotify_client.playlist_items, playlist_id)
         return await get_all_offset_paging_items(func)  # pyright: ignore
-
-    def sget_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
-        return self.spotify_client.all_items(self.spotify_client.playlist_items(playlist_id))  # pyright: ignore
 
     async def get_playlist_tracks_audio_features(self, track_ids: list[str]) -> list[AudioFeatures]:
         try:
