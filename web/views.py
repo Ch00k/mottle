@@ -349,21 +349,40 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name, playlist_owner_id, playlist_snapshot_id = await get_playlist_data(request, playlist_id)
 
     if request.method == "POST":
-        track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
-        tracks_to_remove = [{"uri": k, "positions": [int(i) for i in v.split(",")][1:]} for k, v in track_data.items()]
+        # XXX: The whole remove_tracks_at_positions_from_playlist is not working as expected,
+        # which is probably the reason it is not documented in the Spotify API.
+        # The API request is successful, but the tracks' positions in request payload are ignored:
+        # all specified tracks are removed from the playlist, regardless of their positions.
+
+        # track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
+        # tracks_to_remove = [
+        #     {"uri": k, "positions": [int(i) for i in v.split(",")][1:]} for k, v in track_data.items()
+        # ]
+        tracks_to_remove = [item.split("::")[0] for item in request.POST.getlist("track-meta")]
 
         logger.debug(f"Tracks: {tracks_to_remove}")
         logger.debug(f"Removing {len(tracks_to_remove)} tracks from playlist {playlist_id}")
 
         try:
-            await request.spotify_client.remove_tracks_at_positions_from_playlist(  # type: ignore[attr-defined]
-                playlist_id, tracks_to_remove, playlist_snapshot_id
+            # await request.spotify_client.remove_tracks_at_positions_from_playlist(  # type: ignore[attr-defined]
+            #     playlist_id, tracks_to_remove, playlist_snapshot_id
+            # )
+            await request.spotify_client.remove_tracks_from_playlist(  # type: ignore[attr-defined]
+                playlist_id, tracks_to_remove
             )
         except MottleException as e:
             logger.exception(e)
-            return HttpResponseServerError("Failed to remove duplicate track from playlist")
-        else:
-            return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
+            return HttpResponseServerError("Failed to remove tracks from playlist")
+
+        try:
+            await request.spotify_client.add_tracks_to_playlist(  # type: ignore[attr-defined]
+                playlist_id, tracks_to_remove
+            )
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to add tracks to playlist")
+
+        return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
 
     else:
         playlist_items = await request.spotify_client.find_duplicate_tracks_in_playlist(  # type: ignore[attr-defined]
