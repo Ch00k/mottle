@@ -7,7 +7,7 @@ function toggleCheckboxGroup(source, album_type) {
 
 function toggleSubmitButton() {
     checkboxes = document.querySelectorAll('.toggling');
-    isChecked = Array.prototype.slice.call(checkboxes).some(x => x.checked);
+    isChecked = Array.prototype.slice.call(checkboxes).some((x) => x.checked);
     document.getElementById('create').disabled = true;
     if (isChecked) {
         document.getElementById('create').disabled = false;
@@ -15,7 +15,7 @@ function toggleSubmitButton() {
 }
 
 function toggleSubmitButtonInput(inputId, buttonId) {
-    if (document.getElementById(inputId).value === "") {
+    if (document.getElementById(inputId).value === '') {
         document.getElementById(buttonId).disabled = true;
     } else {
         document.getElementById(buttonId).disabled = false;
@@ -25,11 +25,11 @@ function toggleSubmitButtonInput(inputId, buttonId) {
 function toggleInput(select, selectedOption, inputId) {
     inputElem = document.getElementById(inputId);
     if (select.value == selectedOption) {
-        inputElem.style.display = "block";
+        inputElem.style.display = 'block';
         inputElem.required = true;
     } else {
-        inputElem.style.display = "none";
-        inputElem.value = "";
+        inputElem.style.display = 'none';
+        inputElem.value = '';
         inputElem.required = false;
     }
 }
@@ -41,18 +41,23 @@ function getCellValue(tr, idx) {
 
 function comparer(idx, asc) {
     return function (a, b) {
-        return function (v1, v2) {
-            return (v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2))
+        return (function (v1, v2) {
+            return v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2)
                 ? v1 - v2
                 : v1.toString().localeCompare(v2);
-        }(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
-    }
+        })(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+    };
 }
 
 function sortTable(th) {
     table = th.closest('table');
     tbody = table.querySelector('tbody');
     Array.from(tbody.querySelectorAll('tr'))
-        .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-        .forEach(tr => tbody.appendChild(tr));
+        .sort(
+            comparer(
+                Array.from(th.parentNode.children).indexOf(th),
+                (this.asc = !this.asc)
+            )
+        )
+        .forEach((tr) => tbody.appendChild(tr));
 }
