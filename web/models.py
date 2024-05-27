@@ -190,6 +190,10 @@ class Playlist(SpotifyEntityModel):
     async def unwatch(self, playlist: "Playlist") -> None:
         await self.watched_playlists.aremove(playlist)
 
+    @property
+    def pending_updates(self) -> models.QuerySet["PlaylistUpdate"]:
+        return self.updates.filter(is_overridden_by=None, is_accepted=None)
+
 
 class PlaylistUpdate(BaseModel):
     target_playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="updates")
@@ -217,6 +221,10 @@ class PlaylistUpdate(BaseModel):
             self.tracks_removed,
         )
         super().save(*args, **kwargs)
+
+    async def accept(self) -> None:
+        self.is_accepted = True
+        await self.asave()
 
 
 def generate_playlist_update_hash(

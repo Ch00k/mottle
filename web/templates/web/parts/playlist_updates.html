@@ -1,0 +1,52 @@
+{% load tekore_model_extras %}
+{% for update_id, watched_playlist, tracks in updates %}
+    <div>
+        <header>
+            {% comment %}<img src="{{ watched_playlist.images | pick_image | default_image:70 }}" />{% endcomment %}
+            {% comment %}<br>{% endcomment %}
+            <a href="{{ watched_playlist | spotify_url }}">
+                <h2>{{ watched_playlist.name }}</h2>
+            </a>
+        </header>
+        <table>
+            <thead>
+                <tr>
+                    <th>Artwork</th>
+                    <th>Artist</th>
+                    <th>Track</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for track in tracks %}
+                    <tr>
+                        <td>
+                            <img src="{{ track.album.images | pick_image | default_image:70 }}" />
+                        </td>
+                        <td>
+                            {% for artist in track.artists %}
+                                <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                                <br>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{{ track | spotify_url }}">{{ track.name }}</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <br>
+        <button hx-post="{% url 'accept_playlist_update' update_id %}"
+                hx-confirm="Are you sure you want to add new tracks to playlist?"
+                hx-target="closest div"
+                hx-swap="outerHTML"
+                hx-indicator="#spinner"
+                hx-headers='{"M-PlaylistUpdateID": "{{ update_id }}"}'>Accept</button>
+    </div>
+{% empty %}
+    No updates found
+{% endfor %}
+<br>
+<button hx-post="{% url 'playlist_updates' playlist_id %}"
+        hx-target="#content"
+        hx-indicator="#spinner">Check for updates</button>

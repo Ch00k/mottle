@@ -9,7 +9,8 @@ from django.shortcuts import aget_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
 from tekore.model import AlbumType
 
-from .models import Playlist, SpotifyAuth
+from .jobs import check_playlist_for_updates
+from .models import Playlist, PlaylistUpdate, SpotifyAuth
 from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import get_duplicates_message, get_playlist_data, get_playlist_modal_response, get_playlist_name
@@ -293,6 +294,58 @@ async def followed_artists(request: HttpRequest) -> HttpResponse:
     return render(request, "web/followed_artists.html", context)
 
 
+@require_http_methods(["GET", "POST"])
+async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist = await aget_object_or_404(Playlist, spotify_id=playlist_id)
+
+    if request.method == "POST":
+        await check_playlist_for_updates(playlist, request.spotify_client)  # type: ignore[attr-defined]
+
+    updates = []
+
+    async for update in playlist.pending_updates:
+        watched_playlist = await sync_to_async(lambda: update.source_playlist)()
+        watched_playlist_data = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
+            watched_playlist.spotify_id
+        )
+        watched_playlist_tracks = await request.spotify_client.get_tracks(  # type: ignore[attr-defined]
+            update.tracks_added
+        )
+        updates.append((update.id, watched_playlist_data, watched_playlist_tracks))
+
+    if request.htmx:  # type: ignore[attr-defined]
+        return render(
+            request,
+            "web/parts/playlist_updates.html",
+            {"playlist_id": playlist_id, "playlist_name": playlist_name, "updates": updates},
+        )
+    else:
+        return render(
+            request,
+            "web/playlist_updates.html",
+            {"playlist_id": playlist_id, "playlist_name": playlist_name, "updates": updates},
+        )
+
+
+@require_POST
+async def accept_playlist_update(request: HttpRequest, update_id: str) -> HttpResponse:
+    update = await aget_object_or_404(PlaylistUpdate, id=update_id)
+    target_playlist = await sync_to_async(lambda: update.target_playlist)()
+
+    try:
+        await request.spotify_client.add_tracks_to_playlist(  # type: ignore[attr-defined]
+            target_playlist.spotify_id, [f"spotify:track:{t}" for t in update.tracks_added]
+        )
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to add tracks to playlist")
+    else:
+        await update.accept()
+
+    return HttpResponse()
+
+
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name = await get_playlist_name(request, playlist_id)
@@ -346,7 +399,7 @@ async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
 
 @require_http_methods(["GET", "POST"])
 async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name, playlist_owner_id, playlist_snapshot_id = await get_playlist_data(request, playlist_id)
+    playlist_name, playlist_owner_id, _ = await get_playlist_data(request, playlist_id)
 
     if request.method == "POST":
         # XXX: The whole remove_tracks_at_positions_from_playlist is not working as expected,

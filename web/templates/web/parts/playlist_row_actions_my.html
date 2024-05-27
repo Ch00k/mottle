@@ -40,6 +40,9 @@
            hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>
             {% include "web/icons/settings.html" %}
         </a>
+        <a href="{% url 'playlist_updates' playlist.id %}"
+           hx-boost="true"
+           hx-indicator="#spinner">{% include "web/icons/update.html" %}</a>
     {% endif %}
     <a href=""
        hx-delete="{% url 'playlist' playlist.id %}"
