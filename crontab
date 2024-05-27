@@ -1,1 +1,1 @@
-0 10 * * * python manage.py get_playlist_updates
+0 10 * * * python manage.py get_playlist_updates --send-notifications
