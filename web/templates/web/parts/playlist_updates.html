@@ -1,4 +1,9 @@
 {% load tekore_model_extras %}
+<button hx-post="{% url 'playlist_updates' playlist_id %}"
+        hx-target="#content"
+        hx-indicator="#spinner">Check for updates</button>
+<br>
+<br>
 {% for update_id, watched_playlist, tracks in updates %}
     <div>
         <header>
@@ -46,7 +51,3 @@
 {% empty %}
     No updates found
 {% endfor %}
-<br>
-<button hx-post="{% url 'playlist_updates' playlist_id %}"
-        hx-target="#content"
-        hx-indicator="#spinner">Check for updates</button>

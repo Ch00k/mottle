@@ -314,7 +314,7 @@ async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpRespon
         )
         updates.append((update.id, watched_playlist_data, watched_playlist_tracks))
 
-    if request.htmx:  # type: ignore[attr-defined]
+    if request.method == "POST":
         return render(
             request,
             "web/parts/playlist_updates.html",
