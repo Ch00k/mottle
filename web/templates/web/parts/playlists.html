@@ -1,18 +1,20 @@
-<table>
-    <thead>
-        <tr>
-            <th>Artwork</th>
-            <th class="sortable" onClick="sortTable(this)">Title</th>
-            <th class="sortable" onClick="sortTable(this)">Tracks</th>
-            <th class="sortable" onClick="sortTable(this)">Owner</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for playlist in playlists %}
-            {% include "web/parts/playlist_row.html" %}
-        {% empty %}
-            You have no playlists
-        {% endfor %}
-    </tbody>
-</table>
+{% if playlists %}
+    <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th class="sortable" onClick="sortTable(this)">Title</th>
+                <th class="sortable" onClick="sortTable(this)">Tracks</th>
+                <th class="sortable" onClick="sortTable(this)">Owner</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for playlist in playlists %}
+                {% include "web/parts/playlist_row.html" %}
+            {% empty %}
+                You have no playlists
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

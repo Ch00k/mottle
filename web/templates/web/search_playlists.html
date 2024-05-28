@@ -5,22 +5,19 @@
     Search playlists
 {% endblock title %}
 {% block page_title %}
-    Playlists
+    Search playlists
 {% endblock page_title %}
 {% block content %}
     <section>
-        <form>
-            <label for="query">Playlist name</label>
-            <input type="search"
-                   name="query"
-                   value="{{ query }}"
-                   placeholder="Start typing a playlist name..."
-                   hx-get="."
-                   hx-trigger="input changed delay:500ms, search"
-                   hx-target="#search-results"
-                   hx-push-url="true"
-                   hx-indicator="#spinner">
-        </form>
+        <input type="search"
+               name="query"
+               value="{{ query }}"
+               placeholder="Start typing a playlist name..."
+               hx-get="."
+               hx-trigger="input changed delay:500ms, search"
+               hx-target="#search-results"
+               hx-push-url="true"
+               hx-indicator="#spinner">
     </section>
     <br>
     <section id="search-results">

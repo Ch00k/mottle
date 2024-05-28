@@ -141,6 +141,9 @@ async def search_artists(request: HttpRequest) -> HttpResponse:
     if query is None:
         return render(request, "web/search_artists.html", context={"artists": [], "query": ""})
 
+    if query == "":
+        return render(request, "web/parts/artists.html", context={"artists": [], "query": ""})
+
     try:
         artists = await request.spotify_client.get_artists(query)  # type: ignore[attr-defined]
     except MottleException as e:
@@ -148,7 +151,7 @@ async def search_artists(request: HttpRequest) -> HttpResponse:
         return HttpResponseServerError("Failed to search for artists")
 
     if request.htmx:  # type: ignore[attr-defined]
-        return render(request, "web/tables/artists.html", context={"artists": artists, "query": query})
+        return render(request, "web/parts/artists.html", context={"artists": artists, "query": query})
     else:
         return render(request, "web/search_artists.html", context={"artists": artists, "query": query})
 
@@ -159,6 +162,9 @@ async def search_playlists(request: HttpRequest) -> HttpResponse:
 
     if query is None:
         return render(request, "web/search_playlists.html", context={"playlists": [], "query": ""})
+
+    if query == "":
+        return render(request, "web/parts/playlists.html", context={"artists": [], "query": ""})
 
     try:
         playlists = await request.spotify_client.get_playlists(query)  # type: ignore[attr-defined]

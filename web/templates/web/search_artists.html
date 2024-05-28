@@ -5,27 +5,24 @@
     Search artists
 {% endblock title %}
 {% block page_title %}
-    Artists
+    Search artists
 {% endblock page_title %}
 {% block content %}
     <section>
-        <form>
-            <label for="query">Artist name</label>
-            <input type="search"
-                   name="query"
-                   value="{{ query }}"
-                   placeholder="Start typing an artist name..."
-                   hx-get="."
-                   hx-trigger="input changed delay:500ms, search"
-                   hx-target="#search-results"
-                   hx-push-url="true"
-                   hx-indicator="#spinner">
-        </form>
+        <input type="search"
+               name="query"
+               value="{{ query }}"
+               placeholder="Start typing an artist name..."
+               hx-get="."
+               hx-trigger="input changed delay:500ms, search"
+               hx-target="#search-results"
+               hx-push-url="true"
+               hx-indicator="#spinner">
     </section>
     <br>
     <section id="search-results">
         {% if artists %}
-            {% include "web/tables/artists.html" %}
+            {% include "web/parts/artists.html" %}
         {% endif %}
     </section>
 {% endblock content %}
