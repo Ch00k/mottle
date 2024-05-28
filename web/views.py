@@ -135,11 +135,6 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
-async def search(request: HttpRequest) -> HttpResponse:
-    return render(request, "web/search.html")
-
-
-@require_GET
 async def search_artists(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("query")
 
