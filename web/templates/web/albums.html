@@ -8,76 +8,80 @@
     Discography
 {% endblock page_title %}
 {% block content %}
-    <section>
-        <form action="." method="post" id="albums-form">
-            {% csrf_token %}
-            <button id="create">Create playlist</button>
-            <label for="playlist-name">Name</label>
-            <input type="text"
-                   name="name"
-                   id="playlist-name"
-                   value="{{ artist }} discography"
-                   onkeyup="toggleSubmitButtonInput('playlist-name', 'create')"
-                   required>
-            <label for="playlist-description">Description</label>
-            <input type="text" name="description" id="playlist-description">
-            <label>Include</label>
-            <input type="checkbox"
-                   name="all-albums"
-                   id="all-albums"
-                   class="toggling"
-                   onClick="toggleCheckboxGroup(this, 'album')"
-                   onchange="toggleSubmitButton()"
-                   {% if not has_albums %}disabled{% endif %}
-                   checked>
-            <label for="all-albums">Albums</label>
-            <input type="checkbox"
-                   name="all-singles"
-                   id="all-singles"
-                   class="toggling"
-                   onClick="toggleCheckboxGroup(this, 'single')"
-                   onchange="toggleSubmitButton()"
-                   {% if not has_singles %}disabled{% endif %}
-                   checked>
-            <label for="all-singles">Singles</label>
-            <input type="checkbox"
-                   name="all-compilations"
-                   id="all-compilations"
-                   class="toggling"
-                   onClick="toggleCheckboxGroup(this, 'compilation')"
-                   onchange="toggleSubmitButton()"
-                   {% if not has_compilations %}disabled{% endif %}>
-            <label for="all-compilations">Compilations</label>
-            <label for="is-public">Make public</label>
-            <input type="checkbox" name="is-public" id="is-public" checked>
-        </form>
-    </section>
-    <br>
-    <section>
-        <table>
-            <tbody>
-                {% for item in albums %}
-                    <tr>
-                        <td>
-                            <input type="checkbox"
-                                   name="album"
-                                   form="albums-form"
-                                   class="toggling {{ item.album_type }}"
-                                   value="{{ item.id }}"
-                                   onchange="toggleSubmitButton()"
-                                   {% if item.album_type in 'album,single' %}checked{% endif %}>
-                        </td>
-                        <td>
-                            <img src="{{ item.images | pick_image | default_image:70 }}">
-                        </td>
-                        <td>
-                            <a href="{{ item | spotify_url }}">{{ item.name }}</a>
-                        </td>
-                        <td>{{ item.release_date | year }}</td>
-                        <td>{{ item.album_type }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </section>
+    {% if albums %}
+        <section>
+            <form action="." method="post" id="albums-form">
+                {% csrf_token %}
+                <button id="create">Create playlist</button>
+                <label for="playlist-name">Name</label>
+                <input type="text"
+                       name="name"
+                       id="playlist-name"
+                       value="{{ artist }} discography"
+                       onkeyup="toggleSubmitButtonInput('playlist-name', 'create')"
+                       required>
+                <label for="playlist-description">Description</label>
+                <input type="text" name="description" id="playlist-description">
+                <label>Include</label>
+                <input type="checkbox"
+                       name="all-albums"
+                       id="all-albums"
+                       class="toggling"
+                       onClick="toggleCheckboxGroup(this, 'album')"
+                       onchange="toggleSubmitButton()"
+                       {% if not has_albums %}disabled{% endif %}
+                       checked>
+                <label for="all-albums">Albums</label>
+                <input type="checkbox"
+                       name="all-singles"
+                       id="all-singles"
+                       class="toggling"
+                       onClick="toggleCheckboxGroup(this, 'single')"
+                       onchange="toggleSubmitButton()"
+                       {% if not has_singles %}disabled{% endif %}
+                       checked>
+                <label for="all-singles">Singles</label>
+                <input type="checkbox"
+                       name="all-compilations"
+                       id="all-compilations"
+                       class="toggling"
+                       onClick="toggleCheckboxGroup(this, 'compilation')"
+                       onchange="toggleSubmitButton()"
+                       {% if not has_compilations %}disabled{% endif %}>
+                <label for="all-compilations">Compilations</label>
+                <label for="is-public">Make public</label>
+                <input type="checkbox" name="is-public" id="is-public" checked>
+            </form>
+        </section>
+        <br>
+        <section>
+            <table>
+                <tbody>
+                    {% for item in albums %}
+                        <tr>
+                            <td>
+                                <input type="checkbox"
+                                       name="album"
+                                       form="albums-form"
+                                       class="toggling {{ item.album_type }}"
+                                       value="{{ item.id }}"
+                                       onchange="toggleSubmitButton()"
+                                       {% if item.album_type in 'album,single' %}checked{% endif %}>
+                            </td>
+                            <td>
+                                <img src="{{ item.images | pick_image | default_image:70 }}">
+                            </td>
+                            <td>
+                                <a href="{{ item | spotify_url }}">{{ item.name }}</a>
+                            </td>
+                            <td>{{ item.release_date | year }}</td>
+                            <td>{{ item.album_type }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        {{ artist }} has no albums
+    {% endif %}
 {% endblock content %}

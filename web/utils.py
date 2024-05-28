@@ -288,7 +288,7 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
     page_size = len(paging[0].items) if isinstance(paging, tuple) else len(paging.items)
 
     # TODO: Handle this case in the template
-    if paging_total == 0:
+    if not paging_total or not page_size:
         return items
 
     calls = [func(offset=offset) for offset in range(page_size, paging_total, page_size)]

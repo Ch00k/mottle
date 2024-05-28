@@ -1,6 +1,5 @@
 import logging
 from typing import Optional
-from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -13,7 +12,13 @@ from .jobs import check_playlist_for_updates
 from .models import Playlist, PlaylistUpdate, SpotifyAuth
 from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
-from .views_utils import get_duplicates_message, get_playlist_data, get_playlist_modal_response, get_playlist_name
+from .views_utils import (
+    get_artist_name,
+    get_duplicates_message,
+    get_playlist_data,
+    get_playlist_modal_response,
+    get_playlist_name,
+)
 from .views_utils import watch_playlist as util_watch_playlist
 
 require_DELETE = require_http_methods(["DELETE"])
@@ -176,14 +181,7 @@ async def search_playlists(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["GET", "POST"])
 async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
-    artist_name = request.headers.get("M-ArtistName")
-
-    if artist_name is None:
-        logger.error("Artist name not found in headers")
-        artist = await request.spotify_client.get_artist(artist_id)  # type: ignore[attr-defined]
-        artist_name = artist.name
-    else:
-        artist_name = unquote(artist_name)
+    artist_name = await get_artist_name(request, artist_id)
 
     try:
         albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]

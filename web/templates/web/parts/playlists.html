@@ -11,6 +11,8 @@
     <tbody>
         {% for playlist in playlists %}
             {% include "web/parts/playlist_row.html" %}
+        {% empty %}
+            You have no playlists
         {% endfor %}
     </tbody>
 </table>

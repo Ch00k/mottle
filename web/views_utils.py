@@ -12,6 +12,19 @@ from .utils import MottleException, MottleSpotifyClient
 logger = logging.getLogger(__name__)
 
 
+async def get_artist_name(request: HttpRequest, artist_id: str) -> str:
+    artist_name = request.headers.get("M-ArtistName")
+
+    if artist_name is None:
+        logger.error("Artist name not found in headers")
+        artist = await request.spotify_client.get_artist(artist_id)  # type: ignore[attr-defined]
+        artist_name = artist.name
+    else:
+        artist_name = unquote(artist_name)
+
+    return artist_name
+
+
 async def get_playlist_name(request: HttpRequest, playlist_id: str) -> str:
     playlist_name = request.headers.get("M-PlaylistName")
 
