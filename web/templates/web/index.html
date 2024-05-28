@@ -11,21 +11,25 @@
             <h3>Create discography</h3>
             <p>Combine all artist's albums into a single playlist</p>
             <p>
-                <a href="{% url 'search_artists' %}"><b>Try it!</b></a>
+                <a href="{% url 'search_artists' %}"
+                   hx-boost="true"
+                   hx-indicator="#spinner"><b>Try it!</b></a>
             </p>
         </aside>
         <aside>
             <h3>Deduplicate</h3>
             <p>Remove duplicate tracks from a playlist</p>
             <p>
-                <a href="{% url 'playlists' %}"><b>Try it!</b></a>
+                <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner"><b>Try it!</b></a>
             </p>
         </aside>
         <aside>
             <h3>Merge</h3>
             <p>Merge multiple playlists into one</p>
             <p>
-                <a href="{% url 'search_playlists' %}"><b>Try it!</b></a>
+                <a href="{% url 'search_playlists' %}"
+                   hx-boost="true"
+                   hx-indicator="#spinner"><b>Try it!</b></a>
             </p>
         </aside>
         <aside>

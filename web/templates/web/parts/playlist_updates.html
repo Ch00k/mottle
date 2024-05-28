@@ -49,5 +49,9 @@
                 hx-headers='{"M-PlaylistUpdateID": "{{ update_id }}"}'>Accept</button>
     </div>
 {% empty %}
-    No updates found
+    <article>
+        <aside>
+            <h3>No updates found</h3>
+        </aside>
+    </article>
 {% endfor %}

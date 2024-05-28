@@ -13,7 +13,11 @@
             {% for playlist in playlists %}
                 {% include "web/parts/playlist_row.html" %}
             {% empty %}
-                You have no playlists
+                <article>
+                    <aside>
+                        <h3>You have no playlists</h3>
+                    </aside>
+                </article>
             {% endfor %}
         </tbody>
     </table>

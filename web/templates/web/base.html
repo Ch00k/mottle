@@ -34,10 +34,14 @@
                         <a href="#">Search</a>
                         <ul>
                             <li>
-                                <a href="{% url 'search_artists' %}">Artists</a>
+                                <a href="{% url 'search_artists' %}"
+                                   hx-boost="true"
+                                   hx-indicator="#spinner">Artists</a>
                             </li>
                             <li>
-                                <a href="{% url 'search_playlists' %}">Playlists</a>
+                                <a href="{% url 'search_playlists' %}"
+                                   hx-boost="true"
+                                   hx-indicator="#spinner">Playlists</a>
                             </li>
                         </ul>
                     </li>
@@ -46,7 +50,7 @@
                             <a href="#">{{ request.session.spotify_user_display_name }}</a>
                             <ul>
                                 <li>
-                                    <a href="{% url 'playlists' %}">Playlists</a>
+                                    <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner">Playlists</a>
                                 </li>
                                 {% comment %}<li>{% endcomment %}
                                 {% comment %}    <a href="{% url 'artists' %}">Followed artists</a>{% endcomment %}
