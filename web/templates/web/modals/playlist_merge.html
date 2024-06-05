@@ -18,8 +18,15 @@
                    name="new-playlist-name"
                    placeholder="Playlist name..."
                    required>
-            <label for="auto-update">Watch source for new tracks</label>
-            <input type="checkbox" name="auto-update" checked>
+            <label for="auto-update">Watch source playlist for new tracks</label>
+            <input type="checkbox"
+                   name="auto-update"
+                   id="auto-update"
+                   checked
+                   onClick="toggleRelatedCheckbox(this, 'auto-accept')">
+            <br>
+            <label for="auto-accept">Automatically add new tracks to target playlist</label>
+            <input type="checkbox" name="auto-accept" id="auto-accept">
             <br>
             <button hx-post="{% url 'merge_playlist' playlist_id %}"
                     hx-target="#modal"

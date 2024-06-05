@@ -1,6 +1,6 @@
 import factory
 
-from web.models import Playlist, PlaylistUpdate, SpotifyUser
+from web.models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyUser
 
 
 class SpotifyUserFactory(factory.django.DjangoModelFactory):
@@ -18,6 +18,11 @@ class PlaylistFactory(factory.django.DjangoModelFactory):
 
     spotify_id = factory.Faker("pystr")
     spotify_user = factory.SubFactory(SpotifyUserFactory)
+
+
+class PlaylistWatchConfigFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PlaylistWatchConfig
 
 
 class PlaylistUpdateFactory(factory.django.DjangoModelFactory):

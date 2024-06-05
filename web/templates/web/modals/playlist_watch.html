@@ -18,6 +18,9 @@
                    name="new-playlist-name"
                    placeholder="Playlist name..."
                    required>
+            <label for="auto-accept">Automatically add new tracks to watching playlist</label>
+            <input type="checkbox" name="auto-accept">
+            <br>
             <button hx-post="{% url 'watch_playlist' playlist_id %}"
                     hx-target="#modal"
                     hx-swap="delete"

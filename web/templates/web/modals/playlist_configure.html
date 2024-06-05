@@ -5,8 +5,9 @@
     <div class="modal-content">
         <label>Playlists watched for new tracks</label>
         {% if watched_playlists %}
+            <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
             <table class="modal">
-                {% for watched_playlist in watched_playlists %}
+                {% for watched_playlist, auto_accept_updates in watched_playlists %}
                     <tr>
                         <td>
                             <a href="{{ watched_playlist | spotify_url }}">{{ watched_playlist.name }}</a>
@@ -14,13 +15,20 @@
                         <td>
                             <a href="{{ watched_playlist.owner | spotify_url }}">{{ watched_playlist.owner.display_name }}</a>
                         </td>
-                        <td style="display:none;">
-                            <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
-                        </td>
                         <td>
+                            <input type="hidden"
+                                   name="watched-playlist-id"
+                                   value="{{ watched_playlist.id }}">
+                            <a href=""
+                               hx-post="{% url 'auto_accept_updates' playlist_id %}"
+                               hx-target="this"
+                               hx-include="previous input"
+                               hx-indicator="#spinner">
+                                {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
+                            </a>
                             <a href=""
                                hx-delete="{% url 'watch_playlist' watched_playlist.id %}"
-                               hx-include="previous input"
+                               hx-include="[name='watching-playlist-id']"
                                hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
                                hx-target="closest tr"
                                hx-swap="outerHTML"

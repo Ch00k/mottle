@@ -45,6 +45,12 @@
                             </li>
                         </ul>
                     </li>
+                    {% comment %}<li>{% endcomment %}
+                    {% comment %}    <a href="#">Help</a>{% endcomment %}
+                    {% comment %}</li>{% endcomment %}
+                    {% comment %}<li>{% endcomment %}
+                    {% comment %}    <a href="#">About</a>{% endcomment %}
+                    {% comment %}</li>{% endcomment %}
                     {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
                         <li>
                             <a href="#">{{ request.session.spotify_user_display_name }}</a>

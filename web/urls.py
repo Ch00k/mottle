@@ -21,6 +21,7 @@ urlpatterns = [
     path("playlist/<str:playlist_id>/updates/", views.playlist_updates, name="playlist_updates"),
     path("playlist-updates/<str:update_id>/accept/", views.accept_playlist_update, name="accept_playlist_update"),
     path("playlist/<str:watched_playlist_id>/watch/", views.watch_playlist, name="watch_playlist"),
+    path("playlist/<str:playlist_id>/auto-accept-updates/", views.auto_accept_updates, name="auto_accept_updates"),
     path("deduplicate/<str:playlist_id>/", views.deduplicate, name="deduplicate"),
     path("login/", views.login, name="login"),
     path("logout/", views.logout, name="logout"),

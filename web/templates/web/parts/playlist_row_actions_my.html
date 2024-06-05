@@ -46,11 +46,11 @@
     {% endif %}
     <a href=""
        hx-delete="{% url 'playlist' playlist.id %}"
-       hx-confirm="Are you sure you want to {% if playlist.owner.id == request.session.spotify_user_id %}delete{% else %}unfollow{% endif %} playlist {{ playlist.name }}?"
+       hx-confirm="Are you sure you want to {% if playlist.owner.id == request.session.spotify_user_spotify_id %}delete{% else %}unfollow{% endif %} playlist {{ playlist.name }}?"
        hx-target="closest tr"
        hx-swap="outerHTML"
        hx-indicator="#spinner">
-        {% if playlist.owner.id == request.session.spotify_user_id %}
+        {% if playlist.owner.id == request.session.spotify_user_spotify_id %}
             {% include "web/icons/delete.html" %}
         {% else %}
             {% include "web/icons/unfollow.html" %}

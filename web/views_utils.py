@@ -1,12 +1,13 @@
 import logging
+from typing import Any, Optional
 from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 
-from .models import PlaylistUpdate
-from .models import watch_playlist as util_watch_playlist
+from .models import Playlist
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -58,16 +59,6 @@ async def get_playlist_data(request: HttpRequest, playlist_id: str) -> tuple:
     return playlist_name, playlist_owner_id, playlist_snapshot_id
 
 
-async def watch_playlist(request: HttpRequest, watching_playlist_id: str, watched_playlist_id: str) -> None:
-    # TODO: Keep email and display name in session?
-    try:
-        user = await request.spotify_client.get_current_user()  # type: ignore[attr-defined]
-    except MottleException as e:
-        logger.exception(e)
-        raise
-    await util_watch_playlist(watching_playlist_id, watched_playlist_id, user)
-
-
 def get_duplicates_message(items: list) -> str:
     num_duplicates = len(items)
 
@@ -97,7 +88,7 @@ async def get_playlist_modal_response(request: HttpRequest, playlist_id: str, te
     playlists = [
         playlist
         for playlist in playlists
-        if playlist.owner.id == request.session["spotify_user_id"] and playlist.id != playlist_id
+        if playlist.owner.id == request.session["spotify_user_spotify_id"] and playlist.id != playlist_id
     ]
     return render(
         request,
@@ -111,7 +102,7 @@ async def get_playlist_modal_response(request: HttpRequest, playlist_id: str, te
 
 
 async def compile_email(
-    updates: dict[str, list[PlaylistUpdate]],
+    updates: dict[str, list[dict[str, Any]]],
     spotify_client: MottleSpotifyClient,
     num_tracks_to_show: int = 10,
 ) -> str:
@@ -124,7 +115,13 @@ async def compile_email(
         message += "=" * len(playlist_name_line) + "\n"
 
         for update in playlist_updates:
-            watched_playlist = await sync_to_async(lambda: update.source_playlist)()
+            watched_playlist: Optional[Playlist] = await sync_to_async(lambda: update["update"].source_playlist)()
+
+            if watched_playlist is None:
+                # XXX: This should never happen
+                logger.error(f"PlaylistUpdate {update} has no source playlist")
+                continue
+
             watched_playlist_data = await spotify_client.get_playlist(watched_playlist.spotify_id)
             watched_playlist_line = (
                 f"Watched playlist: {watched_playlist_data.name} by {watched_playlist_data.owner.display_name}"
@@ -133,12 +130,25 @@ async def compile_email(
             message += "-" * len(watched_playlist_line) + "\n"
             message += "New tracks:\n"
 
-            tracks_data = await spotify_client.get_tracks(update.tracks_added)
+            tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
             for track_data in tracks_data[: num_tracks_to_show - 1]:
                 message += f"{track_data.name} by {', '.join([a.name for a in track_data.artists])}\n"
 
             if len(tracks_data) > num_tracks_to_show:
                 message += f"...and {len(tracks_data) - num_tracks_to_show} more\n"
+
+            message += "\n"
+
+            path = reverse("playlist_updates", args=[playlist_spotify_id])
+            if update["auto_acceptable"]:
+                if update["auto_accept_successful"]:
+                    message += "The update has been auto-accepted\n"
+                else:
+                    message += (
+                        f"The update could not be auto-accepted. Please accept manually at https://mottle.it{path}\n"
+                    )
+            else:
+                message += f"Accept the update at https://mottle.it{path}\n"
 
             message += "\n"
 

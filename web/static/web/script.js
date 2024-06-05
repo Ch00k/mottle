@@ -34,6 +34,17 @@ function toggleInput(select, selectedOption, inputId) {
     }
 }
 
+function toggleRelatedCheckbox(checkbox, relatedCheckboxId) {
+    relatedCheckbox = document.getElementById(relatedCheckboxId);
+
+    if (checkbox.checked) {
+        relatedCheckbox.disabled = false;
+    } else {
+        relatedCheckbox.disabled = true;
+        relatedCheckbox.checked = false;
+    }
+}
+
 // https://stackoverflow.com/a/49041392
 function getCellValue(tr, idx) {
     return tr.children[idx].innerText || tr.children[idx].textContent;

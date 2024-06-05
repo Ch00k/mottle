@@ -42,7 +42,7 @@ class Command(BaseCommand):
             )()
         elif playlist_id:
             try:
-                playlist = Playlist.objects.get(id=playlist_id)
+                playlist = Playlist.objects.get(id=playlist_id)  # type: ignore
             except Playlist.DoesNotExist:
                 raise CommandError("Playlist does not exist")
 

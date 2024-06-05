@@ -14,6 +14,8 @@ DEBUG = env.bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
 CSRF_TRUSTED_ORIGINS = ["https://mottle.it", "https://www.mottle.it"]
 SESSION_COOKIE_DOMAIN = env.str("SESSION_COOKIE_DOMAIN", None)
+# SESSION_COOKIE_AGE = 3_153_600_000  # 100 years
+SESSION_SAVE_EVERY_REQUEST = True
 
 APP_VERSION = env.str("APP_VERSION", "dev")
 

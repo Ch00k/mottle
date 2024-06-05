@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Optional
 
 from asgiref.sync import sync_to_async
@@ -9,7 +10,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from tekore.model import AlbumType
 
 from .jobs import check_playlist_for_updates
-from .models import Playlist, PlaylistUpdate, SpotifyAuth
+from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, SpotifyAuthRequest, SpotifyUser
 from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import (
@@ -19,7 +20,6 @@ from .views_utils import (
     get_playlist_modal_response,
     get_playlist_name,
 )
-from .views_utils import watch_playlist as util_watch_playlist
 
 require_DELETE = require_http_methods(["DELETE"])
 
@@ -37,26 +37,35 @@ async def login(request: HttpRequest) -> HttpResponse:
         # so we need to pass an empty string
         redirect_uri = request.GET.get("next", "")
 
-        spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
-        logger.debug(f"SpotifyAuth ID: {spotify_auth_id}")
+        spotify_user_id = await sync_to_async(request.session.get)("spotify_user_id")
+        logger.debug(f"SpotifyAuth ID: {spotify_user_id}")
 
-        if spotify_auth_id is None:
+        if spotify_user_id is None:
             return render(request, "web/login.html", {"redirect_uri": redirect_uri})
         else:
-            spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
+            try:
+                spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
+            except SpotifyAuth.DoesNotExist:
+                logger.debug(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
+                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+
             logger.debug(spotify_auth)
 
             if spotify_auth.access_token is None:
                 logger.debug(f"{spotify_auth} access_token is None")
                 return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-            else:
-                try:
-                    await spotify_auth.refresh()
-                except MottleException as e:
-                    logger.error(e)
-                    return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-                return redirect("index")
+            if spotify_auth.refresh_token is None:
+                logger.debug(f"{spotify_auth} refresh_token is None")
+                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+
+            try:
+                await spotify_auth.maybe_refresh()
+            except MottleException as e:
+                logger.error(e)
+                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+
+            return redirect("index")
     else:
         redirect_uri = request.POST.get("redirect_uri")
 
@@ -65,24 +74,12 @@ async def login(request: HttpRequest) -> HttpResponse:
             redirect_uri = None
 
         auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE)
-        await SpotifyAuth.objects.acreate(redirect_uri=redirect_uri, state=auth.state)
+        await SpotifyAuthRequest.objects.acreate(redirect_uri=redirect_uri, state=auth.state)
         return redirect(auth.url)
 
 
 @require_GET
 async def logout(request: HttpRequest) -> HttpResponse:
-    spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
-    if spotify_auth_id is None:
-        return redirect("login")
-
-    try:
-        spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
-    except SpotifyAuth.DoesNotExist:
-        logger.warning(f"SpotifyAuth ID {spotify_auth_id} does not exist")
-        return redirect("login")
-    else:
-        await spotify_auth.adelete()
-
     await sync_to_async(request.session.flush)()
     return redirect("login")
 
@@ -97,16 +94,15 @@ async def callback(request: HttpRequest) -> HttpResponse:
         return HttpResponseBadRequest("Invalid request")
 
     try:
-        spotify_auth = await SpotifyAuth.objects.aget(state=state)
-        logger.debug(spotify_auth)
+        spotify_auth_request = await SpotifyAuthRequest.objects.aget(state=state)
+        logger.debug(spotify_auth_request)
     except SpotifyAuth.DoesNotExist:
-        logger.debug(f"SpotifyAuth with state {state} does not exist")
+        logger.debug(f"SpotifyAuthRequest with state {state} does not exist")
         return HttpResponseBadRequest("Invalid request")
 
-    await spotify_auth.request(code)
-    logger.debug(spotify_auth)
-
-    spotify_client = MottleSpotifyClient(access_token=spotify_auth.access_token)
+    token = await spotify_auth_request.request_token(code)
+    logger.debug(f"Received token, expires at {token.expires_at}")
+    spotify_client = MottleSpotifyClient(access_token=token.access_token)
 
     try:
         user = await spotify_client.get_current_user()  # pyright: ignore
@@ -114,19 +110,33 @@ async def callback(request: HttpRequest) -> HttpResponse:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
 
-    # TODO: New versions of Django should suppport async methods on sessions (aget, aset, aupdate etc.)
-    request.session["spotify_auth_id"] = str(spotify_auth.id)
-    request.session["spotify_user_id"] = user.id
-    request.session["spotify_user_display_name"] = user.display_name
-
-    if spotify_auth.redirect_uri is None:
-        redirect_target = "index"
-        spotify_auth.redirect_uri = None
-        await spotify_auth.asave()
+    spotify_user, created = await SpotifyUser.objects.aupdate_or_create(
+        spotify_id=user.id, defaults={"display_name": user.display_name, "email": user.email}
+    )
+    if created:
+        logger.debug(f"Created new user: {spotify_user}")
     else:
-        redirect_target = spotify_auth.redirect_uri
+        logger.debug(f"Updated existing user: {spotify_user}")
 
-    return redirect(redirect_target)
+    spotify_auth = await SpotifyAuth.objects.aupdate_or_create(
+        spotify_user=spotify_user,
+        defaults={
+            "access_token": token.access_token,
+            "refresh_token": token.refresh_token,
+            "expires_at": datetime.fromtimestamp(token.expires_at),
+        },
+    )
+    logger.debug(spotify_auth)
+
+    # TODO: New versions of Django should suppport async methods on sessions (aget, aset, aupdate etc.)
+    request.session["spotify_user_id"] = str(spotify_user.id)
+    request.session["spotify_user_spotify_id"] = spotify_user.spotify_id
+    request.session["spotify_user_display_name"] = spotify_user.display_name
+    request.session["spotify_user_email"] = spotify_user.email
+
+    await spotify_auth_request.adelete()
+
+    return redirect(spotify_auth_request.redirect_uri or "index")
 
 
 @require_safe  # Accept HEAD requests from UptimeRobot
@@ -230,7 +240,7 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
 
         try:
             playlist = await request.spotify_client.create_playlist_with_tracks(  # type: ignore[attr-defined]
-                request.session["spotify_user_id"],
+                request.session["spotify_user_spotify_id"],
                 name=f"{artist_name} discography",
                 track_uris=[track.uri for track in tracks],
                 is_public=is_public,
@@ -275,10 +285,13 @@ async def playlists(request: HttpRequest) -> HttpResponse:
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlists")
 
-    watching_playlists = Playlist.objects.filter(watched_playlists__isnull=False)
-    watching_playlist_ids = [playlist.spotify_id async for playlist in watching_playlists]
+    db_watching_playlists = PlaylistWatchConfig.objects.filter(
+        watching_playlist__spotify_user__id=request.session["spotify_user_id"],
+    ).values("watching_playlist__spotify_id")
 
-    return render(request, "web/playlists.html", {"playlists": playlists, "watching_playlists": watching_playlist_ids})
+    watching_playlists = [item["watching_playlist__spotify_id"] async for item in db_watching_playlists]
+
+    return render(request, "web/playlists.html", {"playlists": playlists, "watching_playlists": watching_playlists})
 
 
 @require_GET
@@ -296,7 +309,9 @@ async def followed_artists(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["GET", "POST"])
 async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name = await get_playlist_name(request, playlist_id)
-    playlist = await aget_object_or_404(Playlist, spotify_id=playlist_id)
+    playlist = await aget_object_or_404(
+        Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
+    )
 
     if request.method == "POST":
         await check_playlist_for_updates(playlist, request.spotify_client)  # type: ignore[attr-defined]
@@ -305,6 +320,11 @@ async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpRespon
 
     async for update in playlist.pending_updates:
         watched_playlist = await sync_to_async(lambda: update.source_playlist)()
+        if watched_playlist is None:
+            # XXX: This should never happen
+            logger.error(f"PlaylistUpdate {update.id} has no source_playlist")
+            continue
+
         watched_playlist_data = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
             watched_playlist.spotify_id
         )
@@ -329,18 +349,15 @@ async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpRespon
 
 @require_POST
 async def accept_playlist_update(request: HttpRequest, update_id: str) -> HttpResponse:
-    update = await aget_object_or_404(PlaylistUpdate, id=update_id)
-    target_playlist = await sync_to_async(lambda: update.target_playlist)()
+    update = await aget_object_or_404(
+        PlaylistUpdate, id=update_id, target_playlist__spotify_user__id=request.session["spotify_user_id"]
+    )
 
     try:
-        await request.spotify_client.add_tracks_to_playlist(  # type: ignore[attr-defined]
-            target_playlist.spotify_id, [f"spotify:track:{t}" for t in update.tracks_added]
-        )
+        await update.accept(request.spotify_client)  # type: ignore[attr-defined]
     except MottleException as e:
         logger.exception(e)
         return HttpResponseServerError("Failed to add tracks to playlist")
-    else:
-        await update.accept()
 
     return HttpResponse()
 
@@ -401,6 +418,9 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_name, playlist_owner_id, _ = await get_playlist_data(request, playlist_id)
 
     if request.method == "POST":
+        if playlist_owner_id != request.session["spotify_user_spotify_id"]:
+            return HttpResponseBadRequest("You can only deduplicate your own playlists")
+
         # XXX: The whole remove_tracks_at_positions_from_playlist is not working as expected,
         # which is probably the reason it is not documented in the Spotify API.
         # The API request is successful, but the tracks' positions in request payload are ignored:
@@ -516,7 +536,7 @@ async def copy_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
 
     try:
         playlist = await request.spotify_client.create_playlist_with_tracks(  # type: ignore[attr-defined]
-            request.session["spotify_user_id"],
+            request.session["spotify_user_spotify_id"],
             name=f"Copy of {playlist_name}",
             track_uris=[track.track.uri for track in playlist_items if not track.track.is_local],
             is_public=True,  # TODO: How do we decide on the value?
@@ -544,15 +564,19 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
         return await get_playlist_modal_response(request, playlist_id, "web/modals/playlist_merge.html")
     else:
         target_playlist_id = request.POST.get("merge-target")
-        if target_playlist_id is None:
-            return HttpResponseBadRequest("No merge source provided")
+        if not target_playlist_id:
+            return HttpResponseBadRequest("No merge target provided")
 
         if request.POST.get("new-playlist-name"):
             target_playlist_name = request.POST.get("new-playlist-name")
             target_playlist = await request.spotify_client.create_playlist(  # type: ignore[attr-defined]
-                request.session["spotify_user_id"], target_playlist_name, is_public=True
+                request.session["spotify_user_spotify_id"], target_playlist_name, is_public=True
             )
             target_playlist_id = target_playlist.id
+        else:
+            await aget_object_or_404(
+                Playlist, spotify_id=target_playlist_id, spotify_user__id=request.session["spotify_user_id"]
+            )
 
         try:
             source_playlist_items = await request.spotify_client.get_playlist_items(  # type: ignore[attr-defined]
@@ -575,42 +599,50 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
             logger.info(
                 f"Setting up update notifications for playlist {target_playlist_id} from playlist {source_playlist_id}"
             )
-            await util_watch_playlist(request, target_playlist_id, source_playlist_id)
+
+            auto_accept = bool(request.POST.get("auto-accept", False))
+            if auto_accept:
+                logger.info(
+                    f"Setting up automatic accept for playlist {target_playlist_id} from playlist {source_playlist_id}"
+                )
+
+            await Playlist.watch(
+                request.spotify_client,  # type: ignore[attr-defined]
+                target_playlist_id,  # type: ignore[arg-type]
+                source_playlist_id,
+                auto_accept_updates=auto_accept,
+            )
 
         return HttpResponse()
 
 
-@require_http_methods(["GET", "POST"])
+@require_GET
 async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    if request.method == "GET":
-        playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_name = await get_playlist_name(request, playlist_id)
 
-        try:
-            db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
-            logger.debug(f"Playlist: {db_playlist}")
-        except Playlist.DoesNotExist:
-            logger.debug(f"Playlist {playlist_id} not found in database")
-            watched_playlists = []
-        else:
-            db_watched_playlists = [p async for p in db_playlist.watched_playlists.all()]
-            logger.debug(f"Watched playlists: {db_watched_playlists}")
+    db_playlist = await aget_object_or_404(
+        Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
+    )
+    configs = PlaylistWatchConfig.objects.filter(watching_playlist=db_playlist)
+    watched_playlist_settings = []
 
-            watched_playlists = [
-                await request.spotify_client.get_playlist(p.spotify_id)  # type: ignore[attr-defined]
-                for p in db_watched_playlists
-            ]
-
-        return render(
-            request,
-            "web/modals/playlist_configure.html",
-            context={
-                "playlist_id": playlist_id,
-                "playlist_name": playlist_name,
-                "watched_playlists": watched_playlists,
-            },
+    async for config in configs:
+        db_watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
+        watched_playlist = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
+            db_watched_playlist.spotify_id
         )
-    else:
-        return HttpResponse()
+
+        watched_playlist_settings.append((watched_playlist, config.auto_accept_updates))
+
+    return render(
+        request,
+        "web/modals/playlist_configure.html",
+        context={
+            "playlist_id": playlist_id,
+            "playlist_name": playlist_name,
+            "watched_playlists": watched_playlist_settings,
+        },
+    )
 
 
 @require_http_methods(["GET", "POST", "DELETE"])
@@ -619,27 +651,67 @@ async def watch_playlist(request: HttpRequest, watched_playlist_id: str) -> Http
         return await get_playlist_modal_response(request, watched_playlist_id, "web/modals/playlist_watch.html")
     elif request.method == "POST":
         watching_playlist_id = request.POST.get("watching-playlist-id")
-        if watching_playlist_id is None:
-            return HttpResponseBadRequest("boom!")
+
+        if not watching_playlist_id:
+            return HttpResponseBadRequest("No watching playlist ID provided")
 
         if request.POST.get("new-playlist-name"):
             watching_playlist_name = request.POST.get("new-playlist-name")
             watching_playlist = await request.spotify_client.create_playlist(  # type: ignore[attr-defined]
-                request.session["spotify_user_id"], watching_playlist_name, is_public=True
+                request.session["spotify_user_spotify_id"], watching_playlist_name, is_public=True
             )
             watching_playlist_id = watching_playlist.id
+        else:
+            await aget_object_or_404(
+                Playlist, spotify_id=watching_playlist_id, spotify_user__id=request.session["spotify_user_id"]
+            )
 
-        await util_watch_playlist(request, watching_playlist_id, watched_playlist_id)
+        auto_accept = bool(request.POST.get("auto-accept", False))
+        if auto_accept:
+            logger.info(
+                f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {watched_playlist_id}"
+            )
+
+        await Playlist.watch(
+            request.spotify_client,  # type: ignore[attr-defined]
+            watching_playlist_id,  # type: ignore[arg-type]
+            watched_playlist_id,
+            auto_accept_updates=auto_accept,
+        )
     else:
         # https://stackoverflow.com/a/22294734
         body = QueryDict(request.body)  # pyright: ignore
         watching_playlist_id = body.get("watching-playlist-id")
-        if watching_playlist_id is None:
-            return HttpResponseBadRequest("boom!")
 
-        watching_playlist = await aget_object_or_404(Playlist, spotify_id=watching_playlist_id)
+        if not watching_playlist_id:
+            return HttpResponseBadRequest("No watching playlist ID provided")
+
+        watching_playlist = await aget_object_or_404(
+            Playlist, spotify_id=watching_playlist_id, spotify_user__id=request.session["spotify_user_id"]
+        )
         watched_playlist = await aget_object_or_404(Playlist, spotify_id=watched_playlist_id)
 
         await watching_playlist.unwatch(watched_playlist)
 
     return HttpResponse()
+
+
+@require_POST
+async def auto_accept_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    watching_playlist = await aget_object_or_404(
+        Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
+    )
+
+    watched_playlist_id = request.POST.get("watched-playlist-id")
+    if not watched_playlist_id:
+        return HttpResponseBadRequest("No watched playlist ID provided")
+
+    config = await aget_object_or_404(
+        PlaylistWatchConfig, watching_playlist=watching_playlist, watched_playlist__spotify_id=watched_playlist_id
+    )
+
+    new_setting = not config.auto_accept_updates
+    config.auto_accept_updates = new_setting
+    await config.asave()
+
+    return render(request, "web/icons/accept.html", {"enabled": new_setting})

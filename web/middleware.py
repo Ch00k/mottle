@@ -28,24 +28,28 @@ class SpotifyAuthMiddleware:
             logger.debug(f"Skipping {self.__class__.__name__} middleware")
             return await self.get_response(request)
 
-        spotify_auth_id = await sync_to_async(request.session.get)("spotify_auth_id")
-        logger.debug(f"SpotifyAuth ID: {spotify_auth_id}")
-        if spotify_auth_id is None:
+        spotify_user_id = await sync_to_async(request.session.get)("spotify_user_id")
+        logger.debug(f"SpotifyUser ID: {spotify_user_id}")
+        if spotify_user_id is None:
             return redirect_to_login(request.get_full_path())
 
         try:
-            spotify_auth = await SpotifyAuth.objects.aget(id=spotify_auth_id)
+            spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
             logger.debug(spotify_auth)
         except SpotifyAuth.DoesNotExist:
-            logger.debug(f"SpotifyAuth ID {spotify_auth_id} does not exist")
+            logger.debug(f"SpotifyAuth for spotify user ID {spotify_user_id} does not exist")
             return redirect_to_login(request.get_full_path())
 
         if spotify_auth.access_token is None:
             logger.debug(f"{spotify_auth} access_token is None")
             return redirect_to_login(request.get_full_path())
 
+        if spotify_auth.refresh_token is None:
+            logger.debug(f"{spotify_auth} refresh_token is None")
+            return redirect_to_login(request.get_full_path())
+
         try:
-            await spotify_auth.refresh()
+            await spotify_auth.maybe_refresh()
         except MottleException as e:
             logger.error(e)
             return redirect_to_login(request.get_full_path())

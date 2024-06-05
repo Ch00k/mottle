@@ -57,7 +57,7 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% if playlist_owner_id == request.session.spotify_user_id %}
+        {% if playlist_owner_id == request.session.spotify_user_spotify_id %}
             <br>
             <button hx-post="."
                     hx-include="input"

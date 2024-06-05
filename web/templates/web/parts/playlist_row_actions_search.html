@@ -31,7 +31,7 @@
        hx-swap="beforeend"
        hx-indicator="#spinner"
        hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/watch.html" %}</a>
-    {% if playlist.owner.id != request.session.spotify_user_id %}
+    {% if playlist.owner.id != request.session.spotify_user_spotify_id %}
         {% if is_being_followed %}
             <a href=""
                hx-delete="{% url 'playlist' playlist.id %}"
