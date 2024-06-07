@@ -26,6 +26,7 @@ build:
 deploy:
 	@$(eval APP_VERSION=$(shell poetry version --short))
 	@echo Deploying version: $(APP_VERSION)
+	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(APP_VERSION)
 	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 

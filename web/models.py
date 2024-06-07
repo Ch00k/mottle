@@ -151,6 +151,11 @@ class SpotifyAuth(BaseModel):
         await self.asave()
 
 
+class Artist(SpotifyEntityModel):
+    def __str__(self) -> str:
+        return f"<Artist {self.id} spotify_id={self.spotify_id}>"
+
+
 class Playlist(SpotifyEntityModel):
     spotify_user = models.ForeignKey(SpotifyUser, null=True, on_delete=models.CASCADE, related_name="playlists")
 
@@ -225,9 +230,26 @@ class Playlist(SpotifyEntityModel):
 
 class PlaylistWatchConfig(BaseModel):
     watching_playlist = models.ForeignKey(Playlist, on_delete=models.RESTRICT, related_name="configs_as_watching")
-    watched_playlist = models.ForeignKey(Playlist, on_delete=models.RESTRICT, related_name="configs_as_watched")
+    watched_playlist = models.ForeignKey(
+        Playlist, null=True, on_delete=models.RESTRICT, related_name="configs_as_watched_playlist"
+    )
+    watched_artist = models.ForeignKey(
+        Artist, null=True, on_delete=models.RESTRICT, related_name="configs_as_watched_artist"
+    )
     auto_accept_updates = models.BooleanField(default=False)
+    albums_ignored = models.JSONField(null=True)
     tracks_ignored = models.JSONField(null=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(models.Q(watched_playlist__isnull=False) | models.Q(watched_artist__isnull=False))
+                    & ~models.Q(watched_playlist__isnull=False, watched_artist__isnull=False)
+                ),
+                name="watched_playlist_or_artist",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"<PlaylistWatchConfig {self.id}>"
@@ -235,8 +257,12 @@ class PlaylistWatchConfig(BaseModel):
 
 class PlaylistUpdate(BaseModel):
     target_playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, related_name="updates")
-    source_playlist = models.ForeignKey(Playlist, on_delete=models.CASCADE, null=True, related_name="provided_updates")
-    source_artist = models.ForeignKey(Playlist, on_delete=models.CASCADE, null=True)  # TODO: Oops
+    source_playlist = models.ForeignKey(
+        Playlist, on_delete=models.CASCADE, null=True, related_name="provided_updates_playlist"
+    )
+    source_artist = models.ForeignKey(
+        Playlist, on_delete=models.CASCADE, null=True, related_name="provided_updates_artist"
+    )
 
     albums_added = models.JSONField(null=True)
     albums_removed = models.JSONField(null=True)
@@ -247,6 +273,17 @@ class PlaylistUpdate(BaseModel):
     is_notified_of = models.BooleanField(default=False)
     is_accepted = models.BooleanField(null=True, default=None)
     is_overridden_by = models.ForeignKey("self", on_delete=models.CASCADE, null=True, related_name="overrides")
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(models.Q(source_playlist__isnull=False) | models.Q(source_artist__isnull=False))
+                    & ~models.Q(source_playlist__isnull=False, source_artist__isnull=False)
+                ),
+                name="source_playlist_or_artist",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"<PlaylistUpdate {self.id} hash={self.update_hash}>"
