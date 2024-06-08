@@ -17,7 +17,7 @@ async def get_artist_name(request: HttpRequest, artist_id: str) -> str:
     artist_name = request.headers.get("M-ArtistName")
 
     if artist_name is None:
-        logger.error("Artist name not found in headers")
+        logger.warning("Artist name not found in headers")
         artist = await request.spotify_client.get_artist(artist_id)  # type: ignore[attr-defined]
         artist_name = artist.name
     else:
