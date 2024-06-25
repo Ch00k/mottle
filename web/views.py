@@ -195,18 +195,19 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
     artist_name = await get_artist_name(request, artist_id)
 
     try:
-        albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]
+        all_albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]
     except MottleException as e:
         logger.exception(e)
         return HttpResponseServerError("Failed to get albums")
 
-    sorted_albums = sorted(
-        sorted(albums, key=lambda x: x.release_date, reverse=True), key=lambda x: ALBUM_SORT_ORDER[x.album_type]
+    all_albums_sorted = sorted(
+        sorted(all_albums, key=lambda x: x.release_date, reverse=True), key=lambda x: ALBUM_SORT_ORDER[x.album_type]
     )
+    all_album_ids = [album.id for album in all_albums_sorted]
 
-    has_albums = list_has(sorted_albums, AlbumType.album)
-    has_simgles = list_has(sorted_albums, AlbumType.single)
-    has_compilations = list_has(sorted_albums, AlbumType.compilation)
+    has_albums = list_has(all_albums_sorted, AlbumType.album)
+    has_simgles = list_has(all_albums_sorted, AlbumType.single)
+    has_compilations = list_has(all_albums_sorted, AlbumType.compilation)
 
     if request.method == "GET":
         return render(
@@ -214,16 +215,16 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
             "web/albums.html",
             context={
                 "artist": artist_name,
-                "albums": sorted_albums,
-                "album_ids": [album.id for album in sorted_albums],
+                "albums": all_albums_sorted,
+                "album_ids": all_album_ids,
                 "has_albums": has_albums,
                 "has_singles": has_simgles,
                 "has_compilations": has_compilations,
             },
         )
     else:
-        albums = request.POST.getlist("album")
-        if not albums:
+        requested_album_ids = request.POST.getlist("album")
+        if not requested_album_ids:
             return HttpResponseBadRequest("No albums selected")
 
         name = request.POST.get("name")
@@ -233,7 +234,9 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
         is_public = bool(request.POST.get("is-public", False))
 
         try:
-            tracks = await request.spotify_client.get_tracks_in_albums(albums)  # type: ignore[attr-defined]
+            tracks = await request.spotify_client.get_tracks_in_albums(  # type: ignore[attr-defined]
+                requested_album_ids
+            )
         except MottleException as e:
             logger.exception(e)
             return HttpResponseServerError("Failed to get album tracks")
@@ -249,30 +252,20 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
             logger.exception(e)
             return HttpResponseServerError("Failed to create playlist")
 
-        # auto_update = bool(request.POST.get("auto-update", False))
-        # if auto_update:
-        #     album_ids = request.POST.get("album-ids", "")
-        #     if not album_ids:
-        #         logger.error("albums-ids form field is empty")
+        if bool(request.POST.get("auto-update", False)):
+            albums_ignored = list(set(all_album_ids) - set(requested_album_ids))
 
-        #     album_ids_list = album_ids.split(",")
+            auto_accept = bool(request.POST.get("auto-accept", False))
+            if auto_accept:
+                logger.info(f"Setting up automatic accept for playlist {playlist.id} from artist {artist_id}")
 
-        #     watch_albums = bool(request.POST.get("all-albums", False))
-        #     watch_singles = bool(request.POST.get("all-singles", False))
-        #     watch_compilations = bool(request.POST.get("all-compilations", False))
-
-        #     db_artist, _ = await Artist.objects.aget_or_create(spotify_id=artist_id)
-        #     db_playlist = await Playlist.objects.acreate(
-        #         spotify_id=playlist.id, spotify_user_id=request.session["spotify_user_id"]
-        #     )
-        #     await WatchedArtist.objects.acreate(
-        #         artist=db_artist,
-        #         playlist=db_playlist,
-        #         watch_albums=watch_albums,
-        #         watch_singles=watch_singles,
-        #         watch_compilations=watch_compilations,
-        #         seen_albums=album_ids_list,
-        #     )
+            await Playlist.watch_artist(
+                request.spotify_client,  # type: ignore[attr-defined]
+                playlist.id,
+                artist_id,
+                albums_ignored=albums_ignored,
+                auto_accept_updates=auto_accept,
+            )
 
         return redirect("playlist", playlist_id=playlist.id)
 
@@ -320,18 +313,30 @@ async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpRespon
 
     async for update in playlist.pending_updates:
         watched_playlist = await sync_to_async(lambda: update.source_playlist)()
-        if watched_playlist is None:
-            # XXX: This should never happen
-            logger.error(f"PlaylistUpdate {update.id} has no source_playlist")
-            continue
+        watched_artist = await sync_to_async(lambda: update.source_artist)()
 
-        watched_playlist_data = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
-            watched_playlist.spotify_id
-        )
-        watched_playlist_tracks = await request.spotify_client.get_tracks(  # type: ignore[attr-defined]
-            update.tracks_added
-        )
-        updates.append((update.id, watched_playlist_data, watched_playlist_tracks))
+        if watched_playlist is not None:
+            watched_playlist_data = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
+                watched_playlist.spotify_id
+            )
+            watched_playlist_tracks = await request.spotify_client.get_tracks(  # type: ignore[attr-defined]
+                update.tracks_added
+            )
+            updates.append((update.id, watched_playlist_data, watched_playlist_tracks))
+        elif watched_artist is not None:
+            watched_artist_data = await request.spotify_client.get_artist(  # type: ignore[attr-defined]
+                watched_artist.spotify_id
+            )
+            tracks = await request.spotify_client.get_tracks_in_albums(  # type: ignore[attr-defined]
+                update.albums_added
+            )
+            track_ids = [track.id for track in tracks]
+            watched_artist_tracks = await request.spotify_client.get_tracks(track_ids)  # type: ignore[attr-defined]
+            updates.append((update.id, watched_artist_data, watched_artist_tracks))
+        else:
+            # XXX: This should never happen
+            logger.error(f"PlaylistUpdate {update.id} has no source_playlist or source_artist")
+            continue
 
     if request.method == "POST":
         return render(
@@ -606,7 +611,7 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
                     f"Setting up automatic accept for playlist {target_playlist_id} from playlist {source_playlist_id}"
                 )
 
-            await Playlist.watch(
+            await Playlist.watch_playlist(
                 request.spotify_client,  # type: ignore[attr-defined]
                 target_playlist_id,  # type: ignore[arg-type]
                 source_playlist_id,
@@ -625,14 +630,23 @@ async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResp
     )
     configs = PlaylistWatchConfig.objects.filter(watching_playlist=db_playlist)
     watched_playlist_settings = []
+    watched_artist_settings = []
 
     async for config in configs:
         db_watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
-        watched_playlist = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
-            db_watched_playlist.spotify_id
-        )
+        db_watched_artist = await sync_to_async(lambda: config.watched_artist)()
 
-        watched_playlist_settings.append((watched_playlist, config.auto_accept_updates))
+        if db_watched_playlist is not None:
+            watched_playlist = await request.spotify_client.get_playlist(  # type: ignore[attr-defined]
+                db_watched_playlist.spotify_id
+            )
+            watched_playlist_settings.append((watched_playlist, config.auto_accept_updates))
+
+        if db_watched_artist is not None:
+            watched_artist = await request.spotify_client.get_artist(  # type: ignore[attr-defined]
+                db_watched_artist.spotify_id
+            )
+            watched_artist_settings.append((watched_artist, config.auto_accept_updates))
 
     return render(
         request,
@@ -641,6 +655,7 @@ async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResp
             "playlist_id": playlist_id,
             "playlist_name": playlist_name,
             "watched_playlists": watched_playlist_settings,
+            "watched_artists": watched_artist_settings,
         },
     )
 
@@ -672,7 +687,7 @@ async def watch_playlist(request: HttpRequest, watched_playlist_id: str) -> Http
                 f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {watched_playlist_id}"
             )
 
-        await Playlist.watch(
+        await Playlist.watch_playlist(
             request.spotify_client,  # type: ignore[attr-defined]
             watching_playlist_id,  # type: ignore[arg-type]
             watched_playlist_id,
@@ -703,12 +718,18 @@ async def auto_accept_updates(request: HttpRequest, playlist_id: str) -> HttpRes
     )
 
     watched_playlist_id = request.POST.get("watched-playlist-id")
-    if not watched_playlist_id:
-        return HttpResponseBadRequest("No watched playlist ID provided")
+    watched_artist_id = request.POST.get("watched-artist-id")
 
-    config = await aget_object_or_404(
-        PlaylistWatchConfig, watching_playlist=watching_playlist, watched_playlist__spotify_id=watched_playlist_id
-    )
+    if watched_playlist_id:
+        config = await aget_object_or_404(
+            PlaylistWatchConfig, watching_playlist=watching_playlist, watched_playlist__spotify_id=watched_playlist_id
+        )
+    elif watched_artist_id:
+        config = await aget_object_or_404(
+            PlaylistWatchConfig, watching_playlist=watching_playlist, watched_artist__spotify_id=watched_artist_id
+        )
+    else:
+        return HttpResponseBadRequest("No watched playlist or artist ID provided")
 
     new_setting = not config.auto_accept_updates
     config.auto_accept_updates = new_setting

@@ -12,6 +12,7 @@ from tekore import Spotify
 from tekore.model import (
     AlbumType,
     AudioFeatures,
+    FullAlbum,
     FullArtist,
     FullArtistOffsetPaging,
     FullPlaylist,
@@ -73,6 +74,9 @@ class MottleSpotifyClient:
             include_groups=album_types or ["album", "single", "compilation"],
         )
         return await get_all_offset_paging_items(func)  # pyright: ignore
+
+    async def get_albums(self, album_ids: list[str]) -> list[FullAlbum]:
+        return await self.spotify_client.albums(album_ids)  # pyright: ignore
 
     async def get_tracks(self, track_ids: list[str]) -> list[FullTrack]:
         try:

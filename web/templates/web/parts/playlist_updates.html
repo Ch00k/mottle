@@ -4,13 +4,13 @@
         hx-indicator="#spinner">Check for updates</button>
 <br>
 <br>
-{% for update_id, watched_playlist, tracks in updates %}
+{% for update_id, watched_entity, tracks in updates %}
     <div>
         <header>
-            {% comment %}<img src="{{ watched_playlist.images | pick_image | default_image:70 }}" />{% endcomment %}
+            {% comment %}<img src="{{ watched_entity.images | pick_image | default_image:70 }}" />{% endcomment %}
             {% comment %}<br>{% endcomment %}
-            <a href="{{ watched_playlist | spotify_url }}">
-                <h2>{{ watched_playlist.name }}</h2>
+            <a href="{{ watched_entity | spotify_url }}">
+                <h2>{{ watched_entity.name }}</h2>
             </a>
         </header>
         <table>
@@ -18,6 +18,7 @@
                 <tr>
                     <th>Artwork</th>
                     <th>Artist</th>
+                    <th>Album</th>
                     <th>Track</th>
                 </tr>
             </thead>
@@ -32,6 +33,9 @@
                                 <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
                                 <br>
                             {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{{ track.album | spotify_url }}">{{ track.album.name }}</a>
                         </td>
                         <td>
                             <a href="{{ track | spotify_url }}">{{ track.name }}</a>

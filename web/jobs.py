@@ -25,26 +25,61 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
         return updates
 
     watch_configs = playlist.configs_as_watching.all()  # pyright: ignore
-    logger.info(f"Watched playlists: {await watch_configs.acount()}")
+    logger.info(f"Watched playlists or artists: {await watch_configs.acount()}")
 
     async for config in watch_configs:
         watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
-        logger.info(f"Processing watched playlist {watched_playlist}")
+        watched_artist = await sync_to_async(lambda: config.watched_artist)()
 
-        try:
-            watched_playlist_track_ids = await watched_playlist.get_track_ids(spotify_client)
-        except MottleException as e:
-            logger.error(f"Failed to get tracks for watched playlist {watched_playlist}: {e}")
-            continue
+        if watched_playlist is not None:
+            logger.info(f"Processing watched playlist {watched_playlist}")
 
-        new_track_ids = set(watched_playlist_track_ids) - set(playlist_track_ids)
+            try:
+                watched_playlist_track_ids = await watched_playlist.get_track_ids(spotify_client)
+            except MottleException as e:
+                logger.error(f"Failed to get tracks for watched playlist {watched_playlist}: {e}")
+                continue
 
-        if not new_track_ids:
-            logger.info(f"No new tracks in playlist {watched_playlist}")
-            continue
+            ignored_track_ids = config.tracks_ignored or []
+            new_track_ids = set(watched_playlist_track_ids) - set(playlist_track_ids) - set(ignored_track_ids)
 
-        logger.info(f"New track IDs: {new_track_ids}")
-        update, created = await PlaylistUpdate.find_or_create(playlist, watched_playlist, list(new_track_ids))
+            if not new_track_ids:
+                logger.info(f"No new tracks in playlist {watched_playlist}")
+                continue
+
+            logger.info(f"New track IDs: {new_track_ids}")
+            update, created = await PlaylistUpdate.find_or_create_for_playlist(
+                playlist, watched_playlist, list(new_track_ids)
+            )
+
+        if watched_artist is not None:
+            logger.info(f"Processing watched artist {watched_playlist}")
+
+            watched_artist_all_album_ids = await watched_artist.get_album_ids(spotify_client)
+            ignored_album_ids = config.albums_ignored or []
+
+            album_ids = set(watched_artist_all_album_ids) - set(ignored_album_ids)
+            new_album_ids = []
+
+            for album_id in album_ids:
+                album_tracks = await spotify_client.get_album_tracks(album_id)
+                album_track_ids = [t.id for t in album_tracks]
+
+                # TODO: This will return True if at least one track already exists in the playlist
+                # TODO: If that's the case, treat the rest of the tracks as `tracks_added`?
+                exists_in_playlist = not set(playlist_track_ids).isdisjoint(album_track_ids)
+                if not exists_in_playlist:
+                    new_album_ids.append(album_id)
+
+            if not new_album_ids:
+                logger.info(f"No new albums of artist {watched_artist}")
+                continue
+
+            logger.info(f"New album IDs: {new_album_ids}")
+            update, created = await PlaylistUpdate.find_or_create_for_artist(
+                playlist, watched_artist, list(new_album_ids)
+            )
+
         if created:
             logger.info(f"Created PlaylistUpdate {update}")
             logger.info("Adding to updates list")
@@ -114,7 +149,7 @@ async def check_user_playlists_for_updates(
         return
 
     logger.info(f"Sending email to {user.email}")
-    await send_email(user.email, "Your watched playlists have been updated", message)
+    await send_email(user.email, "We've got updates for you", message)
 
     await PlaylistUpdate.objects.filter(
         target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))  # pyright: ignore

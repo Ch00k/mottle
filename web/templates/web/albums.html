@@ -51,6 +51,17 @@
                 <label for="all-compilations">Compilations</label>
                 <label for="is-public">Make public</label>
                 <input type="checkbox" name="is-public" id="is-public" checked>
+                <br>
+                <label for="auto-update">Watch artist for new releases</label>
+                <input type="checkbox"
+                       name="auto-update"
+                       id="auto-update"
+                       checked
+                       onClick="toggleRelatedCheckbox(this, 'auto-accept')">
+                <br>
+                <label for="auto-accept">Automatically add tracks from new releases to the playlist</label>
+                <input type="checkbox" name="auto-accept" id="auto-accept">
+                <br>
             </form>
         </section>
         <br>

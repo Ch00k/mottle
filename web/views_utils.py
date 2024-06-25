@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 
-from .models import Playlist
+from .models import Artist, Playlist
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -104,9 +104,9 @@ async def get_playlist_modal_response(request: HttpRequest, playlist_id: str, te
 async def compile_email(
     updates: dict[str, list[dict[str, Any]]],
     spotify_client: MottleSpotifyClient,
-    num_tracks_to_show: int = 10,
+    num_to_show: int = 10,
 ) -> str:
-    message = "New tracks have been added to playlists you are watching.\n\n"
+    message = ""
 
     for playlist_spotify_id, playlist_updates in updates.items():
         playlist_data = await spotify_client.get_playlist(playlist_spotify_id)
@@ -116,26 +116,42 @@ async def compile_email(
 
         for update in playlist_updates:
             watched_playlist: Optional[Playlist] = await sync_to_async(lambda: update["update"].source_playlist)()
+            watched_artist: Optional[Artist] = await sync_to_async(lambda: update["update"].source_artist)()
 
-            if watched_playlist is None:
+            if watched_playlist is not None:
+                watched_playlist_data = await spotify_client.get_playlist(watched_playlist.spotify_id)
+                watched_playlist_line = (
+                    f"Watched playlist: {watched_playlist_data.name} by {watched_playlist_data.owner.display_name}"
+                )
+                message += watched_playlist_line + "\n"
+                message += "-" * len(watched_playlist_line) + "\n"
+                message += "New tracks:\n"
+
+                tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
+                for track_data in tracks_data[: num_to_show - 1]:
+                    message += f"{track_data.name} by {', '.join([a.name for a in track_data.artists])}\n"
+
+                if len(tracks_data) > num_to_show:
+                    message += f"...and {len(tracks_data) - num_to_show} more\n"
+            elif watched_artist is not None:
+                watched_artist_data = await spotify_client.get_artist(watched_artist.spotify_id)
+                watched_artist_line = f"Watched artist: {watched_artist_data.name}"
+                message += watched_artist_line + "\n"
+                message += "-" * len(watched_artist_line) + "\n"
+                message += "New albums:\n"
+
+                albums_data = await spotify_client.get_albums(update["update"].albums_added)
+                for album_data in albums_data[: num_to_show - 1]:
+                    message += f"{album_data.name} ({album_data.release_date})\n"
+
+                if len(albums_data) > num_to_show:
+                    message += f"...and {len(albums_data) - num_to_show} more\n"
+
+                # TODO: Show tracks from albums?
+            else:
                 # XXX: This should never happen
-                logger.error(f"PlaylistUpdate {update} has no source playlist")
+                logger.error(f"PlaylistUpdate {update} has no source playlist or artist")
                 continue
-
-            watched_playlist_data = await spotify_client.get_playlist(watched_playlist.spotify_id)
-            watched_playlist_line = (
-                f"Watched playlist: {watched_playlist_data.name} by {watched_playlist_data.owner.display_name}"
-            )
-            message += watched_playlist_line + "\n"
-            message += "-" * len(watched_playlist_line) + "\n"
-            message += "New tracks:\n"
-
-            tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
-            for track_data in tracks_data[: num_tracks_to_show - 1]:
-                message += f"{track_data.name} by {', '.join([a.name for a in track_data.artists])}\n"
-
-            if len(tracks_data) > num_tracks_to_show:
-                message += f"...and {len(tracks_data) - num_tracks_to_show} more\n"
 
             message += "\n"
 

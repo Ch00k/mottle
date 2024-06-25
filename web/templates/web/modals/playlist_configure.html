@@ -40,5 +40,40 @@
         {% else %}
             <p>No playlists watched</p>
         {% endif %}
+
+        <label>Artists watched for new releases</label>
+        {% if watched_artists %}
+            <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
+            <table class="modal">
+                {% for watched_artist, auto_accept_updates in watched_artists %}
+                    <tr>
+                        <td>
+                            <a href="{{ watched_artist | spotify_url }}">{{ watched_artist.name }}</a>
+                        </td>
+                        <td>
+                            <input type="hidden"
+                                   name="watched-artist-id"
+                                   value="{{ watched_artist.id }}">
+                            <a href=""
+                               hx-post="{% url 'auto_accept_updates' playlist_id %}"
+                               hx-target="this"
+                               hx-include="previous input"
+                               hx-indicator="#spinner">
+                                {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
+                            </a>
+                            {% comment %}<a href=""{% endcomment %}
+                            {% comment %}   hx-delete="{% url 'watch_playlist' watched_playlist.id %}"{% endcomment %}
+                            {% comment %}   hx-include="[name='watching-playlist-id']"{% endcomment %}
+                            {% comment %}   hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"{% endcomment %}
+                            {% comment %}   hx-target="closest tr"{% endcomment %}
+                            {% comment %}   hx-swap="outerHTML"{% endcomment %}
+                            {% comment %}   hx-indicator="#spinner">{% include "web/icons/unfollow.html" %}</a>{% endcomment %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No playlists watched</p>
+        {% endif %}
     </div>
 </div>
