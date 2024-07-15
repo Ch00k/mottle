@@ -578,10 +578,6 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
                 request.session["spotify_user_spotify_id"], target_playlist_name, is_public=True
             )
             target_playlist_id = target_playlist.id
-        else:
-            await aget_object_or_404(
-                Playlist, spotify_id=target_playlist_id, spotify_user__id=request.session["spotify_user_id"]
-            )
 
         try:
             source_playlist_items = await request.spotify_client.get_playlist_items(  # type: ignore[attr-defined]
