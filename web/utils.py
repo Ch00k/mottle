@@ -12,6 +12,7 @@ from tekore import Spotify
 from tekore.model import (
     AlbumType,
     AudioFeatures,
+    CurrentlyPlayingContext,
     FullAlbum,
     FullArtist,
     FullArtistOffsetPaging,
@@ -44,6 +45,12 @@ class MottleSpotifyClient:
             return await self.spotify_client.current_user()  # pyright: ignore
         except Exception as e:
             raise MottleException(f"Failed to get current user: {e}")
+
+    async def get_current_user_playback(self) -> CurrentlyPlayingContext:
+        try:
+            return await self.spotify_client.playback()  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to get current user's playback: {e}")
 
     async def get_artists(self, query: str) -> list[FullArtist]:
         try:

@@ -56,6 +56,9 @@
                             <a href="#">{{ request.session.spotify_user_display_name }}</a>
                             <ul>
                                 <li>
+                                    <a href="{% url 'playback' %}" hx-boost="true" hx-indicator="#spinner">Now Playing</a>
+                                </li>
+                                <li>
                                     <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner">Playlists</a>
                                 </li>
                                 {% comment %}<li>{% endcomment %}

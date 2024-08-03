@@ -145,6 +145,14 @@ def index(request: HttpRequest) -> HttpResponse:
 
 
 @require_GET
+async def playback(request: HttpRequest) -> HttpResponse:
+    playback = await request.spotify_client.get_current_user_playback()  # type: ignore[attr-defined]
+    print(playback)
+    # __import__("pdb").set_trace()
+    return render(request, "web/playback.html")
+
+
+@require_GET
 async def search_artists(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("query")
 
