@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mottle"
-version = "0.14.1"
+version = "0.14.2"
 description = "Missing spotify features"
 authors = ["Andrii Yurchuk <ay@mntw.re>"]
 readme = "README.md"
