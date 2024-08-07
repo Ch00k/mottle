@@ -13,50 +13,72 @@ from .utils import MottleException, MottleSpotifyClient
 logger = logging.getLogger(__name__)
 
 
-async def get_artist_name(request: HttpRequest, artist_id: str) -> str:
-    artist_name = request.headers.get("M-ArtistName")
-
-    if artist_name is None:
-        logger.warning("Artist name not found in headers")
-        artist = await request.spotify_client.get_artist(artist_id)  # type: ignore[attr-defined]
-        artist_name = artist.name
-    else:
-        artist_name = unquote(artist_name)
-
-    return artist_name
+UNDEFINED = "UNDEFINED"
 
 
-async def get_playlist_name(request: HttpRequest, playlist_id: str) -> str:
-    playlist_name = request.headers.get("M-PlaylistName")
+# TODO: Refactor the following two classses to use a common base class
+class PlaylistMetadata:
+    def __init__(self, request: HttpRequest, playlist_id: str):
+        self.spotify_client = request.spotify_client  # type: ignore[attr-defined]
+        self.playlist_id = playlist_id
 
-    if playlist_name is None:
-        logger.warning("Playlist name not found in headers")
-        playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
-        playlist_name = playlist.name
-    else:
-        playlist_name = unquote(playlist_name)
+        headers = request.headers
+        self._name = headers.get("M-PlaylistName", UNDEFINED)
+        self._owner_id = headers.get("M-PlaylistOwnerID", UNDEFINED)
+        self._snapshot_id = headers.get("M-PlaylistSnapshotID", UNDEFINED)
 
-    return playlist_name
+        self.playlist_data_fetched = False
+
+    @property
+    async def name(self) -> str:
+        if self._name == UNDEFINED:
+            await self.fetch_playlist_data()
+        return unquote(self._name)
+
+    @property
+    async def owner_id(self) -> str:
+        if self._owner_id == UNDEFINED:
+            await self.fetch_playlist_data()
+        return unquote(self._owner_id)
+
+    @property
+    async def snapshot_id(self) -> str:
+        if self._snapshot_id == UNDEFINED:
+            await self.fetch_playlist_data()
+        return unquote(self._snapshot_id)
+
+    async def fetch_playlist_data(self) -> None:
+        if not self.playlist_data_fetched:
+            playlist = await self.spotify_client.get_playlist(self.playlist_id)
+
+            self._name = playlist.name
+            self._owner_id = playlist.owner.id
+            self._snapshot_id = playlist.snapshot_id
+            self.playlist_data_fetched = True
 
 
-async def get_playlist_data(request: HttpRequest, playlist_id: str) -> tuple:
-    playlist_name = request.headers.get("M-PlaylistName")
-    playlist_owner_id = request.headers.get("M-PlaylistOwnerID")
-    playlist_snapshot_id = request.headers.get("M-PlaylistSnapshotID")
+class ArtistMetadata:
+    def __init__(self, request: HttpRequest, artist_id: str):
+        self.spotify_client = request.spotify_client  # type: ignore[attr-defined]
+        self.artist_id = artist_id
 
-    if playlist_name is None or playlist_owner_id is None or playlist_snapshot_id is None:
-        logger.warning("Playlist name, owner ID, or snapshot ID not found in headers")
+        headers = request.headers
+        self._name = headers.get("M-ArtistName", UNDEFINED)
 
-        playlist = await request.spotify_client.get_playlist(playlist_id)  # type: ignore[attr-defined]
-        playlist_name = playlist.name
-        playlist_owner_id = playlist.owner.id
-        playlist_snapshot_id = playlist.snapshot_id
-    else:
-        playlist_name = unquote(playlist_name)
-        playlist_owner_id = unquote(playlist_owner_id)
-        playlist_snapshot_id = unquote(playlist_snapshot_id)
+        self.artist_data_fetched = False
 
-    return playlist_name, playlist_owner_id, playlist_snapshot_id
+    @property
+    async def name(self) -> str:
+        if self._name == UNDEFINED:
+            await self.fetch_artist_data()
+        return unquote(self._name)
+
+    async def fetch_artist_data(self) -> None:
+        if not self.artist_data_fetched:
+            artist = await self.spotify_client.get_artist(self.artist_id)
+
+            self._name = artist.name
+            self.artist_data_fetched = True
 
 
 def get_duplicates_message(items: list) -> str:
@@ -76,7 +98,8 @@ def get_duplicates_message(items: list) -> str:
 
 
 async def get_playlist_modal_response(request: HttpRequest, playlist_id: str, template_path: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
 
     try:
         playlists = await request.spotify_client.get_current_user_playlists()  # type: ignore[attr-defined]

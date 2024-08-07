@@ -27,7 +27,7 @@
                                 {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
                             </a>
                             <a href=""
-                               hx-delete="{% url 'watch_playlist' watched_playlist.id %}"
+                               hx-post="{% url 'unwatch_playlist' watched_playlist.id %}"
                                hx-include="[name='watching-playlist-id']"
                                hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
                                hx-target="closest tr"
@@ -40,7 +40,6 @@
         {% else %}
             <p>No playlists watched</p>
         {% endif %}
-
         <label>Artists watched for new releases</label>
         {% if watched_artists %}
             <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
@@ -61,13 +60,25 @@
                                hx-indicator="#spinner">
                                 {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
                             </a>
-                            {% comment %}<a href=""{% endcomment %}
-                            {% comment %}   hx-delete="{% url 'watch_playlist' watched_playlist.id %}"{% endcomment %}
-                            {% comment %}   hx-include="[name='watching-playlist-id']"{% endcomment %}
-                            {% comment %}   hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"{% endcomment %}
-                            {% comment %}   hx-target="closest tr"{% endcomment %}
-                            {% comment %}   hx-swap="outerHTML"{% endcomment %}
-                            {% comment %}   hx-indicator="#spinner">{% include "web/icons/unfollow.html" %}</a>{% endcomment %}
+                            {% comment %}<a href=""
+   {% endcomment %}
+   {% comment %}
+   hx-delete="{% url 'watch_playlist' watched_playlist.id %}"
+   {% endcomment %}
+   {% comment %}
+   hx-include="[name='watching-playlist-id']"
+   {% endcomment %}
+   {% comment %}
+   hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
+   {% endcomment %}
+   {% comment %}
+   hx-target="closest tr"
+   {% endcomment %}
+   {% comment %}
+   hx-swap="outerHTML"
+   {% endcomment %}
+   {% comment %}
+   hx-indicator="#spinner">{% include "web/icons/unfollow.html" %}</a>{% endcomment %}
                         </td>
                     </tr>
                 {% endfor %}

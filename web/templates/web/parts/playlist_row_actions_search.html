@@ -34,7 +34,7 @@
     {% if playlist.owner.id != request.session.spotify_user_spotify_id %}
         {% if is_being_followed %}
             <a href=""
-               hx-delete="{% url 'playlist' playlist.id %}"
+               hx-post="{% url 'unfollow_playlist' playlist.id %}"
                hx-confirm="Are you sure you want to unfollow playlist {{ playlist.name }}?"
                hx-target="closest tr"
                hx-swap="outerHTML"
@@ -42,7 +42,7 @@
                hx-headers='{"M-Operation": "search_unfollow"}'>{% include "web/icons/unfollow.html" %}</a>
         {% else %}
             <a href=""
-               hx-put="{% url 'playlist' playlist.id %}"
+               hx-post="{% url 'follow_playlist' playlist.id %}"
                hx-confirm="Are you sure you want to follow playlist {{ playlist.name }}?"
                hx-target="closest tr"
                hx-swap="outerHTML"

@@ -14,13 +14,7 @@ from .middleware import get_token_scope_changes
 from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, SpotifyAuthRequest, SpotifyUser
 from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
-from .views_utils import (
-    get_artist_name,
-    get_duplicates_message,
-    get_playlist_data,
-    get_playlist_modal_response,
-    get_playlist_name,
-)
+from .views_utils import ArtistMetadata, PlaylistMetadata, get_duplicates_message, get_playlist_modal_response
 
 require_DELETE = require_http_methods(["DELETE"])
 
@@ -203,7 +197,8 @@ async def search_playlists(request: HttpRequest) -> HttpResponse:
 
 @require_http_methods(["GET", "POST"])
 async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
-    artist_name = await get_artist_name(request, artist_id)
+    artist_metadata = ArtistMetadata(request, artist_id)
+    artist_name = await artist_metadata.name
 
     try:
         all_albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]
@@ -298,21 +293,22 @@ async def playlists(request: HttpRequest) -> HttpResponse:
     return render(request, "web/playlists.html", {"playlists": playlists, "watching_playlists": watching_playlists})
 
 
-@require_GET
-async def followed_artists(request: HttpRequest) -> HttpResponse:
-    try:
-        artists = await request.spotify_client.get_current_user_followed_artists()  # type: ignore[attr-defined]
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get followed artists")
+# @require_GET
+# async def followed_artists(request: HttpRequest) -> HttpResponse:
+#     try:
+#         artists = await request.spotify_client.get_current_user_followed_artists()  # type: ignore[attr-defined]
+#     except MottleException as e:
+#         logger.exception(e)
+#         return HttpResponseServerError("Failed to get followed artists")
 
-    context = {"artists": artists}
-    return render(request, "web/followed_artists.html", context)
+#     context = {"artists": artists}
+#     return render(request, "web/followed_artists.html", context)
 
 
 @require_http_methods(["GET", "POST"])
 async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
     playlist = await aget_object_or_404(
         Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
     )
@@ -378,60 +374,60 @@ async def accept_playlist_update(request: HttpRequest, update_id: str) -> HttpRe
     return HttpResponse()
 
 
-@require_http_methods(["GET", "PUT", "DELETE"])
-async def playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+@require_GET
+async def playlist_items(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
 
-    if request.method == "GET":
-        try:
-            playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to get playlist items")
+    try:
+        playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get playlist items")
 
-        context = {"playlist_name": playlist_name, "playlist_items": playlist_items}
-        return render(request, "web/playlist.html", context)
-    elif request.method == "PUT":
-        # TODO: The status of playlist follow does not survive page refresh
-        try:
-            await request.spotify_client.follow_playlist(playlist_id)  # type: ignore[attr-defined]
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to follow playlist")
+    context = {"playlist_name": playlist_name, "playlist_items": playlist_items}
+    return render(request, "web/playlist.html", context)
 
-        return render(
-            request,
-            "web/parts/playlist_row.html",
-            {"playlist": playlist, "actions": "search", "is_being_followed": True},
-        )
+
+@require_POST
+async def follow_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    # TODO: The status of playlist follow does not survive page refresh
+    try:
+        await request.spotify_client.follow_playlist(playlist_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to follow playlist")
+
+    return render(request, "web/parts/playlist_row.html", {"actions": "search", "is_being_followed": True})
+
+
+@require_POST
+async def unfollow_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    try:
+        await request.spotify_client.unfollow_playlist(playlist_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to unfollow playlist")
     else:
         try:
-            await request.spotify_client.unfollow_playlist(playlist_id)  # type: ignore[attr-defined]
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to unfollow playlist")
+            db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
+        except Playlist.DoesNotExist:
+            logger.info(f"Playlist {playlist_id} not found in database. Skipping")
+            pass
         else:
-            try:
-                db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
-            except Playlist.DoesNotExist:
-                logger.info(f"Playlist {playlist_id} not found in database. Skipping")
-                pass
-            else:
-                await db_playlist.unfollow()
+            await db_playlist.unfollow()
 
-        if request.headers.get("M-Operation") == "search_unfollow":
-            return render(
-                request,
-                "web/parts/playlist_row.html",
-                {"playlist": playlist, "actions": "search", "is_being_followed": False},
-            )
-        else:
-            return HttpResponse()
+    if request.headers.get("M-Operation") == "search_unfollow":
+        return render(request, "web/parts/playlist_row.html", {"actions": "search", "is_being_followed": False})
+    else:
+        return HttpResponse()
 
 
 @require_http_methods(["GET", "POST"])
 async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name, playlist_owner_id, _ = await get_playlist_data(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
+    playlist_owner_id = await playlist_metadata.owner_id
 
     if request.method == "POST":
         if playlist_owner_id != request.session["spotify_user_spotify_id"]:
@@ -492,7 +488,8 @@ async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
 
 @require_GET
 async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
 
     # TODO: This view will be navigated to from the playlist view, so playlist items could could be passed from there?
     try:
@@ -523,7 +520,8 @@ async def playlist_audio_features(request: HttpRequest, playlist_id: str) -> Htt
 
 @require_POST
 async def copy_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
 
     try:
         playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
@@ -630,7 +628,8 @@ async def merge_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse
 
 @require_GET
 async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
-    playlist_name = await get_playlist_name(request, playlist_id)
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
 
     db_playlist = await aget_object_or_404(
         Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
@@ -667,11 +666,11 @@ async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResp
     )
 
 
-@require_http_methods(["GET", "POST", "DELETE"])
-async def watch_playlist(request: HttpRequest, watched_playlist_id: str) -> HttpResponse:
+@require_http_methods(["GET", "POST"])
+async def watch_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     if request.method == "GET":
-        return await get_playlist_modal_response(request, watched_playlist_id, "web/modals/playlist_watch.html")
-    elif request.method == "POST":
+        return await get_playlist_modal_response(request, playlist_id, "web/modals/playlist_watch.html")
+    else:
         watching_playlist_id = request.POST.get("watching-playlist-id")
 
         if not watching_playlist_id:
@@ -690,31 +689,33 @@ async def watch_playlist(request: HttpRequest, watched_playlist_id: str) -> Http
 
         auto_accept = bool(request.POST.get("auto-accept", False))
         if auto_accept:
-            logger.info(
-                f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {watched_playlist_id}"
-            )
+            logger.info(f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {playlist_id}")
 
         await Playlist.watch_playlist(
             request.spotify_client,  # type: ignore[attr-defined]
             watching_playlist_id,  # type: ignore[arg-type]
-            watched_playlist_id,
+            playlist_id,
             auto_accept_updates=auto_accept,
         )
-    else:
-        # https://stackoverflow.com/a/22294734
-        body = QueryDict(request.body)  # pyright: ignore
-        watching_playlist_id = body.get("watching-playlist-id")
 
-        if not watching_playlist_id:
-            return HttpResponseBadRequest("No watching playlist ID provided")
+        return HttpResponse()
 
-        watching_playlist = await aget_object_or_404(
-            Playlist, spotify_id=watching_playlist_id, spotify_user__id=request.session["spotify_user_id"]
-        )
-        watched_playlist = await aget_object_or_404(Playlist, spotify_id=watched_playlist_id)
 
-        await watching_playlist.unwatch(watched_playlist)
+@require_POST
+async def unwatch_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    # https://stackoverflow.com/a/22294734
+    body = QueryDict(request.body)  # pyright: ignore
+    watching_playlist_id = body.get("watching-playlist-id")
 
+    if not watching_playlist_id:
+        return HttpResponseBadRequest("No watching playlist ID provided")
+
+    watching_playlist = await aget_object_or_404(
+        Playlist, spotify_id=watching_playlist_id, spotify_user__id=request.session["spotify_user_id"]
+    )
+    watched_playlist = await aget_object_or_404(Playlist, spotify_id=playlist_id)
+
+    await watching_playlist.unwatch(watched_playlist)
     return HttpResponse()
 
 
