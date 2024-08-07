@@ -20,7 +20,7 @@
                                    name="watched-playlist-id"
                                    value="{{ watched_playlist.id }}">
                             <a href=""
-                               hx-post="{% url 'auto_accept_updates' playlist_id %}"
+                               hx-post="{% url 'auto_accept_playlist_updates' playlist_id %}"
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">
@@ -54,7 +54,7 @@
                                    name="watched-artist-id"
                                    value="{{ watched_artist.id }}">
                             <a href=""
-                               hx-post="{% url 'auto_accept_updates' playlist_id %}"
+                               hx-post="{% url 'auto_accept_playlist_updates' playlist_id %}"
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">

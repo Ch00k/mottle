@@ -24,7 +24,11 @@ urlpatterns = [
     path("playlist/<str:playlist_id>/deduplicate/", views.deduplicate_playlist, name="deduplicate_playlist"),
     path("playlist/<str:playlist_id>/configuration/", views.configure_playlist, name="configure_playlist"),
     path("playlist/<str:playlist_id>/updates/", views.playlist_updates, name="playlist_updates"),
-    path("playlist/<str:playlist_id>/auto-accept-updates/", views.auto_accept_updates, name="auto_accept_updates"),
+    path(
+        "playlist/<str:playlist_id>/auto-accept-updates/",
+        views.auto_accept_playlist_updates,
+        name="auto_accept_playlist_updates",
+    ),
     path(
         "playlist/<str:playlist_id>/updates/<str:update_id>/accept/",
         views.accept_playlist_update,

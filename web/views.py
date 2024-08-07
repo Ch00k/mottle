@@ -721,7 +721,7 @@ async def unwatch_playlist(request: HttpRequest, playlist_id: str) -> HttpRespon
 
 
 @require_POST
-async def auto_accept_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
+async def auto_accept_playlist_updates(request: HttpRequest, playlist_id: str) -> HttpResponse:
     watching_playlist = await aget_object_or_404(
         Playlist, spotify_id=playlist_id, spotify_user__id=request.session["spotify_user_id"]
     )
