@@ -24,7 +24,7 @@
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">
-                                {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
+                                {% include "web/icons/accept.html" with enabled=auto_accept_updates title="Auto accept updates" %}
                             </a>
                             <a href=""
                                hx-post="{% url 'unwatch_playlist' watched_playlist.id %}"
@@ -58,7 +58,7 @@
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">
-                                {% include "web/icons/accept.html" with enabled=auto_accept_updates %}
+                                {% include "web/icons/accept.html" with enabled=auto_accept_updates title="Auto accept updates" %}
                             </a>
                             {% comment %}<a href=""
    {% endcomment %}

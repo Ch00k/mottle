@@ -18,7 +18,7 @@
        hx-target="closest tr"
        hx-swap="afterend"
        hx-indicator="#spinner"
-       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" %}</a>
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" with title="Create a copy" %}</a>
     <a href=""
        hx-get="{% url 'merge_playlist' playlist.id %}"
        hx-target="body"
@@ -42,7 +42,7 @@
         </a>
         <a href="{% url 'playlist_updates' playlist.id %}"
            hx-boost="true"
-           hx-indicator="#spinner">{% include "web/icons/update.html" %}</a>
+           hx-indicator="#spinner">{% include "web/icons/update.html" with title="Check for updates" %}</a>
     {% endif %}
     <a href=""
        hx-post="{% url 'unfollow_playlist' playlist.id %}"
