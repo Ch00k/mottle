@@ -16,11 +16,13 @@ from tekore.model import (
     FullArtist,
     FullArtistOffsetPaging,
     FullPlaylist,
+    FullPlaylistTrack,
     FullTrack,
     Image,
     Model,
     PlaylistTrack,
     PrivateUser,
+    SavedTrack,
     SimpleAlbum,
     SimplePlaylist,
     SimpleTrack,
@@ -44,6 +46,19 @@ class MottleSpotifyClient:
             return await self.spotify_client.current_user()  # pyright: ignore
         except Exception as e:
             raise MottleException(f"Failed to get current user: {e}")
+
+    async def get_current_user_saved_tracks(self) -> list[SavedTrack]:
+        func = partial(self.spotify_client.saved_tracks)
+        return await get_all_offset_paging_items(func)  # pyright: ignore
+
+    async def delete_current_user_saved_tracks(self, track_ids: list[str]) -> None:
+        try:
+            with chunked_off(self.spotify_client):
+                await perform_parallel_chunked_requests(
+                    self.spotify_client.saved_tracks_delete, track_ids, chunk_size=50
+                )
+        except Exception as e:
+            raise MottleException(f"Failed to delete saved tracks: {e}")
 
     async def get_artists(self, query: str) -> list[FullArtist]:
         try:
@@ -220,7 +235,8 @@ class MottleSpotifyClient:
 
     async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
         func = partial(self.spotify_client.playlist_items, playlist_id)
-        return await get_all_offset_paging_items(func)  # pyright: ignore
+        playlist_tracks = await get_all_offset_paging_items(func)  # pyright: ignore
+        return [item for item in playlist_tracks if isinstance(item.track, FullPlaylistTrack)]  # pyright: ignore
 
     async def get_playlist_tracks_audio_features(self, track_ids: list[str]) -> list[AudioFeatures]:
         try:
