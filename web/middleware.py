@@ -12,6 +12,13 @@ from .utils import MottleException, MottleSpotifyClient
 logger = logging.getLogger(__name__)
 
 
+async def get_token_scope_changes(spotify_auth: SpotifyAuth) -> tuple[list, list]:
+    common = set(spotify_auth.token_scope) & set(settings.SPOTIFY_TOKEN_SCOPE)
+    missing = set(settings.SPOTIFY_TOKEN_SCOPE) - common
+    redundant = set(spotify_auth.token_scope) - common
+    return list(missing), list(redundant)
+
+
 class SpotifyAuthMiddleware:
     async_capable = True
     sync_capable = False
@@ -46,6 +53,14 @@ class SpotifyAuthMiddleware:
 
         if spotify_auth.refresh_token is None:
             logger.debug(f"{spotify_auth} refresh_token is None")
+            return redirect_to_login(request.get_full_path())
+
+        token_permissions_added, token_permissions_removed = await get_token_scope_changes(spotify_auth)
+        if token_permissions_added or token_permissions_removed:
+            logger.debug(
+                f"{spotify_auth} token scope is outdated: "
+                f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
+            )
             return redirect_to_login(request.get_full_path())
 
         try:

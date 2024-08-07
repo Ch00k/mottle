@@ -94,6 +94,7 @@ class SpotifyAuth(BaseModel):
     access_token = EncryptedCharField(max_length=450, null=True)
     refresh_token = EncryptedCharField(max_length=300, null=True)
     expires_at = models.DateTimeField(null=True)
+    token_scope = models.JSONField()
 
     def __str__(self) -> str:
         return f"<SpotifyAuth {self.id} expires_at={self.expires_at}>"

@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from tekore.model import AlbumType
 
 from .jobs import check_playlist_for_updates
+from .middleware import get_token_scope_changes
 from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, SpotifyAuthRequest, SpotifyUser
 from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
@@ -43,6 +44,7 @@ async def login(request: HttpRequest) -> HttpResponse:
         if spotify_user_id is None:
             return render(request, "web/login.html", {"redirect_uri": redirect_uri})
         else:
+            # TODO: This duplicates what already exists in `SpotifyAuthMiddleware.__call__`
             try:
                 spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
             except SpotifyAuth.DoesNotExist:
@@ -57,6 +59,14 @@ async def login(request: HttpRequest) -> HttpResponse:
 
             if spotify_auth.refresh_token is None:
                 logger.debug(f"{spotify_auth} refresh_token is None")
+                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+
+            token_permissions_added, token_permissions_removed = await get_token_scope_changes(spotify_auth)
+            if token_permissions_added or token_permissions_removed:
+                logger.debug(
+                    f"{spotify_auth} token scope is outdated: "
+                    f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
+                )
                 return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
             try:

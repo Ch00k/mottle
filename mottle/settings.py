@@ -130,6 +130,8 @@ SPOTIFY_TOKEN_SCOPE = env.list(
         "user-follow-modify",
         "user-read-email",
         "ugc-image-upload",
+        "user-library-read",
+        "user-library-modify",
     ],
 )
 
