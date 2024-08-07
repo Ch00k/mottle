@@ -1,6 +1,6 @@
 {% load tekore_model_extras %}
 <td>
-    <a href="{% url 'deduplicate' playlist.id %}"
+    <a href="{% url 'deduplicate_playlist' playlist.id %}"
        hx-boost="true"
        hx-indicator="#spinner"
        hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}", "M-PlaylistSnapshotID": "{{ playlist.snapshot_id }}"}'>

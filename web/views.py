@@ -16,8 +16,6 @@ from .spotify import get_auth
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import ArtistMetadata, PlaylistMetadata, get_duplicates_message, get_playlist_modal_response
 
-require_DELETE = require_http_methods(["DELETE"])
-
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
 logger = logging.getLogger(__name__)
@@ -360,9 +358,12 @@ async def playlist_updates(request: HttpRequest, playlist_id: str) -> HttpRespon
 
 
 @require_POST
-async def accept_playlist_update(request: HttpRequest, update_id: str) -> HttpResponse:
+async def accept_playlist_update(request: HttpRequest, playlist_id: str, update_id: str) -> HttpResponse:
     update = await aget_object_or_404(
-        PlaylistUpdate, id=update_id, target_playlist__spotify_user__id=request.session["spotify_user_id"]
+        PlaylistUpdate,
+        id=update_id,
+        target_playlist__spotify_id=playlist_id,
+        target_playlist__spotify_user__id=request.session["spotify_user_id"],
     )
 
     try:
@@ -424,7 +425,7 @@ async def unfollow_playlist(request: HttpRequest, playlist_id: str) -> HttpRespo
 
 
 @require_http_methods(["GET", "POST"])
-async def deduplicate(request: HttpRequest, playlist_id: str) -> HttpResponse:
+async def deduplicate_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist_name = await playlist_metadata.name
     playlist_owner_id = await playlist_metadata.owner_id

@@ -45,7 +45,7 @@
             </tbody>
         </table>
         <br>
-        <button hx-post="{% url 'accept_playlist_update' update_id %}"
+        <button hx-post="{% url 'accept_playlist_update' playlist_id update_id %}"
                 hx-confirm="Are you sure you want to add new tracks to playlist?"
                 hx-target="closest div"
                 hx-swap="outerHTML"
