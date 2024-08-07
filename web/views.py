@@ -134,6 +134,7 @@ async def callback(request: HttpRequest) -> HttpResponse:
             "access_token": token.access_token,
             "refresh_token": token.refresh_token,
             "expires_at": datetime.fromtimestamp(token.expires_at),
+            "token_scope": list(token.scope),
         },
     )
     logger.debug(spotify_auth)
