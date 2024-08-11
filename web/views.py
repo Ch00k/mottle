@@ -15,7 +15,13 @@ from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, 
 from .spotify import get_auth
 from .tasks import task_upload_cover_image
 from .utils import MottleException, MottleSpotifyClient, list_has
-from .views_utils import ArtistMetadata, PlaylistMetadata, get_duplicates_message, get_playlist_modal_response
+from .views_utils import (
+    ArtistMetadata,
+    PlaylistMetadata,
+    get_duplicates_message,
+    get_playlist_modal_response,
+    get_track_modal_response,
+)
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -817,3 +823,42 @@ async def auto_accept_playlist_updates(request: HttpRequest, playlist_id: str) -
     await config.asave()
 
     return render(request, "web/icons/accept.html", {"enabled": new_setting})
+
+
+@require_GET
+async def saved_tracks(request: HttpRequest) -> HttpResponse:
+    try:
+        tracks = await request.spotify_client.get_current_user_saved_tracks()  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get saved tracks")
+
+    return render(request, "web/saved_tracks.html", {"tracks": tracks})
+
+
+@require_POST
+async def delete_saved_track(request: HttpRequest, track_id: str) -> HttpResponse:
+    try:
+        await request.spotify_client.delete_current_user_saved_tracks([track_id])  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to delete saved track")
+
+    return HttpResponse()
+
+
+@require_http_methods(["GET", "POST"])
+async def add_track_to_playlist(request: HttpRequest, track_id: str) -> HttpResponse:
+    if request.method == "GET":
+        return await get_track_modal_response(request, track_id, "web/modals/track_add_to_playlist.html")
+    else:
+        playlist_id = request.POST.get("playlist-id")
+        try:
+            await request.spotify_client.add_tracks_to_playlist(  # type: ignore[attr-defined]
+                playlist_id, [f"spotify:track:{track_id}"]
+            )
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to add track to playlist")
+
+        return HttpResponse()

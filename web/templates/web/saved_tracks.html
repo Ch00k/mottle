@@ -1,0 +1,59 @@
+{% extends "web/base.html" %}
+{% load tekore_model_extras %}
+{% block title %}
+    Saved tracks
+{% endblock title %}
+{% block page_title %}
+    Saved tracks
+{% endblock page_title %}
+{% block content %}
+    <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th class="sortable" onClick="sortTable(this)">Artist</th>
+                <th class="sortable" onClick="sortTable(this)">Album</th>
+                <th class="sortable" onClick="sortTable(this)">Track</th>
+                <th class="sortable" onClick="sortTable(this)">Duration</th>
+                <th class="sortable" onClick="sortTable(this)">Added</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in tracks %}
+                <tr>
+                    <td>
+                        <img src="{{ item.track.album.images | smallest_image | default_image:70 }}" />
+                    </td>
+                    <td>
+                        {% for artist in item.track.artists %}
+                            <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                            <br>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ item.track.album | spotify_url }}">{{ item.track.album.name }}</a>
+                    </td>
+                    <td>
+                        <a href="{{ item.track | spotify_url }}">{{ item.track.name }}</a>
+                    </td>
+                    <td>{{ item.track.duration_ms | duration_humanized }}</td>
+                    <td>{{ item.added_at | date:"Y-m-d" }}</td>
+                    <td>
+                        <a href=""
+                           hx-get="{% url 'add_track_to_playlist' item.track.id %}"
+                           hx-target="body"
+                           hx-swap="beforeend"
+                           hx-indicator="#spinner">{% include "web/icons/add.html" with title="Add to playlist" %}</a>
+                        <a href=""
+                           hx-post="{% url 'delete_saved_track' item.track.id %}"
+                           hx-confirm="Are you sure you want to delete track {{ item.track.name }}?"
+                           hx-target="closest tr"
+                           hx-swap="outerHTML"
+                           hx-indicator="#spinner">{% include "web/icons/delete.html" %}</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock content %}

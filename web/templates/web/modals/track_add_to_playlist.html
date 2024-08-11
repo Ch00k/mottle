@@ -1,0 +1,16 @@
+{% load static %}
+<div id="modal" _="on closeModal remove me">
+    <div class="modal-underlay" _="on click trigger closeModal"></div>
+    <div class="modal-content">
+        <form>
+            <label for="playlist-name">Playlist</label>
+            <select name="playlist-id">
+                {% for playlist in playlists %}<option value="{{ playlist.id }}">{{ playlist.name }}</option>{% endfor %}
+            </select>
+            <button hx-post="{% url 'add_track_to_playlist' track_id %}"
+                    hx-target="#modal"
+                    hx-swap="delete"
+                    hx-indicator="#spinner">Add</button>
+        </form>
+    </div>
+</div>

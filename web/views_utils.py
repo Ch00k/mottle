@@ -141,6 +141,22 @@ async def get_playlist_modal_response(request: HttpRequest, playlist_id: str, te
     )
 
 
+async def get_track_modal_response(request: HttpRequest, track_id: str, template_path: str) -> HttpResponse:
+    try:
+        playlists = await request.spotify_client.get_current_user_playlists()  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        raise
+
+    # TODO: This could probably be made more efficient by filtering playlist inside get_current_user_playlists
+    playlists = [playlist for playlist in playlists if playlist.owner.id == request.session["spotify_user_spotify_id"]]
+    return render(
+        request,
+        template_path,
+        context={"playlists": playlists, "track_id": track_id},
+    )
+
+
 async def compile_email(
     updates: dict[str, list[dict[str, Any]]],
     spotify_client: MottleSpotifyClient,
