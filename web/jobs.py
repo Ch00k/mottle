@@ -53,7 +53,7 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
             )
 
         if watched_artist is not None:
-            logger.info(f"Processing watched artist {watched_playlist}")
+            logger.info(f"Processing watched artist {watched_artist}")
 
             watched_artist_all_album_ids = await watched_artist.get_album_ids(spotify_client)
             ignored_album_ids = config.albums_ignored or []
