@@ -1,11 +1,27 @@
-from typing import Optional
+import asyncio
+import logging
+from time import time
+from typing import Coroutine, Optional, Union
 
 from django.conf import settings
 from httpx import AsyncClient, Client, Timeout
-from tekore import AsyncSender, Credentials, RetryingSender, Spotify, SyncSender, Token, UserAuth, scope
+from tekore import (
+    AsyncSender,
+    Credentials,
+    Request,
+    Response,
+    RetryingSender,
+    Spotify,
+    SyncSender,
+    Token,
+    UserAuth,
+    scope,
+)
 from tekore._client.chunked import chunked, return_last
 from tekore._client.decor import scopes, send_and_process
 from tekore._client.process import top_item
+
+logger = logging.getLogger(__name__)
 
 
 # https://github.com/felix-hilden/tekore/issues/321
@@ -36,6 +52,62 @@ class SpotifyClient(Spotify):
         )
 
 
+class MottleRetryingSender(RetryingSender):
+    def send(self, request: Request) -> Union[Response, Coroutine[None, None, Response]]:
+        """Delegate request to underlying sender and retry if failed."""
+        if self.is_async:
+            return self._async_send(request)
+
+        tries = self.retries + 1
+        delay_seconds = 1
+
+        while tries > 0:
+            r = self.sender.send(request)
+
+            if r.status_code == 401 and tries > 1:  # pyright: ignore
+                logger.warning(f"Retrying request {request.method} {request.url} due to 401")
+                tries -= 1
+                time.sleep(delay_seconds)
+                delay_seconds *= 2
+            elif r.status_code == 429:  # pyright: ignore
+                logger.warning(f"Retrying request {request.method} {request.url} due to 429")
+                seconds = r.headers.get("Retry-After", 1)  # pyright: ignore
+                time.sleep(int(seconds) + 1)
+            elif r.status_code >= 500 and tries > 1:  # pyright: ignore
+                logger.warning(
+                    f"Retrying request {request.method} {request.url} due to {r.status_code}"  # pyright: ignore
+                )
+                tries -= 1
+                time.sleep(delay_seconds)
+                delay_seconds *= 2
+            else:
+                return r
+
+    async def _async_send(self, request: Request) -> Response:
+        tries = self.retries + 1
+        delay_seconds = 1
+
+        while tries > 0:
+            r = await self.sender.send(request)  # pyright: ignore
+
+            if r.status_code == 401 and tries > 1:
+                logger.warning(f"Retrying request {request.method} {request.url} due to 401")
+                tries -= 1
+                await asyncio.sleep(delay_seconds)
+                delay_seconds *= 2
+            elif r.status_code == 429:
+                logger.warning(f"Retrying request {request.method} {request.url} due to 429")
+                seconds = r.headers.get("Retry-After", 1)
+                await asyncio.sleep(int(seconds) + 1)
+            elif r.status_code >= 500 and tries > 1:
+                logger.warning(f"Retrying request {request.method} {request.url} due to {r.status_code}")
+                tries -= 1
+                await asyncio.sleep(delay_seconds)
+                delay_seconds *= 2
+            else:
+                return r
+
+
 def get_auth(credentials: Credentials, scope: str, state: Optional[str] = None) -> UserAuth:
     auth = UserAuth(cred=credentials, scope=scope)
 
@@ -61,7 +133,7 @@ def get_client(
         tekore_sender_class = SyncSender
 
     httpx_client = httpx_client_class(timeout=Timeout(http_timeout))
-    sender = RetryingSender(retries=retries, sender=tekore_sender_class(httpx_client))
+    sender = MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client))
     return SpotifyClient(token=access_token, sender=sender, max_limits_on=max_limits_on, chunked_on=chunked_on)
 
 
