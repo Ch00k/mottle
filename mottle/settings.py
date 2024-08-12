@@ -75,7 +75,7 @@ ASGI_APPLICATION = "mottle.asgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        "ENGINE": "django_prometheus.db.backends.sqlite3",
         "NAME": env.path("DATABASE_FILE", BASE_DIR / "db.sqlite3"),
     }
 }
