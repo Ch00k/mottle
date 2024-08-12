@@ -2,11 +2,12 @@
 # pyright: reportCallIssue=false, reportArgumentType=false
 # mypy: disable-error-code="arg-type"
 
-from django.urls import path
+from django.urls import include, path
 
 from . import views
 
 urlpatterns = [
+    path("", include("django_prometheus.urls")),
     path("", views.index, name="index"),
     path("search/artists/", views.search_artists, name="search_artists"),
     path("search/playlists/", views.search_playlists, name="search_playlists"),

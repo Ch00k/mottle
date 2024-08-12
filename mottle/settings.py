@@ -11,7 +11,9 @@ env = Env()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env.str("SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", False)
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
+
+# web is the name of the Docker Compose service, and is needed for Prometheus scraping target
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "web", "mottle.it", "www.mottle.it"]
 CSRF_TRUSTED_ORIGINS = ["https://mottle.it", "https://www.mottle.it"]
 SESSION_COOKIE_DOMAIN = env.str("SESSION_COOKIE_DOMAIN", None)
 # SESSION_COOKIE_AGE = 3_153_600_000  # 100 years
@@ -28,9 +30,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "web",
     "django_htmx",
+    "django_prometheus",
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -40,12 +44,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "web.middleware.SpotifyAuthMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "mottle.urls"
 
 LOGIN_URL = "/login/"
-AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/"]
+AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/", "/metrics"]
 
 TEMPLATES = [
     {
@@ -150,6 +155,8 @@ MAILERSEND_API_TOKEN = env.str("MAILERSEND_API_TOKEN")
 MAILERSEND_HTTP_TIMEOUT = env.int("MAILERSEND_HTTP_TIMEOUT", 15)
 MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL")
 MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
+
+PROMETHEUS_METRIC_NAMESPACE = "mottle"
 
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
