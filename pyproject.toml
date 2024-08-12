@@ -16,6 +16,7 @@ whitenoise = "^6.6.0"
 tekore = "^5.4.0"
 sentry-sdk = {extras = ["django"], version = "^1.44.1"}
 django-prometheus = "^2.3.1"
+prometheus-client = "^0.20.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"
