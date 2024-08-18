@@ -1,3 +1,8 @@
+.git
+.direnv
+.envrc
+.mypy_cache
+.pytest_cache
 .pre-commit-config.yaml
 db.sqlite3
 Makefile
