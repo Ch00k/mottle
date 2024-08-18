@@ -66,7 +66,8 @@ class MottleRetryingSender(RetryingSender):
         while tries > 0:
             r = self.sender.send(request)
 
-            SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
+            if r.status_code >= 400:
+                SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
 
             if r.status_code == 401 and tries > 1:  # pyright: ignore
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
@@ -94,7 +95,8 @@ class MottleRetryingSender(RetryingSender):
         while tries > 0:
             r = await self.sender.send(request)  # pyright: ignore
 
-            SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
+            if r.status_code >= 400:
+                SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
 
             if r.status_code == 401 and tries > 1:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")

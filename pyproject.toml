@@ -4,7 +4,11 @@ version = "0.15.3"
 description = "Missing spotify features"
 authors = ["Andrii Yurchuk <ay@mntw.re>"]
 readme = "README.md"
-packages = [{ include = "mottle" }, { include = "web" }]
+packages = [
+  { include = "mottle" },
+  { include = "web" },
+  { include = "scheduler" },
+]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -14,9 +18,10 @@ django-htmx = "^1.17.3"
 daphne = "^4.1.0"
 whitenoise = "^6.6.0"
 tekore = "^5.4.0"
-sentry-sdk = {extras = ["django"], version = "^1.44.1"}
+sentry-sdk = { extras = ["django"], version = "^1.44.1" }
 django-prometheus = "^2.3.1"
 prometheus-client = "^0.20.0"
+apscheduler = "^3.10.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"
@@ -31,6 +36,9 @@ pytest = "^8.2.0"
 pytest-django = "^4.8.0"
 ipython = "^8.24.0"
 
+[tool.poetry.scripts]
+scheduler = 'scheduler.run:main'
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -40,7 +48,7 @@ line-length = 120
 
 [tool.flake8]
 max-line-length = 120
-extend-ignore = ["E203"]
+extend-ignore = ["E203", "E402"]
 
 [tool.isort]
 profile = "black"
