@@ -127,7 +127,14 @@ async def check_user_playlists_for_updates(
             if update["auto_acceptable"]:
                 if user_spotify_client is None:
                     spotify_auth = await sync_to_async(lambda: user.spotify_auth)()  # pyright: ignore
-                    await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
+
+                    # TODO: This needs to happen for every update, not just once
+                    try:
+                        await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
+                    except Exception as e:
+                        logger.error(f"Failed to accept update {update}: failed to refresh token for user {user}: {e}")
+                        continue
+
                     user_spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
                 try:
