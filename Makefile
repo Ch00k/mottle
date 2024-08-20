@@ -24,7 +24,8 @@ build:
 	@if [ "$(TAG_NAME)" != "$(APP_VERSION)" ]; then echo "Tag name $(TAG_NAME) does not match app version $(APP_VERSION)" && exit 1; fi
 	@echo Building image from tag $(TAG_NAME), app version: $(APP_VERSION)
 	docker build . -t mottle:$(APP_VERSION) -t mottle:latest -t ghcr.io/ch00k/mottle:$(APP_VERSION) -t ghcr.io/ch00k/mottle:latest --build-arg APP_VERSION=$(APP_VERSION)
-	docker push --all-tags ghcr.io/ch00k/mottle
+	docker push ghcr.io/ch00k/mottle:$(APP_VERSION)
+	docker push ghcr.io/ch00k/mottle:latest
 
 deploy:
 	@$(eval APP_VERSION=$(shell poetry version --short))
