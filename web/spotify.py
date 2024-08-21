@@ -21,7 +21,7 @@ from tekore._client.chunked import chunked, return_last
 from tekore._client.decor import scopes, send_and_process
 from tekore._client.process import top_item
 
-from .metrics import SPOTIFY_RESPONSE
+from .metrics import SPOTIFY_API_RESPONSE
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class MottleRetryingSender(RetryingSender):
             r = self.sender.send(request)
 
             if r.status_code >= 400:
-                SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
+                SPOTIFY_API_RESPONSE.labels(request.method, request.url, r.status_code).inc()
 
             if r.status_code == 401 and tries > 1:  # pyright: ignore
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
@@ -96,7 +96,7 @@ class MottleRetryingSender(RetryingSender):
             r = await self.sender.send(request)  # pyright: ignore
 
             if r.status_code >= 400:
-                SPOTIFY_RESPONSE.labels(request.method, request.url, r.status_code).inc()
+                SPOTIFY_API_RESPONSE.labels(request.method, request.url, r.status_code).inc()
 
             if r.status_code == 401 and tries > 1:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
