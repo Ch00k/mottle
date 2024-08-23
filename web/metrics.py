@@ -1,7 +1,7 @@
 from prometheus_client import Counter
 
-SPOTIFY_API_RESPONSE = Counter(
-    name="spotify_api_response",
-    documentation="Spotify API response",
+SPOTIFY_API_RESPONSES = Counter(
+    name="spotify_api_responses",
+    documentation="Spotify API responses per method, URL (with Spotify IDs replaced by placeholders), and status code",
     labelnames=["method", "url", "status_code"],
 )
