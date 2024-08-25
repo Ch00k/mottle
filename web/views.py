@@ -231,10 +231,7 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
         if not requested_album_ids:
             return HttpResponseBadRequest("No albums selected")
 
-        name = request.POST.get("name")
-        if not name:
-            return HttpResponseBadRequest("No name provided")
-
+        name = request.POST.get("name", f"{artist_name} discography")
         is_public = bool(request.POST.get("is-public", False))
 
         try:
@@ -248,7 +245,7 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
         try:
             playlist = await request.spotify_client.create_playlist_with_tracks(  # type: ignore[attr-defined]
                 request.session["spotify_user_spotify_id"],
-                name=f"{artist_name} discography",
+                name=name,
                 track_uris=[track.uri for track in tracks],
                 is_public=is_public,
             )
