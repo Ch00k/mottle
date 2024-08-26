@@ -199,7 +199,9 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
     artist_name = await artist_metadata.name
 
     try:
-        all_albums = await request.spotify_client.get_artist_albums(artist_id)  # type: ignore[attr-defined]
+        all_albums = await request.spotify_client.get_artist_albums_separately_by_type(  # type: ignore[attr-defined]
+            artist_id
+        )
     except MottleException as e:
         logger.exception(e)
         return HttpResponseServerError("Failed to get albums")

@@ -90,8 +90,26 @@ class MottleSpotifyClient:
         )
         return await get_all_offset_paging_items(func)  # pyright: ignore
 
+    # https://community.spotify.com/t5/Spotify-for-Developers/Get-Artist-s-Albums-API-not-returning-all-results-for-certain/td-p/5961890
+    async def get_artist_albums_separately_by_type(
+        self, artist_id: str, album_types: Optional[list[str]] = None
+    ) -> list[SimpleAlbum]:
+
+        calls = [
+            self.get_artist_albums(artist_id, [album_type])
+            for album_type in album_types or ["album", "single", "compilation"]
+        ]
+
+        try:
+            albums = await asyncio.gather(*calls)
+        except Exception as e:
+            raise MottleException(f"Failed to get artist albums: {e}")
+
+        return list(itertools.chain(*albums))
+
     async def get_albums(self, album_ids: list[str]) -> list[FullAlbum]:
-        return await self.spotify_client.albums(album_ids)  # pyright: ignore
+        albums: list[FullAlbum] = await get_all_chunked(self.spotify_client.albums, album_ids)
+        return albums
 
     async def get_tracks(self, track_ids: list[str]) -> list[FullTrack]:
         try:
@@ -305,11 +323,20 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
         raise MottleException(f"Failed to get items: {e}")
 
     paging_total = paging[0].total if isinstance(paging, tuple) else paging.total
-    page_size = len(paging[0].items) if isinstance(paging, tuple) else len(paging.items)
+    page_size = paging[0].limit if isinstance(paging, tuple) else paging.limit
+    first_page_items: list[Model] = paging[0].items if isinstance(paging, tuple) else paging.items
+
+    logger.debug(f"Total items: {paging_total}, page size: {page_size}, items on first page: {len(first_page_items)}")
 
     # TODO: Handle this case in the template
     if not paging_total or not page_size:
         return items
+
+    # This is the case with getting artist albums. Filtering on album type still seems to return the unfiltered total of
+    # all album types which gives the following:
+    # Total items: 93, page size: 50, items on first page: 11
+    if len(first_page_items) < page_size:
+        return first_page_items
 
     calls = [func(offset=offset) for offset in range(page_size, paging_total, page_size)]
     qualname = func.func.__qualname__ if isinstance(func, partial) else func.__qualname__

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.db.models import Q
@@ -96,11 +96,20 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
     return updates
 
 
-async def check_user_playlists_for_updates(
-    user: SpotifyUser, spotify_client: MottleSpotifyClient, send_notifications: bool = False
-) -> None:
+async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications: bool = False) -> None:
     logger.info(f"Processing user {user}")
     updates: dict[str, list[dict[str, Any]]] = {}
+
+    spotify_auth = await sync_to_async(lambda: user.spotify_auth)()  # pyright: ignore
+
+    # TODO: This needs to happen for every update, not just once
+    try:
+        await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
+    except Exception as e:
+        logger.error(f"Failed to check for playlist updates for user {user}: failed to refresh token: {e}")
+        raise
+
+    spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
     async for playlist in user.playlists.filter(~Q(configs_as_watching=None)):  # pyright: ignore
         playlist_updates = await check_playlist_for_updates(playlist, spotify_client)
@@ -120,25 +129,11 @@ async def check_user_playlists_for_updates(
         logger.info(f"No updates for user {user}")
         return
 
-    user_spotify_client: Optional[MottleSpotifyClient] = None
-
     for update_list in updates.values():
         for update in update_list:
             if update["auto_acceptable"]:
-                if user_spotify_client is None:
-                    spotify_auth = await sync_to_async(lambda: user.spotify_auth)()  # pyright: ignore
-
-                    # TODO: This needs to happen for every update, not just once
-                    try:
-                        await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
-                    except Exception as e:
-                        logger.error(f"Failed to accept update {update}: failed to refresh token for user {user}: {e}")
-                        continue
-
-                    user_spotify_client = MottleSpotifyClient(spotify_auth.access_token)
-
                 try:
-                    await update["update"].accept(user_spotify_client)
+                    await update["update"].accept(spotify_client)
                 except Exception as e:
                     logger.error(f"Failed to accept update {update}: {e}")
                 else:
@@ -163,8 +158,8 @@ async def check_user_playlists_for_updates(
     ).aupdate(is_notified_of=True)
 
 
-async def check_playlists_for_updates(spotify_client: MottleSpotifyClient, send_notifications: bool = False) -> None:
+async def check_playlists_for_updates(send_notifications: bool = False) -> None:
     logger.info("Checking playlists for updates")
 
     async for user in SpotifyUser.objects.filter(~Q(playlists=None)):
-        await check_user_playlists_for_updates(user, spotify_client, send_notifications)
+        await check_user_playlists_for_updates(user, send_notifications)

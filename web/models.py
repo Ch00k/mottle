@@ -384,11 +384,13 @@ class PlaylistUpdate(BaseModel):
         update_hash = generate_playlist_update_hash(tracks_added=new_track_ids)
         logger.debug(f"PlaylistUpdate hash: {update_hash}")
 
-        logger.info(f"Checking if PlaylistUpdate with hash {update_hash} already exists")
+        logger.info(
+            f"Checking if PlaylistUpdate for target playlist {target_playlist} with hash {update_hash} already exists"
+        )
         try:
-            update = await PlaylistUpdate.objects.aget(update_hash=update_hash)
+            update = await PlaylistUpdate.objects.aget(target_playlist=target_playlist, update_hash=update_hash)
         except PlaylistUpdate.DoesNotExist:
-            logger.info(f"PlaylistUpdate with hash {update_hash} does not exist")
+            logger.info(f"PlaylistUpdate for target playlist {target_playlist} with hash {update_hash} does not exist")
             logger.info("Checking if PlaylistUpdate with the same target_playlist and source_playlist already exists")
             try:
                 outdated_update = await PlaylistUpdate.objects.aget(
@@ -428,11 +430,13 @@ class PlaylistUpdate(BaseModel):
         update_hash = generate_playlist_update_hash(albums_added=new_album_ids)
         logger.debug(f"PlaylistUpdate hash: {update_hash}")
 
-        logger.info(f"Checking if PlaylistUpdate with hash {update_hash} already exists")
+        logger.info(
+            f"Checking if PlaylistUpdate for target playlist {target_playlist} with hash {update_hash} already exists"
+        )
         try:
-            update = await PlaylistUpdate.objects.aget(update_hash=update_hash)
+            update = await PlaylistUpdate.objects.aget(target_playlist=target_playlist, update_hash=update_hash)
         except PlaylistUpdate.DoesNotExist:
-            logger.info(f"PlaylistUpdate with hash {update_hash} does not exist")
+            logger.info(f"PlaylistUpdate for target playlist {target_playlist} with hash {update_hash} does not exist")
             logger.info("Checking if PlaylistUpdate with the same target_playlist and source_artist already exists")
             try:
                 outdated_update = await PlaylistUpdate.objects.aget(
