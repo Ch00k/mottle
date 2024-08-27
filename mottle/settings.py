@@ -156,6 +156,8 @@ MAILERSEND_HTTP_TIMEOUT = env.int("MAILERSEND_HTTP_TIMEOUT", 15)
 MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL")
 MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
 
+OPENAI_API_KEY = env.str("OPENAI_API_KEY", None)
+
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
     enable_tracing=True,
