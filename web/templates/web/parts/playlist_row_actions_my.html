@@ -1,5 +1,11 @@
 {% load tekore_model_extras %}
 <td>
+    <a href=""
+       hx-get="{% url 'rename_playlist' playlist.id %}"
+       hx-target="previous .name"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistOwnerID": "{{ playlist.owner.id | urlencode }}", "M-PlaylistSnapshotID": "{{ playlist.snapshot_id }}"}'>
+        {% include "web/icons/edit.html" with title="Rename" %}
+    </a>
     <a href="{% url 'deduplicate_playlist' playlist.id %}"
        hx-boost="true"
        hx-indicator="#spinner"
@@ -18,7 +24,9 @@
        hx-target="closest tr"
        hx-swap="afterend"
        hx-indicator="#spinner"
-       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{% include "web/icons/copy.html" with title="Create a copy" %}</a>
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>
+        {% include "web/icons/copy.html" with title="Create a copy" %}
+    </a>
     <a href=""
        hx-get="{% url 'merge_playlist' playlist.id %}"
        hx-target="body"

@@ -15,6 +15,7 @@ urlpatterns = [
     path("playlists/", views.playlists, name="playlists"),
     # path("artists/", views.followed_artists, name="artists"),
     path("playlist/<str:playlist_id>/", views.playlist_items, name="playlist"),
+    path("playlist/<str:playlist_id>/rename/", views.rename_playlist, name="rename_playlist"),
     path("playlist/<str:playlist_id>/follow/", views.follow_playlist, name="follow_playlist"),
     path("playlist/<str:playlist_id>/unfollow/", views.unfollow_playlist, name="unfollow_playlist"),
     path("playlist/<str:playlist_id>/audio-features/", views.playlist_audio_features, name="playlist_audio_features"),

@@ -666,6 +666,33 @@ async def configure_playlist(request: HttpRequest, playlist_id: str) -> HttpResp
     )
 
 
+@require_http_methods(["GET", "POST", "DELETE"])
+async def rename_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
+
+    if request.method == "GET":
+        return render(
+            request,
+            "web/parts/playlist_rename.html",
+            context={"playlist_id": playlist_id, "playlist_name": playlist_name},
+        )
+    elif request.method == "POST":
+        name = request.POST.get("name")
+        if not name:
+            return HttpResponseBadRequest("No name provided")
+
+        try:
+            await request.spotify_client.change_playlist_details(playlist_id, name)  # type: ignore[attr-defined]
+        except MottleException as e:
+            logger.exception(e)
+            return HttpResponseServerError("Failed to rename playlist")
+
+        return render(request, "web/parts/playlist_name.html", {"playlist": {"id": playlist_id, "name": name}})
+    else:
+        return render(request, "web/parts/playlist_name.html", {"playlist": {"id": playlist_id, "name": playlist_name}})
+
+
 @require_http_methods(["GET", "POST"])
 async def watch_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     if request.method == "GET":

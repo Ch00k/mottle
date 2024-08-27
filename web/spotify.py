@@ -8,6 +8,7 @@ from django.conf import settings
 from httpx import AsyncClient, Client, Timeout
 from tekore import (
     AsyncSender,
+    CachingSender,
     Credentials,
     Request,
     Response,
@@ -147,7 +148,7 @@ def get_client(
         tekore_sender_class = SyncSender
 
     httpx_client = httpx_client_class(timeout=Timeout(http_timeout))
-    sender = MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client))
+    sender = CachingSender(sender=MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client)))
     return SpotifyClient(token=access_token, sender=sender, max_limits_on=max_limits_on, chunked_on=chunked_on)
 
 

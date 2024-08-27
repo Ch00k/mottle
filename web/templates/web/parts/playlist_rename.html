@@ -1,0 +1,20 @@
+<div class="stretched">
+    <input style="margin-bottom: unset"
+           type="text"
+           name="name"
+           value="{{ playlist_name }}"
+           required>
+    <a href=""
+       hx-post="{% url 'rename_playlist' playlist_id %}"
+       hx-target="closest .name"
+       hx-include="previous input"
+       hx-headers='{"M-PlaylistName": "{{ playlist_name | urlencode }}"}'>
+        {% include "web/icons/accept.html" with enabled="true" %}
+    </a>
+    <a href=""
+       hx-delete="{% url 'rename_playlist' playlist_id %}"
+       hx-target="closest .name"
+       hx-headers='{"M-PlaylistName": "{{ playlist_name | urlencode }}"}'>
+        {% include "web/icons/reject.html" with enabled="true" %}
+    </a>
+</div>

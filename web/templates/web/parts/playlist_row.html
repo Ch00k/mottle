@@ -3,12 +3,7 @@
     <td>
         <img src="{{ playlist.images | pick_image | default_image:70 }}">
     </td>
-    <td>
-        <a href="{% url 'playlist' playlist.id %}"
-           hx-boost="true"
-           hx-indicator="#spinner"
-           hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{{ playlist.name }}</a>
-    </td>
+    <td class="name">{% include "web/parts/playlist_name.html" %}</td>
     <td>{{ playlist.tracks.total }}</td>
     <td>
         <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>

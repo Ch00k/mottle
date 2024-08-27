@@ -1,0 +1,6 @@
+<div class="stretched">
+    <a href="{% url 'playlist' playlist.id %}"
+       hx-boost="true"
+       hx-indicator="#spinner"
+       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}"}'>{{ playlist.name }}</a>
+</div>

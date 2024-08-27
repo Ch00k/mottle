@@ -231,6 +231,25 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to get playlist {playlist_id}: {e}")
 
+    async def change_playlist_details(
+        self,
+        playlist_id: str,
+        name: Optional[str] = None,
+        public: Optional[bool] = None,
+        collaborative: Optional[bool] = None,
+        description: Optional[str] = None,
+    ) -> None:
+        try:
+            await self.spotify_client.playlist_change_details(  # pyright: ignore
+                playlist_id,
+                name=name,  # pyright: ignore
+                public=public,  # pyright: ignore
+                collaborative=collaborative,  # pyright: ignore
+                description=description,  # pyright: ignore
+            )
+        except Exception as e:
+            raise MottleException(f"Failed to change playlist details {playlist_id}: {e}")
+
     async def follow_playlist(self, playlist_id: str) -> None:
         try:
             await self.spotify_client.playlist_follow(playlist_id)  # pyright: ignore

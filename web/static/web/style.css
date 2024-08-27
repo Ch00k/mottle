@@ -68,6 +68,13 @@ img:not(.logo) {
     justify-content: space-between;
 }
 
+.stretched {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
 th.sortable {
     padding-left: 20px;
     position: relative;
