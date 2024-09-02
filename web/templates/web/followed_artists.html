@@ -9,7 +9,7 @@
 {% comment %}            {% for artist in artists %}{% endcomment %}
 {% comment %}                <tr>{% endcomment %}
 {% comment %}                    <td>{% endcomment %}
-{% comment %}                        <img src="{{ artist.images | pick_image | default_image:70 }}">{% endcomment %}
+{% comment %}                        <img src="{{ artist.images | smallest_image | default_image:70 }}">{% endcomment %}
 {% comment %}                    </td>{% endcomment %}
 {% comment %}                    <td>{% endcomment %}
 {% comment %}                        <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>{% endcomment %}

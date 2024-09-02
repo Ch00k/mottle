@@ -391,6 +391,8 @@ async def accept_playlist_update(request: HttpRequest, playlist_id: str, update_
 async def playlist_items(request: HttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist_name = await playlist_metadata.name
+    playlist_spotify_url = await playlist_metadata.spotify_url
+    playlist_image_url = await playlist_metadata.image_url
 
     try:
         playlist_items = await request.spotify_client.get_playlist_items(playlist_id)  # type: ignore[attr-defined]
@@ -398,7 +400,12 @@ async def playlist_items(request: HttpRequest, playlist_id: str) -> HttpResponse
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlist items")
 
-    context = {"playlist_name": playlist_name, "playlist_items": playlist_items}
+    context = {
+        "playlist_name": playlist_name,
+        "playlist_spotify_url": playlist_spotify_url,
+        "playlist_image_url": playlist_image_url,
+        "playlist_items": playlist_items,
+    }
     return render(request, "web/playlist.html", context)
 
 

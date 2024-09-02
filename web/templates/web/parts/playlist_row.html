@@ -1,7 +1,7 @@
 {% load tekore_model_extras %}
 <tr>
     <td>
-        <img src="{{ playlist.images | pick_image | default_image:70 }}">
+        <img src="{{ playlist.images | smallest_image | default_image:70 }}">
     </td>
     <td class="name">{% include "web/parts/playlist_name.html" %}</td>
     <td>{{ playlist.tracks.total }}</td>

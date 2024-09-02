@@ -4,7 +4,10 @@
     {{ playlist_name }}
 {% endblock title %}
 {% block page_title %}
-    {{ playlist_name }}
+    <div class="centered">
+        <img class="cover" src="{{ playlist_image_url }}" />
+        <a href="{{ playlist_spotify_url }}">{{ playlist_name }}</a>
+    </div>
 {% endblock page_title %}
 {% block content %}
     <table>
@@ -23,7 +26,7 @@
                 {% if item.track.track %}
                     <tr>
                         <td>
-                            <img src="{{ item.track.album.images | pick_image | default_image:70 }}" />
+                            <img src="{{ item.track.album.images | smallest_image | default_image:70 }}" />
                         </td>
                         <td>
                             {% for artist in item.track.artists %}

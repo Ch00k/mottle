@@ -30,7 +30,7 @@
             {% for item in tracks_with_features %}
                 <tr>
                     <td>
-                        <img src="{{ item.0.album.images | pick_image | default_image:70 }}" />
+                        <img src="{{ item.0.album.images | smallest_image | default_image:70 }}" />
                     </td>
                     <td>
                         {% for artist in item.0.artists %}

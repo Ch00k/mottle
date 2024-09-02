@@ -33,6 +33,13 @@ img:not(.logo) {
     height: 70px;
 }
 
+img.cover {
+    object-fit: cover;
+    min-width: 300px;
+    width: 300px;
+    height: 300px;
+}
+
 .htmx-indicator {
     display: none;
 }
@@ -73,6 +80,13 @@ img:not(.logo) {
     justify-content: space-between;
     align-items: center;
     gap: 6px;
+}
+
+.centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 60px;
 }
 
 th.sortable {

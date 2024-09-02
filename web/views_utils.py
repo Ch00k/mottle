@@ -8,6 +8,7 @@ from django.shortcuts import render
 from django.urls import reverse
 
 from .models import Artist, Playlist
+from .templatetags.tekore_model_extras import largest_image, spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,8 @@ class PlaylistMetadata:
         self._name = headers.get("M-PlaylistName", UNDEFINED)
         self._owner_id = headers.get("M-PlaylistOwnerID", UNDEFINED)
         self._snapshot_id = headers.get("M-PlaylistSnapshotID", UNDEFINED)
+        self._spotify_url = headers.get("M-PlaylistSpotifyURL", UNDEFINED)
+        self._image_url: Optional[str] = headers.get("M-PlaylistImageURL", UNDEFINED)
 
         self.playlist_data_fetched = False
 
@@ -47,6 +50,18 @@ class PlaylistMetadata:
             await self.fetch_playlist_data()
         return unquote(self._snapshot_id)
 
+    @property
+    async def image_url(self) -> Optional[str]:
+        if self._image_url == UNDEFINED:
+            await self.fetch_playlist_data()
+        return None if self._image_url is None else unquote(self._image_url)
+
+    @property
+    async def spotify_url(self) -> str:
+        if self._spotify_url == UNDEFINED:
+            await self.fetch_playlist_data()
+        return unquote(self._spotify_url)
+
     async def fetch_playlist_data(self) -> None:
         if not self.playlist_data_fetched:
             playlist = await self.spotify_client.get_playlist(self.playlist_id)
@@ -54,6 +69,8 @@ class PlaylistMetadata:
             self._name = playlist.name
             self._owner_id = playlist.owner.id
             self._snapshot_id = playlist.snapshot_id
+            self._spotify_url = spotify_url(playlist)
+            self._image_url = largest_image(playlist.images)
             self.playlist_data_fetched = True
 
 

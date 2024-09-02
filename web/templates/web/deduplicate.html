@@ -27,7 +27,7 @@
                     {% if data.track.track.track %}
                         <tr>
                             <td>
-                                <img src="{{ data.track.track.album.images | pick_image | default_image:70 }}" />
+                                <img src="{{ data.track.track.album.images | smallest_image | default_image:70 }}" />
                             </td>
                             <td>
                                 {% for artist in data.track.track.artists %}

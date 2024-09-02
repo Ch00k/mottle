@@ -4,22 +4,34 @@ from django import template
 from django.templatetags.static import static
 from tekore.model import Album, Artist, FullArtist, Image, Track
 
+from web.models import Playlist
+
 register = template.Library()
 
 
-ALLOWED_IMAGE_SIZES = [70]
+ALLOWED_IMAGE_SIZES = [70, 300]
 DEFAULT_IMAGE_SIZE = 70
 
 
-@register.filter
-def pick_image(images: list[Image], size: int = 70) -> Optional[str]:
-    """Given a list of images, return the URL of the smallest image, or None"""
+def pick_image(images: list[Image], largest_first: bool = True) -> Optional[str]:
     if not images:
         return None
 
-    sorted_images = sorted(images, key=lambda i: (i.width is None, i.width))
+    sorted_images = sorted(images, key=lambda i: (i.width is None, i.width), reverse=largest_first)
     image_url: str = sorted_images[0].url
     return image_url
+
+
+@register.filter
+def smallest_image(images: list[Image]) -> Optional[str]:
+    """Given a list of images, return the URL of the smallest image, or None"""
+    return pick_image(images, largest_first=False)
+
+
+@register.filter
+def largest_image(images: list[Image]) -> Optional[str]:
+    """Given a list of images, return the URL of the largest image, or None"""
+    return pick_image(images, largest_first=True)
 
 
 @register.filter
@@ -34,7 +46,7 @@ def default_image(image: Optional[str], size: int = 70) -> str:
 
 
 @register.filter
-def spotify_url(item: Artist | Album | Track) -> str:
+def spotify_url(item: Playlist | Artist | Album | Track) -> str:
     """Given an item, return its Spotify URL"""
     external_urls = getattr(item, "external_urls", None)
     if external_urls is None:

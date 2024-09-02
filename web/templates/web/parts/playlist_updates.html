@@ -7,7 +7,7 @@
 {% for update_id, watched_entity, tracks in updates %}
     <div>
         <header>
-            {% comment %}<img src="{{ watched_entity.images | pick_image | default_image:70 }}" />{% endcomment %}
+            {% comment %}<img src="{{ watched_entity.images | smallest_image | default_image:70 }}" />{% endcomment %}
             {% comment %}<br>{% endcomment %}
             <a href="{{ watched_entity | spotify_url }}">
                 <h2>{{ watched_entity.name }}</h2>
@@ -26,7 +26,7 @@
                 {% for track in tracks %}
                     <tr>
                         <td>
-                            <img src="{{ track.album.images | pick_image | default_image:70 }}" />
+                            <img src="{{ track.album.images | smallest_image | default_image:70 }}" />
                         </td>
                         <td>
                             {% for artist in track.artists %}
