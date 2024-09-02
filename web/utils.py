@@ -5,7 +5,7 @@ from collections import Counter
 from contextlib import contextmanager
 from functools import partial
 from types import MethodType
-from typing import Any, Callable, Generator, Iterable, Optional
+from typing import Any, Callable, Generator, Iterable, Optional, Union
 
 from django.conf import settings
 from tekore import Spotify
@@ -172,6 +172,12 @@ class MottleSpotifyClient:
 
         return playlist
 
+    async def upload_playlist_cover_image(self, playlist_id: str, cover_image: Union[bytes, str]) -> None:
+        try:
+            await self.spotify_client.playlist_cover_image_upload(playlist_id, cover_image)  # pyright: ignore
+        except Exception as e:
+            raise MottleException(f"Failed to upload cover image to playlist: {e}")
+
     async def create_playlist_with_tracks(
         self,
         current_user_id: str,
@@ -211,11 +217,11 @@ class MottleSpotifyClient:
         if cover_image is not None:
             try:
                 await self.spotify_client.playlist_cover_image_upload(playlist.id, cover_image)  # pyright: ignore
-            except Exception:
+            except Exception as e:
                 if fail_on_cover_image_upload_error:
                     raise MottleException(f"Failed to upload cover image to playlist {playlist.id}")
                 else:
-                    logger.warning(f"Failed to upload cover image to playlist {playlist.id}")
+                    logger.error(f"Failed to upload cover image to playlist {playlist.id}: {e}")
 
         return playlist
 

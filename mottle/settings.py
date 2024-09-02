@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "web",
     "django_htmx",
     "django_prometheus",
+    "django_q",
 ]
 
 MIDDLEWARE = [
@@ -80,6 +81,17 @@ DATABASES = {
     }
 }
 
+Q_CLUSTER = {
+    "orm": "default",
+    "workers": 1,
+    "timeout": 300,
+    "retry": 600,
+    "max_attempts": 1,
+    "save_limit": 0,
+    "schedule": False,
+    "log_level": "DEBUG",
+}
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
@@ -112,6 +124,21 @@ LOGGING = {
     },
     "loggers": {
         "web": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "scheduler": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "taskrunner": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "django-q": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": False,
@@ -157,6 +184,7 @@ MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL")
 MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY", None)
+OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_dump")
 
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
