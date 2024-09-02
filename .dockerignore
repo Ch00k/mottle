@@ -8,3 +8,4 @@ __pycache__/*
 .pre-commit-config.yaml
 db.sqlite3
 Makefile
+images_dump/
