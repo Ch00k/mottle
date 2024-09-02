@@ -13,6 +13,7 @@ from .jobs import check_playlist_for_updates
 from .middleware import get_token_scope_changes
 from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, SpotifyAuthRequest, SpotifyUser
 from .spotify import get_auth
+from .tasks import task_upload_cover_image
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import ArtistMetadata, PlaylistMetadata, get_duplicates_message, get_playlist_modal_response
 
@@ -147,6 +148,10 @@ def index(request: HttpRequest) -> HttpResponse:
     return render(request, "web/index.html")
 
 
+def changelog(request: HttpRequest) -> HttpResponse:
+    return render(request, "web/changelog.html")
+
+
 @require_GET
 async def search_artists(request: HttpRequest) -> HttpResponse:
     query = request.GET.get("query")
@@ -268,6 +273,14 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
                 artist_id,
                 albums_ignored=albums_ignored,
                 auto_accept_updates=auto_accept,
+            )
+
+        if bool(request.POST.get("generate-cover", False)):
+            await sync_to_async(task_upload_cover_image)(
+                playlist_title=name,
+                playlist_spotify_id=playlist.id,
+                spotify_user_id=request.session["spotify_user_id"],
+                dump_to_disk=True,
             )
 
         return redirect("playlist", playlist_id=playlist.id)
