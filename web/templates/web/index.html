@@ -8,8 +8,8 @@
 {% block content %}
     <section>
         <aside>
-            <h3>Create discography</h3>
-            <p>Combine all artist's albums into a single playlist</p>
+            <h3>Create discographies</h3>
+            <p>Combine all artist's albums into a single playlist, and get artist's new releases into it automatically</p>
             <p>
                 <a href="{% url 'search_artists' %}"
                    hx-boost="true"
@@ -17,19 +17,26 @@
             </p>
         </aside>
         <aside>
-            <h3>Deduplicate</h3>
-            <p>Remove duplicate tracks from a playlist</p>
+            <h3>Generate cover images</h3>
+            <p>Generate cover images for your playlists with AI</p>
             <p>
                 <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner"><b>Try it!</b></a>
             </p>
         </aside>
         <aside>
-            <h3>Merge</h3>
-            <p>Merge multiple playlists into one</p>
+            <h3>Merge playlists</h3>
+            <p>Merge multiple playlists into a new one, and get new tracks from those playlists into yours automatically</p>
             <p>
                 <a href="{% url 'search_playlists' %}"
                    hx-boost="true"
                    hx-indicator="#spinner"><b>Try it!</b></a>
+            </p>
+        </aside>
+        <aside>
+            <h3>Deduplicate playlists</h3>
+            <p>Find and remove duplicate tracks from a playlist</p>
+            <p>
+                <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner"><b>Try it!</b></a>
             </p>
         </aside>
         <aside>
