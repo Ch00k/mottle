@@ -16,4 +16,6 @@ WORKDIR /src
 COPY . .
 RUN poetry install --only=main
 
+RUN mkdir -p /tmp/prometheus_multiproc_dir
+
 ENTRYPOINT ["/src/run.sh"]
