@@ -714,6 +714,32 @@ async def rename_playlist(request: HttpRequest, playlist_id: str) -> HttpRespons
 
 
 @require_http_methods(["GET", "POST"])
+async def playlist_cover_image(request: HttpRequest, playlist_id: str) -> HttpResponse:
+    playlist_metadata = PlaylistMetadata(request, playlist_id)
+    playlist_name = await playlist_metadata.name
+    playlist_image_url = await playlist_metadata.image_url
+
+    if request.method == "GET":
+        return render(
+            request,
+            "web/modals/playlist_cover_image.html",
+            context={
+                "playlist_id": playlist_id,
+                "playlist_name": playlist_name,
+                "playlist_image_url": playlist_image_url,
+            },
+        )
+    else:
+        await sync_to_async(task_upload_cover_image)(
+            playlist_title=playlist_name,
+            playlist_spotify_id=playlist_id,
+            spotify_user_id=request.session["spotify_user_id"],
+            dump_to_disk=True,
+        )
+        return HttpResponse()
+
+
+@require_http_methods(["GET", "POST"])
 async def watch_playlist(request: HttpRequest, playlist_id: str) -> HttpResponse:
     if request.method == "GET":
         return await get_playlist_modal_response(request, playlist_id, "web/modals/playlist_watch.html")

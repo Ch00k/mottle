@@ -1,0 +1,12 @@
+{% load static %}
+<div id="modal" _="on closeModal remove me">
+    <div class="modal-underlay" _="on click trigger closeModal"></div>
+    <div class="modal-content">
+        <h2>Cover image</h2>
+        <img class="cover" src="{{ playlist_image_url }}" />
+        <br>
+        <button hx-post="{% url 'playlist_cover_image' playlist_id %}"
+                hx-target="#modal"
+                hx-swap="delete">Regenerate</button>
+    </div>
+</div>

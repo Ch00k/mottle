@@ -3,6 +3,7 @@
 <div id="modal" _="on closeModal remove me">
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
+        <h2>Configuration</h2>
         <label>Playlists watched for new tracks</label>
         {% if watched_playlists %}
             <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
