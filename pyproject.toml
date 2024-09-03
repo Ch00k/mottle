@@ -25,7 +25,7 @@ apscheduler = "^3.10.4"
 openai = "^1.42.0"
 pillow = "^10.4.0"
 tiktoken = "^0.7.0"
-django-q2 = "^1.6.2"
+django-q2 = {git = "https://github.com/ch00k/django-q2"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"

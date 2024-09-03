@@ -577,19 +577,25 @@ version = "1.6.2"
 description = "A multiprocessing distributed task queue for Django"
 optional = false
 python-versions = ">=3.8,<4"
-files = [
-    {file = "django_q2-1.6.2-py3-none-any.whl", hash = "sha256:c2d75552c80b83ca0d8c0b0db7db4f17e9f43ee131a46d0ddd514c5f5fc603cb"},
-    {file = "django_q2-1.6.2.tar.gz", hash = "sha256:cd83c16b5791cd99f83a8d106d2447305d73c6c8ed8ec22c7cb954fe0e814284"},
-]
+files = []
+develop = false
 
 [package.dependencies]
-django = ">=3.2,<6"
-django-picklefield = ">=3.1,<4.0"
+django = ">=4.2, <6"
+django-picklefield = "^3.1"
 
 [package.extras]
+build-backend = []
+requires = []
 rollbar = ["django-q-rollbar (>=0.1)"]
 sentry = ["django-q-sentry (>=0.1)"]
 testing = ["blessed (>=1.19.1,<2.0.0)", "boto3 (>=1.24.92,<2.0.0)", "croniter (>=2.0.1,<3.0.0)", "django-redis (>=5.2.0,<6.0.0)", "hiredis (>=2.0.0,<3.0.0)", "iron-mq (>=0.9,<0.10)", "psutil (>=5.9.2,<6.0.0)", "pymongo (>=4.2.0,<5.0.0)", "redis (>=4.3.4,<5.0.0)", "setproctitle (>=1.3.2,<2.0.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/ch00k/django-q2"
+reference = "HEAD"
+resolved_reference = "c28f1de9e7f64cf9f589f71aa021eb83eff4bab1"
 
 [[package]]
 name = "django-stubs"
@@ -2265,4 +2271,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "6c12d7f7a0f00ca609c45ead1c35865ca0b946a3835f1443acf7103667397ff2"
+content-hash = "3db0dd2bcb32484df68d7d1c8c66b304b345a49aeeb5c091282623a5190e0f9c"
