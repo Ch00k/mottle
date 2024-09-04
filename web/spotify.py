@@ -100,7 +100,8 @@ class MottleRetryingSender(RetryingSender):
         delay_seconds = 1
 
         while tries > 0:
-            r = await self.sender.send(request)  # pyright: ignore
+            with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
+                r = await self.sender.send(request)  # pyright: ignore
 
             if r.status_code >= 400:
                 metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
