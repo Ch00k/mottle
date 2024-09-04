@@ -1,5 +1,10 @@
 from prometheus_client import Counter, Summary
 
+SPOTIFY_API_RESPONSE_TIME_SECONDS = Summary(
+    name="spotify_api_response_time_seconds",
+    documentation="Spotify API response time in seconds",
+)
+
 SPOTIFY_API_RESPONSES = Counter(
     name="spotify_api_responses",
     documentation="Spotify API responses per method, URL (with Spotify IDs replaced by placeholders), and status code",

@@ -23,7 +23,7 @@ from tekore._client.chunked import chunked, return_last
 from tekore._client.decor import scopes, send_and_process
 from tekore._client.process import top_item
 
-from .metrics import SPOTIFY_API_RESPONSES
+from .metrics import SPOTIFY_API_RESPONSE_TIME_SECONDS, SPOTIFY_API_RESPONSES
 
 SPOTIFY_ID_PATTERN = r"[a-zA-Z0-9]{22}"
 SPOTIFY_ID_PLACEHOLDER = "<sid>"
@@ -69,7 +69,8 @@ class MottleRetryingSender(RetryingSender):
         delay_seconds = 1
 
         while tries > 0:
-            r = self.sender.send(request)
+            with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
+                r = self.sender.send(request)
 
             if r.status_code >= 400:
                 metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
