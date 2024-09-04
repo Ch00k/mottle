@@ -180,7 +180,12 @@ def create_cover_image(playlist_title: str, dump_to_disk: bool = False) -> bytes
     if dump_to_disk:
         dump_image_to_disk(jpg_data, "final.jpg", trace)
 
-    return b64encode(jpg_data)
+    base64_encoded = b64encode(jpg_data)
+    size_base64 = len(base64_encoded)
+    logger.debug(f"Base64 encoded image data size: {size_base64} bytes")
+    SPOTIFY_PLAYLIST_COVER_IMAGE_SIZE_BYTES.labels("base64_encoded").observe(size_base64)
+
+    return base64_encoded
 
 
 def upload_cover_image(
