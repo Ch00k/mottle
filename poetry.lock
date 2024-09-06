@@ -1923,18 +1923,22 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "tekore"
-version = "5.4.0"
+version = "5.5.0"
 description = "Client for the Spotify Web API"
 optional = false
 python-versions = ">=3.8"
-files = [
-    {file = "tekore-5.4.0-py3-none-any.whl", hash = "sha256:66464a64a9cfc26b44c991647da08a112651b64e8bbbed6c923c960cf2d61ab9"},
-    {file = "tekore-5.4.0.tar.gz", hash = "sha256:34fd7774877ad0cb5231c1ec369d2bec514fa48e6b920cce6871d3516d6f67e3"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 httpx = ">=0.15,<0.28"
 pydantic = ">=1.8,<2.4.0 || >2.4.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1"
+
+[package.source]
+type = "git"
+url = "https://github.com/ch00k/tekore"
+reference = "HEAD"
+resolved_reference = "1ade40802f4fab89f4a01fa168944387b53d34f2"
 
 [[package]]
 name = "tiktoken"
@@ -2271,4 +2275,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3db0dd2bcb32484df68d7d1c8c66b304b345a49aeeb5c091282623a5190e0f9c"
+content-hash = "657179ac6a34460d66cf1ed28c7a50060a9b5e85f856767ab3a40c05f5e68bd1"
