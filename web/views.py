@@ -15,7 +15,13 @@ from .models import Playlist, PlaylistUpdate, PlaylistWatchConfig, SpotifyAuth, 
 from .spotify import get_auth
 from .tasks import task_upload_cover_image
 from .utils import MottleException, MottleSpotifyClient, list_has
-from .views_utils import ArtistMetadata, PlaylistMetadata, get_duplicates_message, get_playlist_modal_response
+from .views_utils import (
+    AlbumMetadata,
+    ArtistMetadata,
+    PlaylistMetadata,
+    get_duplicates_message,
+    get_playlist_modal_response,
+)
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -284,6 +290,33 @@ async def albums(request: HttpRequest, artist_id: str) -> HttpResponse:
             )
 
         return redirect("playlist", playlist_id=playlist.id)
+
+
+@require_GET
+async def album(request: HttpRequest, album_id: str) -> HttpResponse:
+    album_metadata = AlbumMetadata(request, album_id)
+    album_name = await album_metadata.name
+    album_spotify_url = await album_metadata.spotify_url
+    album_image_url = await album_metadata.image_url
+    track_image_url = await album_metadata.track_image_url
+
+    try:
+        tracks = await request.spotify_client.get_album_tracks(album_id)  # type: ignore[attr-defined]
+    except MottleException as e:
+        logger.exception(e)
+        return HttpResponseServerError("Failed to get album tracks")
+
+    return render(
+        request,
+        "web/album.html",
+        context={
+            "album_name": album_name,
+            "album_spotify_url": album_spotify_url,
+            "album_image_url": album_image_url,
+            "track_image_url": track_image_url,
+            "tracks": tracks,
+        },
+    )
 
 
 @require_GET

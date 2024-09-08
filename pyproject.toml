@@ -8,6 +8,7 @@ packages = [
   { include = "mottle" },
   { include = "web" },
   { include = "scheduler" },
+  { include = "taskrunner" },
 ]
 
 [tool.poetry.dependencies]
@@ -24,8 +25,8 @@ apscheduler = "^3.10.4"
 openai = "^1.42.0"
 pillow = "^10.4.0"
 tiktoken = "^0.7.0"
-django-q2 = {git = "https://github.com/ch00k/django-q2"}
-tekore = {git = "https://github.com/ch00k/tekore"}
+django-q2 = { git = "https://github.com/ch00k/django-q2" }
+tekore = { git = "https://github.com/ch00k/tekore" }
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"

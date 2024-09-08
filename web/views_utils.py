@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.urls import reverse
 
 from .models import Artist, Playlist
-from .templatetags.tekore_model_extras import largest_image, spotify_url
+from .templatetags.tekore_model_extras import largest_image, smallest_image, spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,53 @@ class ArtistMetadata:
 
             self._name = artist.name
             self.artist_data_fetched = True
+
+
+class AlbumMetadata:
+    def __init__(self, request: HttpRequest, album_id: str):
+        self.spotify_client = request.spotify_client  # type: ignore[attr-defined]
+        self.album_id = album_id
+
+        headers = request.headers
+        self._name = headers.get("M-AlbumName", UNDEFINED)
+        self._spotify_url = headers.get("M-AlbumSpotifyURL", UNDEFINED)
+        self._image_url: Optional[str] = headers.get("M-AlbumImageURL", UNDEFINED)
+        self._track_image_url: Optional[str] = headers.get("M-TrackImageURL", UNDEFINED)
+
+        self.album_data_fetched = False
+
+    @property
+    async def name(self) -> str:
+        if self._name == UNDEFINED:
+            await self.fetch_album_data()
+        return unquote(self._name)
+
+    @property
+    async def spotify_url(self) -> str:
+        if self._spotify_url == UNDEFINED:
+            await self.fetch_album_data()
+        return unquote(self._spotify_url)
+
+    @property
+    async def image_url(self) -> Optional[str]:
+        if self._image_url == UNDEFINED:
+            await self.fetch_album_data()
+        return None if self._image_url is None else unquote(self._image_url)
+
+    @property
+    async def track_image_url(self) -> Optional[str]:
+        if self._track_image_url == UNDEFINED:
+            await self.fetch_album_data()
+        return None if self._track_image_url is None else unquote(self._track_image_url)
+
+    async def fetch_album_data(self) -> None:
+        if not self.album_data_fetched:
+            album = await self.spotify_client.get_album(self.album_id)
+
+            self._name = album.name
+            self._image_url = largest_image(album.images)
+            self._track_image_url = smallest_image(album.images)
+            self.album_data_fetched = True
 
 
 def get_duplicates_message(items: list) -> str:

@@ -1,0 +1,42 @@
+{% extends "web/base.html" %}
+{% load tekore_model_extras %}
+{% block title %}
+    {{ album_name }}
+{% endblock title %}
+{% block page_title %}
+    <div class="centered">
+        <img class="cover" src="{{ album_image_url }}" />
+        <a href="{{ album_spotify_url }}">{{ album_name }}</a>
+    </div>
+{% endblock page_title %}
+{% block content %}
+    <table>
+        <thead>
+            <tr>
+                <th>Artwork</th>
+                <th class="sortable" onClick="sortTable(this)">Artist</th>
+                <th class="sortable" onClick="sortTable(this)">Track</th>
+                <th class="sortable" onClick="sortTable(this)">Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in tracks %}
+                <tr>
+                    <td>
+                        <img src="{{ track_image_url }}" />
+                    </td>
+                    <td>
+                        {% for artist in item.artists %}
+                            <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                            <br>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ item | spotify_url }}">{{ item.name }}</a>
+                    </td>
+                    <td>{{ item.duration_ms | duration_humanized }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock content %}

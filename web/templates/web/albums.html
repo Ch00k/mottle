@@ -96,7 +96,10 @@
                                 <img src="{{ item.images | smallest_image | default_image:70 }}">
                             </td>
                             <td>
-                                <a href="{{ item | spotify_url }}">{{ item.name }}</a>
+                                <a href="{% url 'album' item.id %}"
+                                   hx-boost="true"
+                                   hx-indicator="#spinner"
+                                   hx-headers='{"M-AlbumName": "{{ item.name | urlencode }}", "M-AlbumSpotifyURL": "{{ item | spotify_url }}", "M-AlbumImageURL": "{{ item.images | largest_image | default_image:300 }}", "M-TrackImageURL": "{{ item.images | smallest_image | default_image:70 }}"}'>{{ item.name }}</a>
                             </td>
                             <td>{{ item.release_date | year }}</td>
                             <td>{{ item.total_tracks }}</td>

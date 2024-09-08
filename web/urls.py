@@ -13,6 +13,7 @@ urlpatterns = [
     path("search/artists/", views.search_artists, name="search_artists"),
     path("search/playlists/", views.search_playlists, name="search_playlists"),
     path("artist/<str:artist_id>/", views.albums, name="albums"),
+    path("album/<str:album_id>/", views.album, name="album"),
     path("playlists/", views.playlists, name="playlists"),
     # path("artists/", views.followed_artists, name="artists"),
     path("playlist/<str:playlist_id>/", views.playlist_items, name="playlist"),

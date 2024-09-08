@@ -107,6 +107,13 @@ class MottleSpotifyClient:
 
         return list(itertools.chain(*albums))
 
+    async def get_album(self, album_id: str) -> FullAlbum:
+        try:
+            album = await self.spotify_client.album(album_id)  # pyright: ignore
+            return album
+        except Exception as e:
+            raise MottleException(f"Failed to get album: {e}")
+
     async def get_albums(self, album_ids: list[str]) -> list[FullAlbum]:
         albums: list[FullAlbum] = await get_all_chunked(self.spotify_client.albums, album_ids)
         return albums
