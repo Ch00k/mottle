@@ -3,5 +3,5 @@
     <a href="{% url 'playlist' playlist.id %}"
        hx-boost="true"
        hx-indicator="#spinner"
-       hx-headers='{"M-PlaylistName": "{{ playlist.name | urlencode }}", "M-PlaylistSpotifyURL": "{{ playlist | spotify_url }}", "M-PlaylistImageURL": "{{ playlist.images | largest_image | default_image:300 }}"}'>{{ playlist.name }}</a>
+       hx-headers='{"M-Playlist-Name": "{{ playlist.name | urlencode }}", "M-Playlist-SpotifyURL": "{{ playlist | spotify_url }}", "M-Playlist-ImageURL": "{{ playlist.images | largest_image | default_image:300 }}"}'>{{ playlist.name }}</a>
 </div>

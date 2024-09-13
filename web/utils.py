@@ -157,15 +157,15 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
-    async def remove_tracks_at_positions_from_playlist(
-        self, playlist_id: str, tracks: list[dict], playlist_snapshot_id: str
-    ) -> None:
-        try:
-            await self.spotify_client.playlist_remove_occurrences(
-                playlist_id, tracks, playlist_snapshot_id
-            )  # pyright: ignore
-        except Exception as e:
-            raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
+    # async def remove_tracks_at_positions_from_playlist(
+    #     self, playlist_id: str, tracks: list[dict], playlist_snapshot_id: str
+    # ) -> None:
+    #     try:
+    #         await self.spotify_client.playlist_remove_occurrences(
+    #             playlist_id, tracks, playlist_snapshot_id
+    #         )  # pyright: ignore
+    #     except Exception as e:
+    #         raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
 
     async def create_playlist(self, current_user_id: str, name: str, is_public: bool = True) -> FullPlaylist:
         try:

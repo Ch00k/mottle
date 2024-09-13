@@ -24,7 +24,7 @@ class Command(BaseCommand):
     def handle(self, *_: tuple, **options: dict) -> None:
         user_id = options.get("user_id")
         playlist_id = options.get("playlist_id")
-        send_notifications = options.get("send_notifications", False)
+        send_notifications = bool(options.get("send_notifications", False))
 
         token = get_client_token()
         spotify_client = MottleSpotifyClient(token.access_token)
@@ -37,9 +37,7 @@ class Command(BaseCommand):
             if user.playlists is None:  # pyright: ignore
                 raise CommandError("User has no playlists")
 
-            async_to_sync(
-                partial(check_user_playlists_for_updates, user, spotify_client, send_notifications)  # pyright: ignore
-            )()
+            async_to_sync(partial(check_user_playlists_for_updates, user, send_notifications))()  # pyright: ignore
         elif playlist_id:
             try:
                 playlist = Playlist.objects.get(id=playlist_id)  # type: ignore
@@ -48,4 +46,4 @@ class Command(BaseCommand):
 
             async_to_sync(partial(check_playlist_for_updates, playlist, spotify_client))()
         else:
-            async_to_sync(partial(check_playlists_for_updates, spotify_client, send_notifications))()  # pyright: ignore
+            async_to_sync(partial(check_playlists_for_updates, send_notifications))()  # pyright: ignore

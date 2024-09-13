@@ -99,7 +99,7 @@
                                 <a href="{% url 'album' item.id %}"
                                    hx-boost="true"
                                    hx-indicator="#spinner"
-                                   hx-headers='{"M-AlbumName": "{{ item.name | urlencode }}", "M-AlbumSpotifyURL": "{{ item | spotify_url }}", "M-AlbumImageURL": "{{ item.images | largest_image | default_image:300 }}", "M-TrackImageURL": "{{ item.images | smallest_image | default_image:70 }}"}'>{{ item.name }}</a>
+                                   hx-headers='{"M-Album-Name": "{{ item.name | urlencode }}", "M-Album-SpotifyURL": "{{ item | spotify_url }}", "M-Album-ImageURL": "{{ item.images | largest_image | default_image:300 }}", "M-Album-TrackImageURL": "{{ item.images | smallest_image | default_image:70 }}"}'>{{ item.name }}</a>
                             </td>
                             <td>{{ item.release_date | year }}</td>
                             <td>{{ item.total_tracks }}</td>

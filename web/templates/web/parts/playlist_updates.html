@@ -1,7 +1,8 @@
 {% load tekore_model_extras %}
 <button hx-post="{% url 'playlist_updates' playlist_id %}"
         hx-target="#content"
-        hx-indicator="#spinner">Check for updates</button>
+        hx-indicator="#spinner"
+        hx-headers='{"M-Playlist-Name": "{{ playlist_name | urlencode }}"}'>Check for updates</button>
 <br>
 <br>
 {% for update_id, watched_entity, tracks in updates %}
