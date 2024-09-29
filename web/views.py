@@ -7,6 +7,7 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseServerError, QueryDict
 from django.shortcuts import aget_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST, require_safe
+from ipware import get_client_ip
 from tekore.model import AlbumType, FullPlaylistTrack
 
 from .jobs import check_playlist_for_updates
@@ -143,6 +144,13 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     request.session["spotify_user_spotify_id"] = spotify_user.spotify_id
     request.session["spotify_user_display_name"] = spotify_user.display_name
     request.session["spotify_user_email"] = spotify_user.email
+    request.session["user_ip"] = None
+
+    client_ip, is_routable = get_client_ip(request)
+    logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
+
+    if client_ip is not None and is_routable:
+        request.session["user_ip"] = client_ip
 
     await spotify_auth_request.adelete()
 
