@@ -2,12 +2,10 @@ import logging
 import math
 import uuid
 from base64 import b64decode, b64encode
-from functools import partial
 from io import BytesIO
 from typing import Union
 
 import tiktoken
-from asgiref.sync import async_to_sync
 from django.conf import settings
 from openai import OpenAI
 from PIL import Image
@@ -20,8 +18,6 @@ from web.metrics import (
     OPENAI_CHAT_COMPLETION_RESPONSE_TOKENS_USED,
     SPOTIFY_PLAYLIST_COVER_IMAGE_SIZE_BYTES,
 )
-from web.models import SpotifyAuth
-from web.utils import MottleException, MottleSpotifyClient
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -186,32 +182,3 @@ def create_cover_image(playlist_title: str, dump_to_disk: bool = False) -> bytes
     SPOTIFY_PLAYLIST_COVER_IMAGE_SIZE_BYTES.labels("base64_encoded").observe(size_base64)
 
     return base64_encoded
-
-
-def upload_cover_image(
-    playlist_title: str, playlist_spotify_id: str, spotify_user_id: str, dump_to_disk: bool = False
-) -> None:
-    logger.debug(f"Uploading cover image to Spotify playlist {playlist_spotify_id}")
-
-    try:
-        spotify_auth = SpotifyAuth.objects.get(spotify_user__id=spotify_user_id)
-    except SpotifyAuth.DoesNotExist:
-        logger.error(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
-        return
-
-    logger.debug(spotify_auth)
-
-    if spotify_auth.access_token is None:
-        logger.error(f"{spotify_auth} access_token is None")
-        return
-
-    try:
-        async_to_sync(spotify_auth.maybe_refresh)
-    except MottleException as e:
-        logger.error(e)
-        return
-
-    spotify_client = MottleSpotifyClient(spotify_auth.access_token)
-
-    image_data = create_cover_image(playlist_title, dump_to_disk=dump_to_disk)
-    async_to_sync(partial(spotify_client.upload_playlist_cover_image, playlist_spotify_id, image_data))()

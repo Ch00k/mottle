@@ -1,0 +1,28 @@
+[
+  {
+    "type": "full"
+  },
+  {
+    "type": "partial",
+    "changes": {
+      "stream_urls": {
+        "old": [
+          "https://www.youtube.com/watch?v=1234567890"
+        ],
+        "new": [
+          "https://www.youtube.com/watch?v=0987654321",
+          "https://www.youtube.com/watch?v=0987654321"
+        ]
+      },
+      "tickets_urls": {
+        "old": [
+          "https://www.example.com/tickets"
+        ],
+        "new": [
+          "https://www.example.com/tickets_new",
+          "https://www.example.com/tickets_newest"
+        ]
+      }
+    }
+  }
+]

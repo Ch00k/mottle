@@ -62,9 +62,7 @@ class MottleSpotifyClient:
 
     async def get_artists(self, query: str) -> list[FullArtist]:
         try:
-            artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(
-                query, types=("artist",)
-            )  # pyright: ignore
+            artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(query, types=("artist",))  # pyright: ignore
         except Exception as e:
             raise MottleException(f"Failed to search for artists with query {query}: {e}")
         else:
@@ -94,7 +92,6 @@ class MottleSpotifyClient:
     async def get_artist_albums_separately_by_type(
         self, artist_id: str, album_types: Optional[list[str]] = None
     ) -> list[SimpleAlbum]:
-
         calls = [
             self.get_artist_albums(artist_id, [album_type])
             for album_type in album_types or ["album", "single", "compilation"]

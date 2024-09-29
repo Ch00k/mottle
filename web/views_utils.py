@@ -8,9 +8,9 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 
-from web.middleware import MottleHttpRequest
-
-from .models import Artist, Playlist
+from .events.enums import EventType
+from .middleware import MottleHttpRequest
+from .models import Artist, EventArtist, EventUpdate, Playlist
 from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
@@ -213,7 +213,65 @@ async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: s
     )
 
 
-async def compile_email(
+async def compile_event_updates_email(
+    updates: dict[EventArtist, list[EventUpdate]], spotify_client: MottleSpotifyClient
+) -> str:
+    message = ""
+
+    for event_artist, event_updates in updates.items():
+        artist_spotify_id = await sync_to_async(lambda: event_artist.artist.spotify_id)()
+        spotify_artist = await spotify_client.get_artist(artist_spotify_id)
+        artist_name_line = f"Artist: {spotify_artist.name}"
+        message += artist_name_line + "\n"
+        message += "=" * len(artist_name_line) + "\n"
+
+        for update in event_updates:
+            event = update.event
+            event_type = " ".join(event.type.split("_"))
+            if update.type == EventUpdate.FULL:
+                if event.type == EventType.live_stream:
+                    stream_urls = "\n".join(event.stream_urls)
+                    message += f"New {event_type}: {event.date}\n"
+                    if stream_urls:
+                        message += "Stream available at:\n"
+                        message += stream_urls
+                    else:
+                        message += "Stream is not available yet"
+                    message += "\n"
+                else:
+                    tickets_urls = "\n".join(event.tickets_urls)
+                    message += f"New {event_type}: {event.date} at {event.venue} ({event.city}, {event.country})\n"
+                    if tickets_urls:
+                        message += "Tickets available at:\n"
+                        message += tickets_urls
+                    else:
+                        message += "Tickets are not available yet"
+                    message += "\n"
+            else:
+                if event.type == EventType.live_stream:
+                    if "stream_urls" in update.changes:
+                        stream_urls = "\n".join(update.changes["stream_urls"]["new"])
+                        message += f"Stream URLs for {event_type} on {event.date} have changed\n"
+                        message += "Stream available at:\n"
+                        message += stream_urls
+                        message += "\n"
+                else:
+                    if "tickets_urls" in update.changes:
+                        tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])
+                        message += (
+                            f"Tickets URLs for {event_type} on {event.date} at {event.venue} "
+                            f"({event.city}, {event.country}) have changed\n"
+                        )
+                        message += "Tickets available at:\n"
+                        message += tickets_urls
+                        message += "\n"
+            message += "\n"
+        # message += "\n"
+
+    return message
+
+
+async def compile_playlist_updates_email(
     updates: dict[str, list[dict[str, Any]]],
     spotify_client: MottleSpotifyClient,
     num_to_show: int = 10,

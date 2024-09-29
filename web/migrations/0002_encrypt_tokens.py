@@ -27,7 +27,6 @@ def encrypt_tokens(apps: Apps, _: BaseDatabaseSchemaEditor) -> None:
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web", "0001_initial"),
     ]

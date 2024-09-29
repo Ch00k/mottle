@@ -21,7 +21,10 @@ from django_htmx.http import HttpResponseClientRedirect
 from ipware import get_client_ip
 from tekore.model import AlbumType, FullPlaylistTrack
 
+from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
+
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
+from .geolocation import GeolocationError, get_ip_location
 from .jobs import check_playlist_for_updates
 from .middleware import MottleHttpRequest, get_token_scope_changes
 from .models import (
@@ -33,7 +36,6 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
-from .tasks import task_upload_cover_image
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import (
     AlbumMetadata,
@@ -151,16 +153,32 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
 
+    client_ip, is_routable = get_client_ip(request)
+    logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
+
+    user_location = None
+    if client_ip is not None and is_routable:
+        try:
+            user_location = await get_ip_location(client_ip)
+        except GeolocationError as e:
+            logger.error(e)
+
+    logger.debug(f"User's location: {user_location}")
+
     spotify_user, created = await SpotifyUser.objects.aupdate_or_create(
         spotify_id=user.id,
-        defaults={"display_name": user.display_name, "email": user.email},
+        defaults={
+            "display_name": user.display_name,
+            "email": user.email,
+            "location": user_location,  # TODO: Should the location be updated on every login?
+        },
     )
     if created:
         logger.debug(f"Created new user: {spotify_user}")
     else:
         logger.debug(f"Updated existing user: {spotify_user}")
 
-    spotify_auth = await SpotifyAuth.objects.aupdate_or_create(
+    spotify_auth, _ = await SpotifyAuth.objects.aupdate_or_create(
         spotify_user=spotify_user,
         defaults={
             "access_token": token.access_token,
@@ -176,13 +194,6 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     request.session["spotify_user_spotify_id"] = spotify_user.spotify_id
     request.session["spotify_user_display_name"] = spotify_user.display_name
     request.session["spotify_user_email"] = spotify_user.email
-    request.session["user_ip"] = None
-
-    client_ip, is_routable = get_client_ip(request)
-    logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
-
-    if client_ip is not None and is_routable:
-        request.session["user_ip"] = client_ip
 
     await spotify_auth_request.adelete()
 
@@ -319,6 +330,8 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 "has_albums": has_albums,
                 "has_singles": has_simgles,
                 "has_compilations": has_compilations,
+                "events_enabled": request.session["spotify_user_spotify_id"]
+                in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS,
             },
         )
     else:
@@ -371,6 +384,13 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 playlist_spotify_id=playlist.id,
                 spotify_user_id=request.session["spotify_user_id"],
                 dump_to_disk=True,
+            )
+
+        if request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS and bool(
+            request.POST.get("track-events", False)
+        ):
+            await sync_to_async(task_track_artists_events)(
+                artists_data={artist_id: artist_name}, spotify_user_id=request.session["spotify_user_id"]
             )
 
         return redirect("playlist", playlist_id=playlist.id)
@@ -557,6 +577,17 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         for track in playlist_tracks
         if isinstance(track.track, FullPlaylistTrack)
     ]
+    if request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS and request.GET.get(
+        "track-artists", False
+    ):
+        artists = {}
+        for track in tracks:
+            for artist in track.artists:
+                artists[artist.id] = artist.name
+
+        await sync_to_async(task_track_artists_events)(
+            artists_data=artists, spotify_user_id=request.session["spotify_user_id"]
+        )
 
     context = {
         "playlist": playlist,

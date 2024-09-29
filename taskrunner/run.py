@@ -53,3 +53,8 @@ def main() -> None:
 
     q = MottleCluster()
     q.start(metrics_server_host, metrics_server_port)
+
+
+if __name__ == "__main__":
+    logger.debug("Starting taskrunner")
+    main()

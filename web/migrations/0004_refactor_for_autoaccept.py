@@ -28,7 +28,6 @@ def delete_sessions(apps: Apps, _: BaseDatabaseSchemaEditor) -> None:
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web", "0003_watch_playlists"),
     ]
