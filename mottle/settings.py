@@ -190,6 +190,7 @@ sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
     enable_tracing=True,
     release=f"mottle@{APP_VERSION}",
+    environment=env.str("SENTRY_ENVIRONMENT", "dev"),
     integrations=[
         DjangoIntegration(
             transaction_style="url",
