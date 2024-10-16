@@ -594,29 +594,23 @@ prometheus-client = ">=0.7"
 
 [[package]]
 name = "django-q2"
-version = "1.6.2"
+version = "1.7.3"
 description = "A multiprocessing distributed task queue for Django"
 optional = false
-python-versions = ">=3.8,<4"
-files = []
-develop = false
+python-versions = "<4,>=3.8"
+files = [
+    {file = "django_q2-1.7.3-py3-none-any.whl", hash = "sha256:96bacc384683617823077e20c9007ad7cdc35a6d4c1671b9589e6e28cf93ff4c"},
+    {file = "django_q2-1.7.3.tar.gz", hash = "sha256:949e85fdc0aae9820bf9c10dc31e31cb05b21e8b919bf294221aa41c37030e25"},
+]
 
 [package.dependencies]
-django = ">=4.2, <6"
-django-picklefield = "^3.1"
+django = ">=4.2,<6"
+django-picklefield = ">=3.1,<4.0"
 
 [package.extras]
-build-backend = []
-requires = []
 rollbar = ["django-q-rollbar (>=0.1)"]
 sentry = ["django-q-sentry (>=0.1)"]
 testing = ["blessed (>=1.19.1,<2.0.0)", "boto3 (>=1.24.92,<2.0.0)", "croniter (>=2.0.1,<3.0.0)", "django-redis (>=5.2.0,<6.0.0)", "hiredis (>=2.0.0,<3.0.0)", "iron-mq (>=0.9,<0.10)", "psutil (>=5.9.2,<6.0.0)", "pymongo (>=4.2.0,<5.0.0)", "redis (>=4.3.4,<5.0.0)", "setproctitle (>=1.3.2,<2.0.0)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/ch00k/django-q2"
-reference = "HEAD"
-resolved_reference = "c28f1de9e7f64cf9f589f71aa021eb83eff4bab1"
 
 [[package]]
 name = "django-stubs"
@@ -2315,4 +2309,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "dbeee6a34e555a5f609569f972a1dc30d37ebc0c77b38841d86560f7a29a964c"
+content-hash = "4679fbc7fad5e61be5d209702b514e03367cacf250164f21d469ebe8868af40a"
