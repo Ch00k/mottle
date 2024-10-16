@@ -25,10 +25,7 @@ build:
 	@echo App version: $(APP_VERSION)
 	@if [ "$(TAG_NAME)" != "$(APP_VERSION)" ]; then echo "Tag name $(TAG_NAME) does not match app version $(APP_VERSION)" && exit 1; fi
 	@echo Building image from tag $(TAG_NAME), app version: $(APP_VERSION)
-	#docker build . -t mottle:$(APP_VERSION) -t mottle:latest -t ghcr.io/ch00k/mottle:$(APP_VERSION) -t ghcr.io/ch00k/mottle:latest --build-arg APP_VERSION=$(APP_VERSION)
 	docker build . -t mottle:$(APP_VERSION) -t mottle:latest --build-arg APP_VERSION=$(APP_VERSION)
-	#docker push ghcr.io/ch00k/mottle:$(APP_VERSION)
-	#docker push ghcr.io/ch00k/mottle:latest
 
 deploy_pre:
 	@$(eval APP_VERSION=$(shell poetry version --short))
@@ -39,14 +36,13 @@ deploy_pre:
 
 deploy:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
-	#@$(eval APP_VERSION=$(shell poetry version --short))
 	@echo Deploying version: $(VERSION)
 	docker image tag mottle:$(VERSION) ghcr.io/ch00k/mottle:$(VERSION)
 	docker image tag mottle:$(VERSION) ghcr.io/ch00k/mottle:latest
 	docker push ghcr.io/ch00k/mottle:$(VERSION)
 	docker push ghcr.io/ch00k/mottle:latest
 	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(VERSION)
-	sed -i 's/image: ghcr.io/ch00k/mottle:.*/image: ghcr.io/ch00k/mottle:$(VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
+	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
 pre_release: check tag build deploy_pre
