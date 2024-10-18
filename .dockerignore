@@ -9,3 +9,4 @@ __pycache__/*
 db.sqlite3
 Makefile
 images_dump/
+runtime_data/
