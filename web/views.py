@@ -223,6 +223,7 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
         logger.exception(e)
         return HttpResponseServerError("Failed to search for playlists")
 
+    # TODO: There should be another way to check if a playlist belongs to the current user
     user_playlists = await request.spotify_client.get_current_user_playlists()
     user_playlist_ids = [playlist.id for playlist in user_playlists]
 
@@ -470,13 +471,17 @@ async def accept_playlist_update(request: MottleHttpRequest, playlist_id: str, u
 @require_GET
 async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
-    playlist_data = await PlaylistData.from_metadata(playlist_metadata)
+    playlist = await PlaylistData.from_metadata(playlist_metadata)
 
     try:
         playlist_tracks = await request.spotify_client.get_playlist_tracks(playlist_id)
     except MottleException as e:
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlist items")
+
+    # TODO: There should be another way to check if a playlist belongs to the current user
+    user_playlists = await request.spotify_client.get_current_user_playlists()
+    user_playlist_ids = [playlist.id for playlist in user_playlists]
 
     try:
         await PlaylistWatchConfig.objects.aget(
@@ -497,9 +502,10 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
     ]
 
     context = {
-        "playlist": playlist_data,
+        "playlist": playlist,
         "tracks": tracks,
         "watching_playlists": watching_playlists,
+        "user_playlist_ids": user_playlist_ids,
     }
     return render(request, "web/playlist.html", context)
 

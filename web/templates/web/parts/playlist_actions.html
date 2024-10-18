@@ -58,21 +58,26 @@
             {% include "web/parts/playlist_unfollow.html" %}
         {% endif %}
     {% elif source == "playlists_search" %}
-        {% if playlist.id in user_playlist_ids %}
-            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-                {% include "web/parts/playlist_delete.html" %}
-            {% else %}
-                {% include "web/parts/playlist_unfollow.html" %}
-            {% endif %}
+        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+            {% include "web/parts/playlist_delete.html" %}
         {% else %}
-            {% include "web/parts/playlist_follow.html" %}
+            {% if playlist.id in user_playlist_ids %}
+                {% include "web/parts/playlist_unfollow.html" %}
+            {% else %}
+                {% include "web/parts/playlist_follow.html" %}
+            {% endif %}
         {% endif %}
     {% elif source == "playlist" %}
         {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
             {% include "web/parts/playlist_delete.html" with target="this" %}
         {% else %}
-            {% include "web/parts/playlist_unfollow.html" %}
+            {% if playlist.id in user_playlist_ids %}
+                {% include "web/parts/playlist_unfollow.html" %}
+            {% else %}
+                {% include "web/parts/playlist_follow.html" %}
+            {% endif %}
         {% endif %}
     {% else %}
     {% endif %}
+    {% comment %}# TODO: Apart from `target="this"` "playlists_search" and "playlist" are the same{% endcomment %}
 </div>
