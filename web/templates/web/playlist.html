@@ -1,12 +1,14 @@
 {% extends "web/base.html" %}
-{% load tekore_model_extras %}
 {% block title %}
-    {{ playlist_name }}
+    {{ playlist.name }}
 {% endblock title %}
 {% block page_title %}
     <div class="centered">
-        <img class="cover" src="{{ playlist_image_url }}" />
-        <a href="{{ playlist_spotify_url }}">{{ playlist_name }}</a>
+        <img class="cover" src="{{ playlist.image_url_large }}" />
+        <div>
+            <a href="{{ playlist.url }}">{{ playlist.name }}</a>
+        </div>
+        {% include "web/parts/playlist_actions.html" with source="playlist" %}
     </div>
 {% endblock page_title %}
 {% block content %}
@@ -19,35 +21,31 @@
                 <th class="sortable" onClick="sortTable(this)">Track</th>
                 <th class="sortable" onClick="sortTable(this)">Duration</th>
                 <th class="sortable" onClick="sortTable(this)">Added</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {% for item in playlist_items %}
-                {% if item.track.track %}
-                    <tr>
-                        <td>
-                            <img src="{{ item.track.album.images | smallest_image | default_image:70 }}" />
-                        </td>
-                        <td>
-                            {% for artist in item.track.artists %}
-                                <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
-                                <br>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <a href="{{ item.track.album | spotify_url }}">{{ item.track.album.name }}</a>
-                        </td>
-                        <td>
-                            <a href="{{ item.track | spotify_url }}">{{ item.track.name }}</a>
-                        </td>
-                        <td>{{ item.track.duration_ms | duration_humanized }}</td>
-                        <td>{{ item.added_at | date:"Y-m-d" }}</td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td>This item is not a track</td>
-                    </tr>
-                {% endif %}
+            {% for track in tracks %}
+                <tr>
+                    <td>
+                        <img src="{{ track.album.image_url_small }}" />
+                    </td>
+                    <td>
+                        {% for artist in track.artists %}
+                            <a href="{{ artist.url }}">{{ artist.name }}</a>
+                            <br>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{% url 'album' track.album.id %}">{{ track.album.name }}</a>
+                    </td>
+                    <td>
+                        <a href="{{ track.url }}">{{ track.name }}</a>
+                    </td>
+                    <td>{{ track.duration }}</td>
+                    <td>{{ track.added_at | date:"Y-m-d" }}</td>
+                    <td></td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>

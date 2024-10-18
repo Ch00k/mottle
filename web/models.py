@@ -262,7 +262,7 @@ class Playlist(SpotifyEntityModel):
         await self.configs_as_watching.filter(watched_playlist=playlist).adelete()  # pyright: ignore
 
     async def get_tracks(self, spotify_client: MottleSpotifyClient) -> list[PlaylistTrack]:
-        return await spotify_client.get_playlist_items(self.spotify_id)
+        return await spotify_client.get_playlist_tracks(self.spotify_id)
 
     async def get_track_ids(self, spotify_client: MottleSpotifyClient) -> list[str]:
         return [

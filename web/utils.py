@@ -283,7 +283,7 @@ class MottleSpotifyClient:
 
         return images
 
-    async def get_playlist_items(self, playlist_id: str) -> list[PlaylistTrack]:
+    async def get_playlist_tracks(self, playlist_id: str) -> list[PlaylistTrack]:
         func = partial(self.spotify_client.playlist_items, playlist_id)
         playlist_tracks = await get_all_offset_paging_items(func)  # pyright: ignore
         return [item for item in playlist_tracks if isinstance(item.track, FullPlaylistTrack)]  # pyright: ignore
@@ -295,23 +295,25 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to get audio features for tracks: {e}")
 
-    async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> dict[str, dict]:
-        playlist_items = await self.get_playlist_items(playlist_id)
-        counter = Counter(
-            [item.track.id for item in playlist_items if item.track is not None and item.track.id is not None]
-        )
-        duplicates = [track_id for track_id, count in counter.items() if count > 1]
+    async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> list[tuple[FullPlaylistTrack, int]]:
+        # TODO: This implementation is quite awful
+        playlist_tracks = await self.get_playlist_tracks(playlist_id)
+        playlist_tracks = [item for item in playlist_tracks if isinstance(item.track, FullPlaylistTrack)]
 
-        duplicate_dict: dict[str, dict] = {}
+        counter = Counter([item.track.id for item in playlist_tracks])  # pyright: ignore  # TODO: Why?
+        duplicates = {track_id: count for track_id, count in counter.items() if count > 1}
 
-        for index, item in enumerate(playlist_items):
-            if item.track is not None and item.track.track and item.track.id in duplicates:
-                if item.track.id in duplicate_dict:
-                    duplicate_dict[item.track.id]["positions"].append(index)
-                else:
-                    duplicate_dict[item.track.id] = {"track": item, "positions": [index]}
+        d = []
+        seen_ids = set()
+        for track in playlist_tracks:
+            if track.track.id in seen_ids:  # pyright: ignore  # TODO: Why?
+                continue
+            if track.track.id in duplicates:  # pyright: ignore  # TODO: Why?
+                d.append((track.track, duplicates[track.track.id]))  # pyright: ignore  # TODO: Why?)
 
-        return duplicate_dict
+            seen_ids.add(track.track.id)  # pyright: ignore  # TODO: Why?
+
+        return d
 
 
 async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:

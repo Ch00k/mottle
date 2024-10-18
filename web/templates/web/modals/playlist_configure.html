@@ -1,27 +1,26 @@
 {% load static %}
-{% load tekore_model_extras %}
 <div id="modal" _="on closeModal remove me">
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
         <h2>Configuration</h2>
         <label>Playlists watched for new tracks</label>
         {% if watched_playlists %}
-            <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
+            <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
             <table class="modal">
                 {% for watched_playlist, auto_accept_updates in watched_playlists %}
                     <tr>
                         <td>
-                            <a href="{{ watched_playlist | spotify_url }}">{{ watched_playlist.name }}</a>
+                            <a href="{{ watched_playlist.url }}">{{ watched_playlist.name }}</a>
                         </td>
                         <td>
-                            <a href="{{ watched_playlist.owner | spotify_url }}">{{ watched_playlist.owner.display_name }}</a>
+                            <a href="{{ watched_playlist.owner_url }}">{{ watched_playlist.owner_name }}</a>
                         </td>
                         <td>
                             <input type="hidden"
                                    name="watched-playlist-id"
                                    value="{{ watched_playlist.id }}">
                             <a href=""
-                               hx-post="{% url 'auto_accept_playlist_updates' playlist_id %}"
+                               hx-post="{% url 'auto_accept_playlist_updates' playlist.id %}"
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">
@@ -43,19 +42,19 @@
         {% endif %}
         <label>Artists watched for new releases</label>
         {% if watched_artists %}
-            <input type="hidden" name="watching-playlist-id" value="{{ playlist_id }}">
+            <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
             <table class="modal">
                 {% for watched_artist, auto_accept_updates in watched_artists %}
                     <tr>
                         <td>
-                            <a href="{{ watched_artist | spotify_url }}">{{ watched_artist.name }}</a>
+                            <a href="{{ watched_artist.url }}">{{ watched_artist.name }}</a>
                         </td>
                         <td>
                             <input type="hidden"
                                    name="watched-artist-id"
                                    value="{{ watched_artist.id }}">
                             <a href=""
-                               hx-post="{% url 'auto_accept_playlist_updates' playlist_id %}"
+                               hx-post="{% url 'auto_accept_playlist_updates' playlist.id %}"
                                hx-target="this"
                                hx-include="previous input"
                                hx-indicator="#spinner">

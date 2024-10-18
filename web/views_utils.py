@@ -11,7 +11,7 @@ from django.urls import reverse
 from web.middleware import MottleHttpRequest
 
 from .models import Artist, Playlist
-from .templatetags.tekore_model_extras import largest_image, smallest_image, spotify_url
+from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ UNDEFINED = "UNDEFINED"
 
 class SpotifyEntityMetadata:
     def __init__(self, request: MottleHttpRequest, entity_id: str):
+        self._id = entity_id
         self._spotify_client = request.spotify_client
-        self._entity_id = entity_id
         self._entity_name = camel_to_snake(self.__class__.__name__).replace("_metadata", "")
         self._headers = request.headers
         self._is_data_fetched = False
@@ -32,25 +32,39 @@ class SpotifyEntityMetadata:
         self._get_common_attrs()
 
     @property
+    async def id(self) -> str:
+        return self._id
+
+    @property
     async def name(self) -> str:
         if self._name == UNDEFINED:
+            logger.warning(f"Name of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
         return unquote(self._name)
 
     @property
-    async def spotify_url(self) -> str:
-        if self._spotify_url == UNDEFINED:
+    async def url(self) -> str:
+        if self._url == UNDEFINED:
+            logger.warning(f"Spotify URL of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
-        return unquote(self._spotify_url)
+        return unquote(self._url)
 
     @property
-    async def image_url(self) -> Optional[str]:
-        if self._image_url == UNDEFINED:
+    async def image_url_small(self) -> Optional[str]:
+        if self._image_url_small == UNDEFINED:
+            logger.warning(f"Image URL (small) of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
-        return None if self._image_url is None else unquote(self._image_url)
+        return None if self._image_url_small is None else unquote(self._image_url_small)
+
+    @property
+    async def image_url_large(self) -> Optional[str]:
+        if self._image_url_large == UNDEFINED:
+            logger.warning(f"Image URL (large) of {self._entity_name} {self._id} is UNDEFINED")
+            await self._fetch_data()
+        return None if self._image_url_large is None else unquote(self._image_url_large)
 
     async def _fetch_data(self) -> None:
-        logger.warning(f"Fetching data for {self._entity_name} {self._entity_id}")
+        logger.warning(f"Fetching data for {self._entity_name} {self._id}")
 
         if not self._is_data_fetched:
             try:
@@ -58,11 +72,12 @@ class SpotifyEntityMetadata:
             except AttributeError:
                 raise MottleException(f"Method get_{self._entity_name} not found in Spotify client")
 
-            entity = await spotify_client_method(self._entity_id)
+            entity = await spotify_client_method(self._id)
 
             self._name = entity.name
-            self._spotify_url = spotify_url(entity)
-            self._image_url = largest_image(entity.images)
+            self._url = get_spotify_url(entity)
+            self._image_url_small = get_smallest_image(entity.images)
+            self._image_url_large = get_largest_image(entity.images)
 
             self._fetch_additional_data(entity)
 
@@ -76,8 +91,9 @@ class SpotifyEntityMetadata:
 
     def _get_common_attrs(self) -> None:
         self._name = self._get_attr_from_header("Name")
-        self._spotify_url = self._get_attr_from_header("Spotifyurl")
-        self._image_url = self._get_attr_from_header("Imageurl")
+        self._url = self._get_attr_from_header("Url")
+        self._image_url_small = self._get_attr_from_header("Imageurlsmall")
+        self._image_url_large = self._get_attr_from_header("Imageurllarge")
 
 
 class PlaylistMetadata(SpotifyEntityMetadata):
@@ -85,23 +101,52 @@ class PlaylistMetadata(SpotifyEntityMetadata):
         super().__init__(request, playlist_id)
 
         self._owner_id = self._get_attr_from_header("Ownerid")
+        self._owner_name = self._get_attr_from_header("Ownername")
+        self._owner_url = self._get_attr_from_header("Ownerurl")
         self._snapshot_id = self._get_attr_from_header("Snapshotid")
+        self._num_tracks = self._get_attr_from_header("Numtracks")
 
     @property
     async def owner_id(self) -> str:
         if self._owner_id == UNDEFINED:
+            logger.warning(f"Owner ID of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
         return unquote(self._owner_id)
 
     @property
+    async def owner_name(self) -> str:
+        if self._owner_name == UNDEFINED:
+            logger.warning(f"Owner name of {self._entity_name} {self._id} is UNDEFINED")
+            await self._fetch_data()
+        return unquote(self._owner_name)
+
+    @property
+    async def owner_url(self) -> str:
+        if self._owner_url == UNDEFINED:
+            logger.warning(f"Owner URL of {self._entity_name} {self._id} is UNDEFINED")
+            await self._fetch_data()
+        return unquote(self._owner_url)
+
+    @property
     async def snapshot_id(self) -> str:
         if self._snapshot_id == UNDEFINED:
+            logger.warning(f"Snapshot ID of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
         return unquote(self._snapshot_id)
 
+    @property
+    async def num_tracks(self) -> int:
+        if self._num_tracks == UNDEFINED:
+            logger.warning(f"Number of tracks of {self._entity_name} {self._id} is UNDEFINED")
+            await self._fetch_data()
+        return int(self._num_tracks)
+
     def _fetch_additional_data(self, playlist: Any) -> None:
         self._owner_id = playlist.owner.id
+        self._owner_name = playlist.owner.display_name
+        self._owner_url = get_spotify_url(playlist.owner)
         self._snapshot_id = playlist.snapshot_id
+        self._num_tracks = playlist.tracks.total
 
 
 class ArtistMetadata(SpotifyEntityMetadata):
@@ -117,11 +162,12 @@ class AlbumMetadata(SpotifyEntityMetadata):
     @property
     async def track_image_url(self) -> Optional[str]:
         if self._track_image_url == UNDEFINED:
+            logger.warning(f"Track image URL of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
         return None if self._track_image_url is None else unquote(self._track_image_url)
 
     def _fetch_additional_data(self, album: Any) -> None:
-        self._track_image_url = smallest_image(album.images)
+        self._track_image_url = get_smallest_image(album.images)
 
 
 def get_duplicates_message(items: Collection) -> str:

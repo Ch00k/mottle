@@ -1,8 +1,7 @@
 {% extends "web/base.html" %}
 {% load static %}
-{% load tekore_model_extras %}
 {% block title %}
-    {{ artist }} - albums
+    {{ artist.name }} - albums
 {% endblock title %}
 {% block page_title %}
     Discography
@@ -17,7 +16,7 @@
                 <input type="text"
                        name="name"
                        id="playlist-name"
-                       value="{{ artist }} discography"
+                       value="{{ artist.name }} discography"
                        onkeyup="toggleSubmitButtonInput('playlist-name', 'create')"
                        required>
                 <label for="playlist-description">Description</label>
@@ -81,35 +80,35 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in albums %}
+                    {% for album in albums %}
                         <tr>
                             <td>
                                 <input type="checkbox"
                                        name="album"
                                        form="albums-form"
-                                       class="toggling {{ item.album_type }}"
-                                       value="{{ item.id }}"
+                                       class="toggling {{ album.type }}"
+                                       value="{{ album.id }}"
                                        onchange="toggleSubmitButton()"
-                                       {% if item.album_type in 'album,single' %}checked{% endif %}>
+                                       {% if album.type in 'album,single' %}checked{% endif %}>
                             </td>
                             <td>
-                                <img src="{{ item.images | smallest_image | default_image:70 }}">
+                                <img src="{{ album.image_url_small }}">
                             </td>
                             <td>
-                                <a href="{% url 'album' item.id %}"
+                                <a href="{% url 'album' album.id %}"
                                    hx-boost="true"
                                    hx-indicator="#spinner"
-                                   hx-headers='{"M-Album-Name": "{{ item.name | urlencode }}", "M-Album-SpotifyURL": "{{ item | spotify_url }}", "M-Album-ImageURL": "{{ item.images | largest_image | default_image:300 }}", "M-Album-TrackImageURL": "{{ item.images | smallest_image | default_image:70 }}"}'>{{ item.name }}</a>
+                                   hx-headers='{% include "web/parts/album_metadata_headers.html" %}'>{{ album.name }}</a>
                             </td>
-                            <td>{{ item.release_date | year }}</td>
-                            <td>{{ item.total_tracks }}</td>
-                            <td>{{ item.album_type }}</td>
+                            <td>{{ album.release_year }}</td>
+                            <td>{{ album.num_tracks }}</td>
+                            <td>{{ album.type }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </section>
     {% else %}
-        {{ artist }} has no albums
+        {{ artist.name }} has no albums
     {% endif %}
 {% endblock content %}

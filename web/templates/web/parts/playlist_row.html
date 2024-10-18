@@ -1,16 +1,11 @@
-{% load tekore_model_extras %}
 <tr>
     <td>
-        <img src="{{ playlist.images | smallest_image | default_image:70 }}">
+        <img src="{{ playlist.image_url_small }}">
     </td>
     <td class="name">{% include "web/parts/playlist_name.html" %}</td>
-    <td>{{ playlist.tracks.total }}</td>
+    <td>{{ playlist.num_tracks }}</td>
     <td>
-        <a href="{{ playlist.owner | spotify_url }}">{{ playlist.owner.display_name }}</a>
+        <a href="{{ playlist.owner_url }}">{{ playlist.owner_name }}</a>
     </td>
-    {% if actions == "my" %}
-        {% include "web/parts/playlist_row_actions_my.html" %}
-    {% elif actions == "search" %}
-        {% include "web/parts/playlist_row_actions_search.html" %}
-    {% endif %}
+    <td>{% include "web/parts/playlist_actions.html" %}</td>
 </tr>

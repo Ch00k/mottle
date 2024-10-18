@@ -1,0 +1,7 @@
+<a href=""
+   hx-post="{% url 'unfollow_playlist' playlist.id %}"
+   hx-confirm="Are you sure you want to unfollow playlist {{ playlist.name }}?"
+   hx-target="this"
+   hx-swap="outerHTML"
+   hx-indicator="#spinner"
+   hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{% include "web/icons/unfollow.html" %}</a>

@@ -1,7 +1,6 @@
 {% extends "web/base.html" %}
-{% load tekore_model_extras %}
 {% block page_title %}
-    {{ playlist_name }} - deduplicate
+    {{ playlist.name }} - deduplicate
 {% endblock page_title %}
 {% block content %}
     <article>
@@ -9,7 +8,7 @@
             <h3>{{ message }}</h3>
         </aside>
     </article>
-    {% if playlist_items %}
+    {% if duplicates %}
         <br>
         <table>
             <thead>
@@ -23,41 +22,33 @@
                 </tr>
             </thead>
             <tbody>
-                {% for id, data in playlist_items.items %}
-                    {% if data.track.track.track %}
-                        <tr>
-                            <td>
-                                <img src="{{ data.track.track.album.images | smallest_image | default_image:70 }}" />
-                            </td>
-                            <td>
-                                {% for artist in data.track.track.artists %}
-                                    <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
-                                    <br>
-                                {% endfor %}
-                            </td>
-                            <td>
-                                <a href="{{ data.track.track.album | spotify_url }}">{{ data.track.track.album.name }}</a>
-                            </td>
-                            <td>
-                                <a href="{{ data.track.track | spotify_url }}">{{ data.track.track.name }}</a>
-                            </td>
-                            <td>{{ data.track.track.duration_ms | duration_humanized }}</td>
-                            <td>{{ data.positions | length }}</td>
-                            <td style="display:none;">
-                                <input type="hidden"
-                                       name="track-meta"
-                                       value="{{ data.track.track.uri }}::{{ data.positions | join:',' }}">
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td>This item is not a track</td>
-                        </tr>
-                    {% endif %}
+                {% for track, count in duplicates %}
+                    <tr>
+                        <td>
+                            <img src="{{ track.album.image_url_small }}" />
+                        </td>
+                        <td>
+                            {% for artist in track.artists %}
+                                <a href="{{ artist.url }}">{{ artist.name }}</a>
+                                <br>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{% url 'album' track.album.id %}">{{ track.album.name }}</a>
+                        </td>
+                        <td>
+                            <a href="{{ track.url }}">{{ track.name }}</a>
+                        </td>
+                        <td>{{ track.duration }}</td>
+                        <td>{{ count }}</td>
+                        <td style="display:none;">
+                            <input type="hidden" name="track-ids" value="{{ track.id }}">
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% if playlist_owner_id == request.session.spotify_user_spotify_id %}
+        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
             <br>
             <button hx-post="."
                     hx-include="input"

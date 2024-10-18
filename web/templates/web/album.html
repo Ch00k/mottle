@@ -1,12 +1,11 @@
 {% extends "web/base.html" %}
-{% load tekore_model_extras %}
 {% block title %}
-    {{ album_name }}
+    {{ album.name }}
 {% endblock title %}
 {% block page_title %}
     <div class="centered">
-        <img class="cover" src="{{ album_image_url }}" />
-        <a href="{{ album_spotify_url }}">{{ album_name }}</a>
+        <img class="cover" src="{{ album.image_url_large }}" />
+        <a href="{{ album.url }}">{{ album.name }}</a>
     </div>
 {% endblock page_title %}
 {% block content %}
@@ -20,21 +19,21 @@
             </tr>
         </thead>
         <tbody>
-            {% for item in tracks %}
+            {% for track in tracks %}
                 <tr>
                     <td>
-                        <img src="{{ track_image_url }}" />
+                        <img src="{{ album.track_image_url }}" />
                     </td>
                     <td>
-                        {% for artist in item.artists %}
-                            <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                        {% for artist in track.artists %}
+                            <a href="{{ artist.url }}">{{ artist.name }}</a>
                             <br>
                         {% endfor %}
                     </td>
                     <td>
-                        <a href="{{ item | spotify_url }}">{{ item.name }}</a>
+                        <a href="{{ track.url }}">{{ track.name }}</a>
                     </td>
-                    <td>{{ item.duration_ms | duration_humanized }}</td>
+                    <td>{{ track.duration }}</td>
                 </tr>
             {% endfor %}
         </tbody>

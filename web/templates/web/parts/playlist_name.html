@@ -1,7 +1,6 @@
-{% load tekore_model_extras %}
 <div class="stretched">
     <a href="{% url 'playlist' playlist.id %}"
        hx-boost="true"
        hx-indicator="#spinner"
-       hx-headers='{"M-Playlist-Name": "{{ playlist.name | urlencode }}", "M-Playlist-SpotifyURL": "{{ playlist | spotify_url }}", "M-Playlist-ImageURL": "{{ playlist.images | largest_image | default_image:300 }}"}'>{{ playlist.name }}</a>
+       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{{ playlist.name }}</a>
 </div>

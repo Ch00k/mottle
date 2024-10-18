@@ -1,6 +1,5 @@
 {% extends "web/base.html" %}
 {% load static %}
-{% load tekore_model_extras %}
 {% block title %}
     Search playlists
 {% endblock title %}
@@ -21,7 +20,7 @@
     <br>
     <section id="search-results">
         {% if playlists %}
-            {% include "web/parts/playlists.html" with actions="search" %}
+            {% include "web/parts/playlists.html" with source="playlists_search" %}
         {% endif %}
     </section>
 {% endblock content %}

@@ -1,8 +1,7 @@
-{% load tekore_model_extras %}
-<button hx-post="{% url 'playlist_updates' playlist_id %}"
+<button hx-post="{% url 'playlist_updates' playlist.id %}"
         hx-target="#content"
         hx-indicator="#spinner"
-        hx-headers='{"M-Playlist-Name": "{{ playlist_name | urlencode }}"}'>Check for updates</button>
+        hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>Check for updates</button>
 <br>
 <br>
 {% for update_id, watched_entity, tracks in updates %}
@@ -10,7 +9,7 @@
         <header>
             {% comment %}<img src="{{ watched_entity.images | smallest_image | default_image:70 }}" />{% endcomment %}
             {% comment %}<br>{% endcomment %}
-            <a href="{{ watched_entity | spotify_url }}">
+            <a href="{{ watched_entity.url }}">
                 <h2>{{ watched_entity.name }}</h2>
             </a>
         </header>
@@ -27,31 +26,30 @@
                 {% for track in tracks %}
                     <tr>
                         <td>
-                            <img src="{{ track.album.images | smallest_image | default_image:70 }}" />
+                            <img src="{{ track.album.image_url_small }}" />
                         </td>
                         <td>
                             {% for artist in track.artists %}
-                                <a href="{{ artist | spotify_url }}">{{ artist.name }}</a>
+                                <a href="{{ artist.url }}">{{ artist.name }}</a>
                                 <br>
                             {% endfor %}
                         </td>
                         <td>
-                            <a href="{{ track.album | spotify_url }}">{{ track.album.name }}</a>
+                            <a href="{{ track.album.url }}">{{ track.album.name }}</a>
                         </td>
                         <td>
-                            <a href="{{ track | spotify_url }}">{{ track.name }}</a>
+                            <a href="{{ track.url }}">{{ track.name }}</a>
                         </td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
         <br>
-        <button hx-post="{% url 'accept_playlist_update' playlist_id update_id %}"
+        <button hx-post="{% url 'accept_playlist_update' playlist.id update_id %}"
                 hx-confirm="Are you sure you want to add new tracks to playlist?"
                 hx-target="closest div"
                 hx-swap="outerHTML"
-                hx-indicator="#spinner"
-                hx-headers='{"M-PlaylistUpdateID": "{{ update_id }}"}'>Accept</button>
+                hx-indicator="#spinner">Accept</button>
     </div>
 {% empty %}
     <article>

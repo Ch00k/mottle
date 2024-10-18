@@ -3,10 +3,11 @@
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
         <h2>Cover image</h2>
-        <img class="cover" src="{{ playlist_image_url }}" />
+        <img class="cover" src="{{ playlist.image_url_large }}" />
         <br>
-        <button hx-post="{% url 'playlist_cover_image' playlist_id %}"
+        <button hx-post="{% url 'playlist_cover_image' playlist.id %}"
                 hx-target="#modal"
-                hx-swap="delete">Regenerate</button>
+                hx-swap="delete"
+                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>Regenerate</button>
     </div>
 </div>
