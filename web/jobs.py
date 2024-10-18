@@ -1,14 +1,19 @@
 import logging
+import timeit
+from collections import defaultdict
 from typing import Any
 
 from asgiref.sync import sync_to_async
+from django.conf import settings
+from django.contrib.gis.measure import Distance
 from django.db.models import Q
 
-from web.email import send_email
-from web.views_utils import compile_email
-
-from .models import Playlist, PlaylistUpdate, SpotifyUser
+from .email import send_email
+from .events.enums import EventType
+from .models import EventArtist, Playlist, PlaylistUpdate, SpotifyUser
+from .spotify import get_client_token
 from .utils import MottleException, MottleSpotifyClient
+from .views_utils import compile_event_updates_email, compile_playlist_updates_email
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +144,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
                 else:
                     update["auto_accept_successful"] = True
 
-    message = await compile_email(updates, spotify_client)
+    message = await compile_playlist_updates_email(updates, spotify_client)
     logger.debug(f"Email message:\n{message}")
 
     if not send_notifications:
@@ -163,3 +168,82 @@ async def check_playlists_for_updates(send_notifications: bool = False) -> None:
 
     async for user in SpotifyUser.objects.filter(~Q(playlists=None)):
         await check_user_playlists_for_updates(user, send_notifications)
+
+
+async def check_artists_for_event_updates(send_notifications: bool = False) -> None:
+    start_time = timeit.default_timer()
+
+    logger.info("Checking artists for event updates")
+
+    all_artists = EventArtist.objects.all()
+    num_artists = await all_artists.acount()
+
+    logger.info(f"Artists to process: {num_artists}")
+
+    counter = 1
+
+    async for artist in all_artists:
+        logger.info(f"Processing artist {artist} ({counter} of {num_artists})")
+        await artist.update_events()
+
+    # TODO: Only do it if there are updates
+    token = get_client_token()
+    spotify_client = MottleSpotifyClient(token.access_token)
+
+    async for user in SpotifyUser.objects.filter(
+        ~Q(watched_event_artists=None),
+        location__isnull=False,
+        email__isnull=False,
+    ):
+        artists_with_events = defaultdict(list)
+
+        async for event_artist in user.watched_event_artists.all():  # pyright: ignore
+            # Two cases:
+            # 1. Streaming event
+            # 2. Non-streaming event with geolocation defined, and its geolocation is within 100 km of user's location
+            # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
+            events_query = event_artist.events.filter(
+                Q(type=EventType.live_stream)
+                | (
+                    Q(~Q(type=EventType.live_stream), geolocation__isnull=False)
+                    & Q(geolocation__distance_lte=(user.location, Distance(km=settings.EVENT_DISTANCE_THRESHOLD_KM)))
+                )
+            )
+
+            async for event in events_query.all():
+                async for update in event.updates.filter(is_notified_of=False).all():
+                    artists_with_events[event_artist].append(update)
+
+        message = await compile_event_updates_email(artists_with_events, spotify_client)
+
+        logger.debug(f"Email message for {user}:\n{message}")
+
+        if not send_notifications:
+            logger.warning("Email notifications disabled")
+            continue
+
+        if user.email is None:
+            logger.warning(f"No email for user {user}")
+            continue
+
+        logger.info(f"Sending email to {user.email}")
+        await send_email(user.email, "We've got updates for you", message)
+
+    elapsed_time = timeit.default_timer() - start_time
+    logger.debug(f"Elapsed time: {elapsed_time}")
+
+
+# def _get_users_with_event_updates() -> QuerySet[SpotifyUser]:
+#     return SpotifyUser.objects.filter(~Q(watched_event_artists=None)).prefetch_related(
+#         Prefetch(
+#             "watched_event_artists",
+#             queryset=EventArtist.objects.filter(~Q(events=None)).prefetch_related(
+#                 Prefetch(
+#                     "events",
+#                     queryset=Event.objects.prefetch_related(
+#                         Prefetch("updates", queryset=EventUpdate.objects.filter(is_notified_of=False))
+#                     ),
+#                 )
+#             ),
+#         )
+#     )

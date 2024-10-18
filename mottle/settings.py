@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_prometheus",
     "django_q",
+    "django.contrib.gis",
 ]
 
 MIDDLEWARE = [
@@ -76,20 +77,44 @@ ASGI_APPLICATION = "mottle.asgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django_prometheus.db.backends.sqlite3",
+        "ENGINE": "django.contrib.gis.db.backends.spatialite",
         "NAME": env.path("DATABASE_FILE", BASE_DIR / "db.sqlite3"),
-    }
+    },
+    "tasks": {
+        "ENGINE": "django_prometheus.db.backends.sqlite3",
+        "NAME": env.path("DATABASE_FILE_TASKS", BASE_DIR / "tasks.sqlite3"),
+    },
 }
 
+DATABASE_ROUTERS = [
+    "mottle.db_routers.DefaultRouter",
+    "mottle.db_routers.TasksRouter",
+]
+
+if gdal_library_path := env.str("GDAL_LIBRARY_PATH", None):
+    GDAL_LIBRARY_PATH = gdal_library_path
+
+if geos_library_path := env.str("GEOS_LIBRARY_PATH", None):
+    GEOS_LIBRARY_PATH = geos_library_path
+
 Q_CLUSTER = {
-    "orm": "default",
+    "name": "default",
+    "orm": "tasks",
     "workers": 1,
     "timeout": 300,
-    "retry": 600,
+    "retry": 450,
     "max_attempts": 1,
+    "ack_failures": True,
     "save_limit": 0,
     "schedule": False,
     "log_level": "DEBUG",
+    "ALT_CLUSTERS": {
+        "long_running": {
+            "orm": "tasks",
+            "timeout": 20 * 60 * 60,  # 20 hours
+            "retry": 21 * 60 * 60,  # 21 hours
+        },
+    },
 }
 
 LANGUAGE_CODE = "en-us"
@@ -98,10 +123,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = env.path("STATIC_ROOT", BASE_DIR / "static/")
+STATIC_ROOT = env.path("STATIC_ROOT", BASE_DIR / "web/static/")
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 
 LOGGING = {
     "version": 1,
@@ -112,10 +138,20 @@ LOGGING = {
             "style": "{",
         },
     },
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        }
+    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "plain",
+        },
+        "sql": {
+            "class": "logging.StreamHandler",
+            "formatter": "plain",
+            "filters": ["require_debug_true"],
         },
     },
     "root": {
@@ -123,6 +159,18 @@ LOGGING = {
         "level": "INFO",
     },
     "loggers": {
+        # Uncomment to log all SQL queries
+        #
+        # "django.db.backends": {
+        #     "handlers": ["sql"],
+        #     "level": "DEBUG",
+        #     "propagate": False,
+        # },
+        "__main__": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         "web": {
             "handlers": ["console"],
             "level": "DEBUG",
@@ -141,6 +189,11 @@ LOGGING = {
         "django-q": {
             "handlers": ["console"],
             "level": "DEBUG",
+            "propagate": False,
+        },
+        "django.channels.server": {
+            "handlers": ["console"],
+            "level": "WARNING",
             "propagate": False,
         },
     },
@@ -200,3 +253,13 @@ sentry_sdk.init(
         ),
     ],
 )
+
+HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
+BRIGHTDATA_PROXY_URL = env.str("BRIGHTDATA_PROXY_URL", None)
+
+EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD", 85)
+
+GEODJANGO_SRID = 4326
+EVENT_DISTANCE_THRESHOLD_KM = env.float("EVENT_DISTANCE_THRESHOLD_KM", 100)
+
+EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS = env.list("EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS", [])

@@ -22,7 +22,6 @@ def set_token_scope(apps: Apps, _: BaseDatabaseSchemaEditor) -> None:
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("web", "0006_fix_playlistupdate_source_artist"),
     ]

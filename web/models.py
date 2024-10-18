@@ -5,11 +5,19 @@ import uuid
 from typing import Any, Optional
 
 from asgiref.sync import sync_to_async
+from dirtyfields import DirtyFieldsMixin
 from django.conf import settings
+from django.contrib.gis.db import models as gis_models
+from django.contrib.gis.geos import Point
 from django.db import models
 from tekore import Token
 from tekore.model import PlaylistTrack
 
+from web.events.data import EventSourceArtist
+from web.events.enums import EventDataSource, EventType
+
+from .events.data import Event as FetchedEvent
+from .events.data import Venue as FetchedVenue
 from .spotify import authenticate
 from .utils import MottleException, MottleSpotifyClient
 
@@ -65,6 +73,7 @@ class SpotifyEntityModel(BaseModel):
 class SpotifyUser(SpotifyEntityModel):
     display_name = models.CharField(max_length=48, null=True)
     email = models.EmailField(null=True)
+    location = gis_models.PointField(null=True, srid=settings.GEODJANGO_SRID)
 
     def __str__(self) -> str:
         return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
@@ -159,6 +168,145 @@ class Artist(SpotifyEntityModel):
     async def get_album_ids(self, spotify_client: MottleSpotifyClient) -> list[str]:
         albums = await spotify_client.get_artist_albums(self.spotify_id)
         return [album.id for album in albums]
+
+
+class EventArtist(BaseModel):
+    artist = models.OneToOneField(Artist, on_delete=models.CASCADE, related_name="event_artist")  # TODO: Cascade?
+    musicbrainz_id = models.UUIDField(null=True)
+    songkick_url = models.CharField(max_length=2000, null=True)
+    bandsintown_url = models.CharField(max_length=2000, null=True)
+    songkick_name_match_accuracy = models.IntegerField()
+    bandsintown_name_match_accuracy = models.IntegerField()
+    watching_users = models.ManyToManyField(SpotifyUser, related_name="watched_event_artists")
+
+    def __str__(self) -> str:
+        return f"<EventArtist {self.id}>"
+
+    async def as_fetched_artist(self) -> EventSourceArtist:
+        return EventSourceArtist(
+            name="dummy",
+            songkick_url=self.songkick_url,
+            bandsintown_url=self.bandsintown_url,
+            events=[
+                e.as_fetched_event()
+                async for e in self.events.all()  # pyright: ignore
+            ],  # TODO: This is ineficient
+        )
+
+    @staticmethod
+    async def create_from_fetched_artist(
+        artist: Artist,
+        musicbrainz_id: Optional[str],
+        fetched_artist: EventSourceArtist,
+        watching_spotify_user_ids: list[str],
+    ) -> "EventArtist":
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=musicbrainz_id,
+            songkick_url=fetched_artist.songkick_url,
+            bandsintown_url=fetched_artist.bandsintown_url,
+            songkick_name_match_accuracy=fetched_artist.songkick_match_accuracy,
+            bandsintown_name_match_accuracy=fetched_artist.bandsintown_match_accuracy,
+        )
+        # https://github.com/typeddjango/django-stubs/issues/997
+        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore # pyright: ignore
+        return event_artist
+
+    async def update_events(self) -> None:
+        fetched_artist = await self.as_fetched_artist()
+        await fetched_artist.fetch_events()
+
+        for event in fetched_artist.events:
+            await Event.update_or_create_from_fetched_event(event, self)
+
+
+class Event(DirtyFieldsMixin, BaseModel):
+    artist = models.ForeignKey(EventArtist, on_delete=models.CASCADE, related_name="events")
+    source = models.CharField(max_length=50, choices=[(e.name, e.value) for e in EventDataSource])
+    source_url = models.CharField(max_length=2000)
+    type = models.CharField(max_length=50, choices=[(e.name, e.value) for e in EventType])
+    date = models.DateField()
+    venue = models.CharField(max_length=200, null=True)
+    postcode = models.CharField(max_length=50, null=True)
+    address = models.CharField(max_length=1000, null=True)
+    city = models.CharField(max_length=100, null=True)
+    country = models.CharField(max_length=100, null=True)
+    geolocation = gis_models.PointField(null=True, srid=settings.GEODJANGO_SRID)
+    stream_urls = models.JSONField(null=True)
+    tickets_urls = models.JSONField(null=True)
+
+    @staticmethod
+    async def update_or_create_from_fetched_event(
+        fetched_event: FetchedEvent, event_artist: EventArtist
+    ) -> tuple["Event", bool]:
+        venue = fetched_event.venue
+        if venue is None:
+            venue_name = None
+            postcode = None
+            address = None
+            city = None
+            country = None
+            geolocation = None
+        else:
+            venue_name = venue.name
+            postcode = venue.postcode
+            address = venue.address
+            city = venue.city
+            country = venue.country
+            geolocation = Point(venue.geo_lon, venue.geo_lat, srid=settings.GEODJANGO_SRID)
+
+        return await Event.objects.aupdate_or_create(
+            artist=event_artist,
+            source=fetched_event.source,
+            source_url=fetched_event.url,
+            defaults={
+                "type": fetched_event.type,
+                "date": fetched_event.date,
+                "venue": venue_name,
+                "postcode": postcode,
+                "address": address,
+                "city": city,
+                "country": country,
+                "geolocation": geolocation,
+                "stream_urls": fetched_event.stream_urls,
+                "tickets_urls": fetched_event.tickets_urls,
+            },
+        )
+
+    def as_fetched_event(self) -> FetchedEvent:
+        if self.venue is None or self.geolocation is None:
+            venue = None
+        else:
+            venue = FetchedVenue(
+                name=self.venue,
+                postcode=self.postcode,
+                address=self.address,
+                city=self.city,
+                country=self.country,
+                geo_lat=self.geolocation.y,
+                geo_lon=self.geolocation.x,
+            )
+
+        return FetchedEvent(
+            source=EventDataSource(self.source),
+            url=self.source_url,
+            type=EventType(self.type),
+            date=self.date,
+            venue=venue,
+            stream_urls=self.stream_urls,
+            tickets_urls=self.tickets_urls,
+        )
+
+
+class EventUpdate(BaseModel):
+    FULL = "full"
+    PARTIAL = "partial"
+    EVENT_UPDATE_TYPES = [(FULL, "full"), (PARTIAL, "partial")]
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="updates")
+    type = models.CharField(max_length=50, choices=EVENT_UPDATE_TYPES)
+    changes = models.JSONField(null=True)
+    is_notified_of = models.BooleanField(default=False)
 
 
 class Playlist(SpotifyEntityModel):

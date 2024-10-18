@@ -1,4 +1,18 @@
 SHELL := bash
+DOCKER_BUILDKIT := 1
+
+build_dev:
+	@echo Building development image
+	docker build . -t mottle:latest
+
+up:
+	docker-compose up --remove-orphans
+
+down:
+	docker-compose down --remove-orphans
+
+shell:
+	docker-compose exec web ./manage.py shell
 
 test:
 	poetry run pytest web/tests

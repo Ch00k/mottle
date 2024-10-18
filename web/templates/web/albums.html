@@ -53,6 +53,11 @@
                 <br>
                 <label for="generate-cover">Generate cover image</label>
                 <input type="checkbox" name="generate-cover" id="generate-cover">
+                {% if events_enabled %}
+                    <br>
+                    <label for="track-events">Watch artist for live events</label>
+                    <input type="checkbox" name="track-events" id="track-events" checked>
+                {% endif %}
                 <br>
                 <label for="auto-update">Watch artist for new releases</label>
                 <input type="checkbox"

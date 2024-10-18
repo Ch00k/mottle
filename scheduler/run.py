@@ -13,7 +13,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from prometheus_client import start_http_server
 
-from scheduler.jobs import get_playlist_updates
+from scheduler.jobs import get_event_updates, get_playlist_updates
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ async def run() -> None:
 
     scheduler = AsyncIOScheduler(event_loop=loop)
     scheduler.add_job(get_playlist_updates, CronTrigger.from_crontab("0 10 * * *"))
+    scheduler.add_job(get_event_updates, CronTrigger.from_crontab("0 2 * * *"))
     scheduler.start()
 
     def signal_handler_metrics_server(signum: int, _: Any) -> None:
@@ -47,3 +48,8 @@ async def run() -> None:
 
 def main() -> None:
     asyncio.run(run())
+
+
+if __name__ == "__main__":
+    logger.debug("Starting scheduler")
+    main()
