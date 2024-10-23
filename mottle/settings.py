@@ -4,6 +4,7 @@ import sentry_sdk
 from cryptography.fernet import Fernet, MultiFernet
 from environs import Env
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 from tekore import Credentials
 
 env = Env()
@@ -245,12 +246,8 @@ sentry_sdk.init(
     release=f"mottle@{APP_VERSION}",
     environment=env.str("SENTRY_ENVIRONMENT", "dev"),
     integrations=[
-        DjangoIntegration(
-            transaction_style="url",
-            middleware_spans=True,
-            signals_spans=False,
-            cache_spans=False,
-        ),
+        DjangoIntegration(transaction_style="url", middleware_spans=True, signals_spans=False, cache_spans=False),
+        LoggingIntegration(level=None, event_level=None),
     ],
 )
 

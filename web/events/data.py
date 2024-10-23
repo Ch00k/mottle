@@ -257,11 +257,20 @@ class EventSourceArtist:
         else:
             raise BandsintownException(f"Artist '{self.name}' not found in Bandsintown using any of the names")
 
-        url = f"{BANDSINTOWN_BASE_URL}/a/{artist_id}"
+        # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
+        try:
+            _, _, __, artist_url = await asend_get_request(
+                async_bandsintown_client,
+                f"{BANDSINTOWN_BASE_URL}/a/{artist_id}",
+                raise_for_lte_300=False,
+                follow_redirects=True,
+            )
+        except Exception as e:
+            raise BandsintownException(f"Failed to fetch artist URL for '{self.name}': {e}")
 
-        logger.info(f"Found artist in Bandsintown: {url}")
+        logger.info(f"Found artist in Bandsintown: {artist_url}")
 
-        self.bandsintown_url = url
+        self.bandsintown_url = artist_url
         self.bandsintown_match_accuracy = accuracy
 
     async def fetch_events(self) -> None:

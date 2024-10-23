@@ -7,7 +7,6 @@ from typing import Any, Optional
 import httpx
 from django.conf import settings
 from lxml import html as lh
-from sentry_sdk import capture_exception
 
 from .constants import BANDSINTOWN_BASE_URL, MUSICBRAINZ_API_BASE_URL, SONGKICK_BASE_URL
 from .exceptions import HTTPClientException, RetriesExhaustedException
@@ -56,13 +55,11 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 response = await super().send(request, *args, **kwargs)
                 request_time = timeit.default_timer() - start
             except httpx.TimeoutException as e:
-                capture_exception(e)
                 self.requests_timedout += 1
                 logger.error(f"Timeout {self.timeout} reached while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
             except Exception as e:
-                capture_exception(e)
                 self.requests_errored += 1
                 logger.error(f"Unexpected error while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
