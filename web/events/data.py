@@ -348,6 +348,10 @@ class EventSourceArtist:
 async def find_artist_in_songkick(
     artist_name: str, use_advanced_heuristics: bool = False
 ) -> tuple[Optional[str], ArtistNameMatchAccuracy]:
+    if '"' in artist_name:
+        # https://github.com/encode/httpx/discussions/3360
+        artist_name = artist_name.replace('"', "%22")
+
     search_results, _, __, __ = await asend_get_request(
         async_songkick_client, f"api/universal_search?query={artist_name}", parse_json=True
     )
