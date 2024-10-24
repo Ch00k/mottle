@@ -10,6 +10,7 @@ from sentry_sdk import capture_exception, capture_message
 from .constants import (
     BANDSINTOWN_BASE_URL,
     BANDSINTOWN_WINDOW_DATA_XPATH,
+    SONGKICK_BASE_URL,
     SONGKICK_EVENT_URL_REGEX,
     SONGKICK_EVENTS_XPATH,
     SONGKICK_LIVE_STREAM_XPATH,
@@ -125,6 +126,15 @@ class MusicBrainzArtist:
                 logger.exception(f"Failed to get final Songkick URL: {e}")
                 capture_exception(e)
 
+        if bandsintown_url:
+            # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
+            try:
+                _, _, bandsintown_url, _ = await asend_get_request(
+                    async_bandsintown_client, bandsintown_url, redirect_url=True, raise_for_lte_300=False
+                )
+            except Exception as e:
+                raise BandsintownException(f"Failed to get final Bandsintown URL: {e}")
+
         return MusicBrainzArtist(
             id=artist_id, names=artist_names, songkick_url=songkick_url, bandsintown_url=bandsintown_url
         )
@@ -224,12 +234,16 @@ class EventSourceArtist:
         else:
             raise SongkickException(f"Artist '{self.name}' not found in Songkick using any of the names")
 
+        url_path = f"artists/{artist_id}/calendar"
         try:
-            _, _, __, artist_url = await asend_get_request(
-                async_songkick_client, f"artists/{artist_id}/calendar", raise_for_lte_300=False, follow_redirects=True
+            _, _, artist_url, _ = await asend_get_request(
+                async_songkick_client, url_path, redirect_url=True, raise_for_lte_300=False
             )
         except Exception as e:
             raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}")
+
+        # In case there was no redirect (unlikely though)
+        artist_url = artist_url or f"{SONGKICK_BASE_URL}/{url_path}"
 
         logger.info(f"Found artist '{self.name}' in Songkick: {artist_url}")
 
@@ -257,17 +271,7 @@ class EventSourceArtist:
         else:
             raise BandsintownException(f"Artist '{self.name}' not found in Bandsintown using any of the names")
 
-        # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
-        try:
-            _, _, __, artist_url = await asend_get_request(
-                async_bandsintown_client,
-                f"{BANDSINTOWN_BASE_URL}/a/{artist_id}",
-                raise_for_lte_300=False,
-                follow_redirects=True,
-            )
-        except Exception as e:
-            raise BandsintownException(f"Failed to fetch artist URL for '{self.name}': {e}")
-
+        artist_url = f"{BANDSINTOWN_BASE_URL}/a/{artist_id}"
         logger.info(f"Found artist in Bandsintown: {artist_url}")
 
         self.bandsintown_url = artist_url
