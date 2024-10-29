@@ -12,12 +12,15 @@ from prometheus_client import Counter, Summary
 from web.metrics import (
     BANDSINTOWN_API_EXCEPTIONS,
     BANDSINTOWN_API_RESPONSE_TIME_SECONDS,
+    BANDSINTOWN_API_RESPONSES_GTE_400,
     BANDSINTOWN_API_RESPONSES_THROTTLED,
     MUSICBRAINZ_API_EXCEPTIONS,
     MUSICBRAINZ_API_RESPONSE_TIME_SECONDS,
+    MUSICBRAINZ_API_RESPONSES_GTE_400,
     MUSICBRAINZ_API_RESPONSES_THROTTLED,
     SONGKICK_API_EXCEPTIONS,
     SONGKICK_API_RESPONSE_TIME_SECONDS,
+    SONGKICK_API_RESPONSES_GTE_400,
 )
 
 from .constants import BANDSINTOWN_BASE_URL, MUSICBRAINZ_API_BASE_URL, SONGKICK_BASE_URL
@@ -34,8 +37,10 @@ class AsyncRetryingClient(httpx.AsyncClient):
         retries: int = 10,
         delay_seconds: float = 0.0,
         response_time_metric: Summary | None = None,
+        responses_gte_400_counter_metric: Counter | None = None,
         exceptions_counter_metric: Counter | None = None,
         throttle_counter_metric: Counter | None = None,
+        log_request_details: bool = False,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -46,12 +51,15 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.retries = retries
         self.delay_seconds = delay_seconds
         self.response_time_metric = response_time_metric
+        self.responses_gte_400_counter_metric = responses_gte_400_counter_metric
         self.exceptions_counter_metric = exceptions_counter_metric
         self.throttle_counter_metric = throttle_counter_metric
+        self.log_request_details = log_request_details
         self.requests_total = 0
         self.requests_timedout = 0
         self.requests_errored = 0
         self.requests_accepted = 0
+        self.requests_gte_400 = 0
         self.requests_throttled = 0
         self.next_request_allowed_at = time.time()
 
@@ -111,22 +119,30 @@ class AsyncRetryingClient(httpx.AsyncClient):
             else:
                 self.requests_accepted += 1
 
-            log_msg = (
-                f"{self.__class__.__name__}({self.name}): "
-                f"requests total: {self.requests_total}, "
-                f"requests timed out: {self.requests_timedout}, "
-                f"requests errored: {self.requests_errored}, "
-                f"requests succeeded: {self.requests_accepted}, "
-                f"requests throttled: {self.requests_throttled}, "
-                f"request time: {request_time}"
-            )
-            if self.delay_seconds:
-                log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
+            if response.status_code >= 400:
+                self.requests_gte_400 += 1
 
-            logger.debug(log_msg)
+            if self.log_request_details:
+                log_msg = (
+                    f"{self.__class__.__name__}({self.name}): "
+                    f"requests total: {self.requests_total}, "
+                    f"requests timed out: {self.requests_timedout}, "
+                    f"requests errored: {self.requests_errored}, "
+                    f"requests succeeded: {self.requests_accepted}, "
+                    f"requests >=400: {self.requests_gte_400}, "
+                    f"requests throttled: {self.requests_throttled}, "
+                    f"request time: {request_time}"
+                )
+                if self.delay_seconds:
+                    log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
+
+                logger.debug(log_msg)
 
             if response.status_code < 400:  # TODO: 404?
                 return response
+
+            if self.responses_gte_400_counter_metric is not None:
+                self.responses_gte_400_counter_metric.labels(response.status_code).inc()
 
             retries -= 1
         else:
@@ -140,8 +156,10 @@ async_musicbrainz_client = AsyncRetryingClient(
     throttle_response_code=429,
     delay_seconds=1.0,
     response_time_metric=MUSICBRAINZ_API_RESPONSE_TIME_SECONDS,
+    responses_gte_400_counter_metric=MUSICBRAINZ_API_RESPONSES_GTE_400,
     exceptions_counter_metric=MUSICBRAINZ_API_EXCEPTIONS,
     throttle_counter_metric=MUSICBRAINZ_API_RESPONSES_THROTTLED,
+    log_request_details=True,
     timeout=httpx.Timeout(10),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
@@ -151,7 +169,9 @@ async_songkick_client = AsyncRetryingClient(
     name="songkick",
     timeout=httpx.Timeout(10),
     response_time_metric=SONGKICK_API_RESPONSE_TIME_SECONDS,
+    responses_gte_400_counter_metric=SONGKICK_API_RESPONSES_GTE_400,
     exceptions_counter_metric=SONGKICK_API_EXCEPTIONS,
+    log_request_details=True,
     base_url=SONGKICK_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
 )
@@ -161,8 +181,10 @@ async_bandsintown_client = AsyncRetryingClient(
     throttle_response_code=403,
     timeout=httpx.Timeout(10),
     response_time_metric=BANDSINTOWN_API_RESPONSE_TIME_SECONDS,
+    responses_gte_400_counter_metric=BANDSINTOWN_API_RESPONSES_GTE_400,
     exceptions_counter_metric=BANDSINTOWN_API_EXCEPTIONS,
     throttle_counter_metric=BANDSINTOWN_API_RESPONSES_THROTTLED,
+    log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
     proxy=settings.BRIGHTDATA_PROXY_URL,

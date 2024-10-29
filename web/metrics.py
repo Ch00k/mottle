@@ -50,6 +50,12 @@ MUSICBRAINZ_API_RESPONSE_TIME_SECONDS = Summary(
     documentation="MusicBrainz API response time in seconds",
 )
 
+MUSICBRAINZ_API_RESPONSES_GTE_400 = Counter(
+    name="musicbrainz_api_responses_gte_400",
+    documentation="MusicBrainz API responses with status code greater than or equal to 400, by status code",
+    labelnames=["status_code"],
+)
+
 MUSICBRAINZ_API_EXCEPTIONS = Counter(
     name="musicbrainz_exceptions",
     documentation="Exceptions raised while calling MusicBrainz API, by exception type (timeout, other)",
@@ -66,6 +72,12 @@ SONGKICK_API_RESPONSE_TIME_SECONDS = Summary(
     documentation="Songkick API response time in seconds",
 )
 
+SONGKICK_API_RESPONSES_GTE_400 = Counter(
+    name="songkick_api_responses_gte_400",
+    documentation="Songkick API responses with status code greater than or equal to 400, by status code",
+    labelnames=["status_code"],
+)
+
 SONGKICK_API_EXCEPTIONS = Counter(
     name="songkick_exceptions",
     documentation="Exceptions raised while calling Songkick API, by exception type (timeout, other)",
@@ -75,6 +87,12 @@ SONGKICK_API_EXCEPTIONS = Counter(
 BANDSINTOWN_API_RESPONSE_TIME_SECONDS = Summary(
     name="bandsintown_api_response_time_seconds",
     documentation="Bandsintown API response time in seconds",
+)
+
+BANDSINTOWN_API_RESPONSES_GTE_400 = Counter(
+    name="bandsintown_api_responses_gte_400",
+    documentation="Bandsintown API responses with status code greater than or equal to 400, by status code",
+    labelnames=["status_code"],
 )
 
 BANDSINTOWN_API_EXCEPTIONS = Counter(
