@@ -23,7 +23,14 @@ from web.metrics import (
     SONGKICK_API_RESPONSES_GTE_400,
 )
 
-from .constants import BANDSINTOWN_BASE_URL, MUSICBRAINZ_API_BASE_URL, SONGKICK_BASE_URL
+from .constants import (
+    BANDSINTOWN_API_REQUEST_TIMEOUT,
+    BANDSINTOWN_BASE_URL,
+    MUSICBRAINZ_API_BASE_URL,
+    MUSICBRAINZ_API_REQUEST_TIMEOUT,
+    SONGKICK_API_REQUEST_TIMEOUT,
+    SONGKICK_BASE_URL,
+)
 from .exceptions import HTTPClientException, RetriesExhaustedException
 
 logger = logging.getLogger(__name__)
@@ -138,11 +145,11 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
                 logger.debug(log_msg)
 
-            if response.status_code < 400:  # TODO: 404?
-                return response
-
-            if self.responses_gte_400_counter_metric is not None:
+            if response.status_code >= 400 and self.responses_gte_400_counter_metric is not None:
                 self.responses_gte_400_counter_metric.labels(response.status_code).inc()
+
+            if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
+                return response
 
             retries -= 1
         else:
@@ -160,14 +167,14 @@ async_musicbrainz_client = AsyncRetryingClient(
     exceptions_counter_metric=MUSICBRAINZ_API_EXCEPTIONS,
     throttle_counter_metric=MUSICBRAINZ_API_RESPONSES_THROTTLED,
     log_request_details=True,
-    timeout=httpx.Timeout(10),
+    timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
 )
 
 async_songkick_client = AsyncRetryingClient(
     name="songkick",
-    timeout=httpx.Timeout(10),
+    timeout=httpx.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
     response_time_metric=SONGKICK_API_RESPONSE_TIME_SECONDS,
     responses_gte_400_counter_metric=SONGKICK_API_RESPONSES_GTE_400,
     exceptions_counter_metric=SONGKICK_API_EXCEPTIONS,
@@ -179,7 +186,7 @@ async_songkick_client = AsyncRetryingClient(
 async_bandsintown_client = AsyncRetryingClient(
     name="bandsintown",
     throttle_response_code=403,
-    timeout=httpx.Timeout(10),
+    timeout=httpx.Timeout(BANDSINTOWN_API_REQUEST_TIMEOUT),
     response_time_metric=BANDSINTOWN_API_RESPONSE_TIME_SECONDS,
     responses_gte_400_counter_metric=BANDSINTOWN_API_RESPONSES_GTE_400,
     exceptions_counter_metric=BANDSINTOWN_API_EXCEPTIONS,

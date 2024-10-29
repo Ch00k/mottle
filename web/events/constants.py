@@ -6,6 +6,10 @@ MUSICBRAINZ_API_BASE_URL = "https://musicbrainz.org/ws/2/"
 BANDSINTOWN_BASE_URL = "https://www.bandsintown.com"
 SONGKICK_BASE_URL = "https://www.songkick.com"
 
+MUSICBRAINZ_API_REQUEST_TIMEOUT = 5
+SONGKICK_API_REQUEST_TIMEOUT = 5
+BANDSINTOWN_API_REQUEST_TIMEOUT = 5
+
 SONGKICK_EVENT_URL_REGEX = re.compile(r"^https://www\.songkick\.com/(concerts|festivals|live-stream-concerts).*$")
 SONGKICK_EVENTS_XPATH = (
     "//div[@id='calendar-summary' and contains(@class, 'upcoming')]/ol/li/div[@class='microformat']/script/text()"
