@@ -44,3 +44,46 @@ SPOTIFY_PLAYLIST_COVER_IMAGE_SIZE_BYTES = Summary(
     ),
     labelnames=["type"],
 )
+
+MUSICBRAINZ_API_RESPONSE_TIME_SECONDS = Summary(
+    name="musicbrainz_api_response_time_seconds",
+    documentation="MusicBrainz API response time in seconds",
+)
+
+MUSICBRAINZ_API_EXCEPTIONS = Counter(
+    name="musicbrainz_exceptions",
+    documentation="Exceptions raised while calling MusicBrainz API, by exception type (timeout, other)",
+    labelnames=["type"],
+)
+
+MUSICBRAINZ_API_RESPONSES_THROTTLED = Counter(
+    name="musicbrainz_api_responses_throttled",
+    documentation="MusicBrainz API responses that indicate that client is being throttled",
+)
+
+SONGKICK_API_RESPONSE_TIME_SECONDS = Summary(
+    name="songkick_api_response_time_seconds",
+    documentation="Songkick API response time in seconds",
+)
+
+SONGKICK_API_EXCEPTIONS = Counter(
+    name="songkick_exceptions",
+    documentation="Exceptions raised while calling Songkick API, by exception type (timeout, other)",
+    labelnames=["type"],
+)
+
+BANDSINTOWN_API_RESPONSE_TIME_SECONDS = Summary(
+    name="bandsintown_api_response_time_seconds",
+    documentation="Bandsintown API response time in seconds",
+)
+
+BANDSINTOWN_API_EXCEPTIONS = Counter(
+    name="bandsintown_exceptions",
+    documentation="Exceptions raised while calling Bandsintown API, by exception type (timeout, other)",
+    labelnames=["type"],
+)
+
+BANDSINTOWN_API_RESPONSES_THROTTLED = Counter(
+    name="bandsintown_api_responses_throttled",
+    documentation="Bandsintown API responses that indicate that client is being throttled",
+)
