@@ -43,6 +43,7 @@ django-stubs = "~5.0.0"
 factory-boy = "^3.3.0"
 pytest = "^8.2.0"
 pytest-django = "^4.8.0"
+pyupgrade = "^3.19.0"
 
 [tool.poetry.group.debug.dependencies]
 ipython = "^8.24.0"
