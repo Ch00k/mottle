@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 import time
-from typing import Coroutine, Optional, Union
+from collections.abc import Coroutine
 
 from django.conf import settings
 from httpx import AsyncClient, Client, Timeout
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 class MottleRetryingSender(RetryingSender):
     def send(  # type: ignore [return]
         self, request: Request
-    ) -> Union[Response, Coroutine[None, None, Response]]:  # pyright: ignore
+    ) -> Response | Coroutine[None, None, Response]:  # pyright: ignore
         """Delegate request to underlying sender and retry if failed."""
         if self.is_async:
             return self._async_send(request)
@@ -121,7 +121,7 @@ class MottleRetryingSender(RetryingSender):
                 return r
 
 
-def get_auth(credentials: Credentials, scope: str, state: Optional[str] = None) -> UserAuth:
+def get_auth(credentials: Credentials, scope: str, state: str | None = None) -> UserAuth:
     auth = UserAuth(cred=credentials, scope=scope)
 
     if state is not None:
@@ -138,8 +138,8 @@ def get_client(
     chunked_on: bool = True,
     async_on: bool = True,
 ) -> Spotify:
-    httpx_client_class: type[Union[Client, AsyncClient]]
-    tekore_sender_class: type[Union[SyncSender, AsyncSender]]
+    httpx_client_class: type[Client | AsyncClient]
+    tekore_sender_class: type[SyncSender | AsyncSender]
 
     if async_on:
         httpx_client_class = AsyncClient

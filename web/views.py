@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from typing import Optional
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -53,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 @require_http_methods(["GET", "POST"])
 async def login(request: MottleHttpRequest) -> HttpResponse:
-    redirect_uri: Optional[str]
+    redirect_uri: str | None
 
     if request.method == "GET":
         # Django template does not undestand None (it will treat it as a literal 'None'),

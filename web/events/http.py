@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 import timeit
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -40,7 +40,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
     def __init__(
         self,
         name: str,
-        throttle_response_code: Optional[int] = None,
+        throttle_response_code: int | None = None,
         retries: int = 10,
         delay_seconds: float = 0.0,
         response_time_metric: Summary | None = None,
@@ -203,7 +203,7 @@ def send_get_request(
     client: httpx.Client,
     url: str,
     parse_json: bool = False,
-    xpath: Optional[str] = None,
+    xpath: str | None = None,
     redirect_url: bool = False,
     raise_for_lte_300: bool = True,
     follow_redirects: bool = False,
@@ -256,7 +256,7 @@ async def asend_get_request(
     client: httpx.AsyncClient,
     url: str,
     parse_json: bool = False,
-    xpath: Optional[str] = None,
+    xpath: str | None = None,
     redirect_url: bool = False,
     raise_for_lte_300: bool = True,
     follow_redirects: bool = False,

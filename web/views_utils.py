@@ -1,6 +1,7 @@
 import logging
 import re
-from typing import Any, Collection, Optional
+from collections.abc import Collection
+from typing import Any
 from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
@@ -50,14 +51,14 @@ class SpotifyEntityMetadata:
         return unquote(self._url)
 
     @property
-    async def image_url_small(self) -> Optional[str]:
+    async def image_url_small(self) -> str | None:
         if self._image_url_small == UNDEFINED:
             logger.warning(f"Image URL (small) of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
         return None if self._image_url_small is None else unquote(self._image_url_small)
 
     @property
-    async def image_url_large(self) -> Optional[str]:
+    async def image_url_large(self) -> str | None:
         if self._image_url_large == UNDEFINED:
             logger.warning(f"Image URL (large) of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
@@ -157,10 +158,10 @@ class AlbumMetadata(SpotifyEntityMetadata):
     def __init__(self, request: MottleHttpRequest, album_id: str):
         super().__init__(request, album_id)
 
-        self._track_image_url: Optional[str] = self._get_attr_from_header("Trackimageurl")
+        self._track_image_url: str | None = self._get_attr_from_header("Trackimageurl")
 
     @property
-    async def track_image_url(self) -> Optional[str]:
+    async def track_image_url(self) -> str | None:
         if self._track_image_url == UNDEFINED:
             logger.warning(f"Track image URL of {self._entity_name} {self._id} is UNDEFINED")
             await self._fetch_data()
@@ -285,8 +286,8 @@ async def compile_playlist_updates_email(
         message += "=" * len(playlist_name_line) + "\n"
 
         for update in playlist_updates:
-            watched_playlist: Optional[Playlist] = await sync_to_async(lambda: update["update"].source_playlist)()
-            watched_artist: Optional[Artist] = await sync_to_async(lambda: update["update"].source_artist)()
+            watched_playlist: Playlist | None = await sync_to_async(lambda: update["update"].source_playlist)()
+            watched_artist: Artist | None = await sync_to_async(lambda: update["update"].source_artist)()
 
             if watched_playlist is not None:
                 watched_playlist_data = await spotify_client.get_playlist(watched_playlist.spotify_id)

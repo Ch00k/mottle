@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import logging
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 from asgiref.sync import sync_to_async
 from dirtyfields import DirtyFieldsMixin
@@ -35,19 +35,19 @@ def decrypt_value(value: str) -> str:
 
 
 class EncryptedCharField(models.CharField):
-    def to_python(self, value: Optional[str]) -> Optional[str]:
+    def to_python(self, value: str | None) -> str | None:
         if value is None:
             return value
         ret: str = super().to_python(decrypt_value(value))
         return ret
 
-    def from_db_value(self, value: Optional[str], _: Any, __: Any) -> Optional[str]:
+    def from_db_value(self, value: str | None, _: Any, __: Any) -> str | None:
         return self.to_python(value)
 
-    def get_prep_value(self, value: Optional[str]) -> Optional[str]:
+    def get_prep_value(self, value: str | None) -> str | None:
         return value
 
-    def get_db_prep_value(self, value: Optional[str], connection: Any, prepared: bool = False) -> Optional[str]:
+    def get_db_prep_value(self, value: str | None, connection: Any, prepared: bool = False) -> str | None:
         value = super().get_db_prep_value(value, connection, prepared)
         if value is None:
             return value
@@ -113,7 +113,7 @@ class SpotifyAuth(BaseModel):
         if self.expires_at is None:
             return 0
 
-        delta = self.expires_at - datetime.datetime.now(tz=datetime.timezone.utc)
+        delta = self.expires_at - datetime.datetime.now(tz=datetime.UTC)
         return delta.total_seconds()
 
     @property
@@ -196,7 +196,7 @@ class EventArtist(BaseModel):
     @staticmethod
     async def create_from_fetched_artist(
         artist: Artist,
-        musicbrainz_id: Optional[str],
+        musicbrainz_id: str | None,
         fetched_artist: EventSourceArtist,
         watching_spotify_user_ids: list[str],
     ) -> "EventArtist":
@@ -369,7 +369,7 @@ class Playlist(SpotifyEntityModel):
         spotify_client: MottleSpotifyClient,
         watching_playlist_spotify_id: str,
         watched_artist_spotify_id: str,
-        albums_ignored: Optional[list[str]] = None,
+        albums_ignored: list[str] | None = None,
         auto_accept_updates: bool = False,
     ) -> None:
         # TODO: Keep email and display name in session?
@@ -616,10 +616,10 @@ class PlaylistUpdate(BaseModel):
 
 
 def generate_playlist_update_hash(
-    albums_added: Optional[list[str]] = None,
-    albums_removed: Optional[list[str]] = None,
-    tracks_added: Optional[list[str]] = None,
-    tracks_removed: Optional[list[str]] = None,
+    albums_added: list[str] | None = None,
+    albums_removed: list[str] | None = None,
+    tracks_added: list[str] | None = None,
+    tracks_removed: list[str] | None = None,
 ) -> str:
     ids = (
         ["+album"]

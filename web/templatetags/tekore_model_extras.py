@@ -1,5 +1,3 @@
-from typing import Optional
-
 from django import template
 from django.templatetags.static import static
 from tekore.model import Image, Item
@@ -11,7 +9,7 @@ ALLOWED_IMAGE_SIZES = [70, 300]
 DEFAULT_IMAGE_SIZE = 70
 
 
-def pick_image(images: Optional[list[Image]], largest_first: bool = True) -> Optional[str]:
+def pick_image(images: list[Image] | None, largest_first: bool = True) -> str | None:
     if not images:
         return None
 
@@ -20,11 +18,11 @@ def pick_image(images: Optional[list[Image]], largest_first: bool = True) -> Opt
     return image_url
 
 
-def get_smallest_image(images: Optional[list[Image]]) -> Optional[str]:
+def get_smallest_image(images: list[Image] | None) -> str | None:
     return pick_image(images, largest_first=False) or get_default_image(70)
 
 
-def get_largest_image(images: Optional[list[Image]]) -> Optional[str]:
+def get_largest_image(images: list[Image] | None) -> str | None:
     return pick_image(images, largest_first=True) or get_default_image(300)
 
 

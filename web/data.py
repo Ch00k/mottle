@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Optional
 
 from tekore.model import (
     FullArtist,
@@ -21,12 +20,12 @@ class AlbumData:
     id: str
     name: str
     url: str
-    type: Optional[str] = None
-    release_year: Optional[int] = None
-    image_url_small: Optional[str] = None
-    image_url_large: Optional[str] = None
-    track_image_url: Optional[str] = None
-    num_tracks: Optional[int] = None
+    type: str | None = None
+    release_year: int | None = None
+    image_url_small: str | None = None
+    image_url_large: str | None = None
+    track_image_url: str | None = None
+    num_tracks: int | None = None
 
     @staticmethod
     def from_tekore_model(album: SimpleAlbum) -> "AlbumData":
@@ -59,8 +58,8 @@ class ArtistData:
     id: str
     name: str
     url: str
-    image_url_small: Optional[str] = None
-    image_url_large: Optional[str] = None
+    image_url_small: str | None = None
+    image_url_large: str | None = None
     genres: list[str] = field(default_factory=list)
 
     @staticmethod
@@ -91,15 +90,15 @@ class TrackData:
     name: str
     url: str
     duration: str
-    album: Optional[AlbumData]
-    added_at: Optional[date] = None
+    album: AlbumData | None
+    added_at: date | None = None
     artists: list[ArtistData] = field(default_factory=list)
 
     @staticmethod
     def from_tekore_model(
         track: FullTrack | FullPlaylistTrack | SimpleTrack,
-        album: Optional[AlbumData] = None,
-        added_at: Optional[date] = None,
+        album: AlbumData | None = None,
+        added_at: date | None = None,
     ) -> "TrackData":
         if isinstance(track, (FullTrack, FullPlaylistTrack)):
             album_data = AlbumData(
@@ -138,11 +137,11 @@ class PlaylistData:
     id: str
     name: str
     url: str
-    image_url_small: Optional[str]
-    image_url_large: Optional[str]
+    image_url_small: str | None
+    image_url_large: str | None
     owner_id: str
-    owner_name: Optional[str]
-    owner_url: Optional[str]
+    owner_name: str | None
+    owner_url: str | None
     snapshot_id: str
     num_tracks: int
     tracks: list[TrackData] = field(default_factory=list)

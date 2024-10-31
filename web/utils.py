@@ -2,10 +2,11 @@ import asyncio
 import itertools
 import logging
 from collections import Counter
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from functools import partial
 from types import MethodType
-from typing import Any, Callable, Generator, Iterable, Optional, Union
+from typing import Any
 
 from django.conf import settings
 from tekore import Spotify
@@ -80,7 +81,7 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException(f"Failed to get artist {artist_id}: {e}")
 
-    async def get_artist_albums(self, artist_id: str, album_types: Optional[list[str]] = None) -> list[SimpleAlbum]:
+    async def get_artist_albums(self, artist_id: str, album_types: list[str] | None = None) -> list[SimpleAlbum]:
         func = partial(
             self.spotify_client.artist_albums,
             artist_id=artist_id,
@@ -90,7 +91,7 @@ class MottleSpotifyClient:
 
     # https://community.spotify.com/t5/Spotify-for-Developers/Get-Artist-s-Albums-API-not-returning-all-results-for-certain/td-p/5961890
     async def get_artist_albums_separately_by_type(
-        self, artist_id: str, album_types: Optional[list[str]] = None
+        self, artist_id: str, album_types: list[str] | None = None
     ) -> list[SimpleAlbum]:
         calls = [
             self.get_artist_albums(artist_id, [album_type])
@@ -141,7 +142,7 @@ class MottleSpotifyClient:
         return tracks
 
     async def add_tracks_to_playlist(
-        self, playlist_id: str, track_uris: Iterable[str], position: Optional[int] = None
+        self, playlist_id: str, track_uris: Iterable[str], position: int | None = None
     ) -> None:
         try:
             await self.spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
@@ -176,7 +177,7 @@ class MottleSpotifyClient:
 
         return playlist
 
-    async def upload_playlist_cover_image(self, playlist_id: str, cover_image: Union[bytes, str]) -> None:
+    async def upload_playlist_cover_image(self, playlist_id: str, cover_image: bytes | str) -> None:
         try:
             await self.spotify_client.playlist_cover_image_upload(playlist_id, cover_image)  # pyright: ignore
         except Exception as e:
@@ -188,7 +189,7 @@ class MottleSpotifyClient:
         name: str,
         track_uris: list[str],
         is_public: bool = True,
-        cover_image: Optional[str] = None,
+        cover_image: str | None = None,
         add_tracks_parallelized: bool = False,
         fail_on_cover_image_upload_error: bool = True,
     ) -> FullPlaylist:
@@ -244,10 +245,10 @@ class MottleSpotifyClient:
     async def change_playlist_details(
         self,
         playlist_id: str,
-        name: Optional[str] = None,
-        public: Optional[bool] = None,
-        collaborative: Optional[bool] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        public: bool | None = None,
+        collaborative: bool | None = None,
+        description: str | None = None,
     ) -> None:
         try:
             await self.spotify_client.playlist_change_details(  # pyright: ignore

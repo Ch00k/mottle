@@ -3,7 +3,6 @@ import math
 import uuid
 from base64 import b64decode, b64encode
 from io import BytesIO
-from typing import Union
 
 import tiktoken
 from django.conf import settings
@@ -105,7 +104,7 @@ def resize_image(image_data: bytes, size: tuple[int, int]) -> bytes:
     return new_image_fp.getvalue()
 
 
-def round_to_nearest_multiple_of_four(n: Union[float, int]) -> int:
+def round_to_nearest_multiple_of_four(n: float | int) -> int:
     return 4 * math.ceil(n / 4)
 
 

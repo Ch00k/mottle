@@ -47,8 +47,8 @@ logger = logging.getLogger(__name__)
 class MusicBrainzArtist:
     id: str
     names: list[str]
-    songkick_url: Optional[str] = None
-    bandsintown_url: Optional[str] = None
+    songkick_url: str | None = None
+    bandsintown_url: str | None = None
 
     @staticmethod
     async def find(artist_name: str) -> Optional["MusicBrainzArtist"]:
@@ -79,7 +79,7 @@ class MusicBrainzArtist:
                 normalize_string(a["name"]) for a in artist_data.get("aliases", [])
             ]
 
-            if normalized_artist_name in set([a for a in artist_names if a]):
+            if normalized_artist_name in {a for a in artist_names if a}:
                 try:
                     artist = await MusicBrainzArtist.from_artist_id(artist_data["id"])
                 except Exception as e:
@@ -144,12 +144,12 @@ class MusicBrainzArtist:
 @dataclass
 class Venue:
     name: str
-    postcode: Optional[str] = None
-    address: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    geo_lat: Optional[float] = None
-    geo_lon: Optional[float] = None
+    postcode: str | None = None
+    address: str | None = None
+    city: str | None = None
+    country: str | None = None
+    geo_lat: float | None = None
+    geo_lon: float | None = None
 
 
 @dataclass
@@ -158,7 +158,7 @@ class Event:
     url: str
     type: EventType
     date: date
-    venue: Optional[Venue] = None
+    venue: Venue | None = None
     stream_urls: list[str] = field(default_factory=list)
     tickets_urls: list[str] = field(default_factory=list)
 
@@ -167,8 +167,8 @@ class Event:
 class EventSourceArtist:
     name: str
     alternative_names: list[str] = field(default_factory=list)
-    songkick_url: Optional[str] = None
-    bandsintown_url: Optional[str] = None
+    songkick_url: str | None = None
+    bandsintown_url: str | None = None
     songkick_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     bandsintown_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     events: list[Event] = field(default_factory=list)
@@ -352,7 +352,7 @@ class EventSourceArtist:
 
 async def find_artist_in_songkick(
     artist_name: str, use_advanced_heuristics: bool = False
-) -> tuple[Optional[str], ArtistNameMatchAccuracy]:
+) -> tuple[str | None, ArtistNameMatchAccuracy]:
     if '"' in artist_name:
         # https://github.com/encode/httpx/discussions/3360
         artist_name = artist_name.replace('"', "%22")
@@ -382,7 +382,7 @@ async def find_artist_in_songkick(
 
 async def find_artist_in_bandsintown(
     artist_name: str, use_advanced_heuristics: bool = False
-) -> tuple[Optional[str], ArtistNameMatchAccuracy]:
+) -> tuple[str | None, ArtistNameMatchAccuracy]:
     search_results, _, __, __ = await asend_get_request(
         async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
     )

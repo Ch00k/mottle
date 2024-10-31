@@ -2,7 +2,6 @@ import asyncio
 import logging
 import timeit
 from functools import partial
-from typing import Optional
 
 from asgiref.sync import async_to_sync, sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
@@ -49,7 +48,7 @@ def upload_cover_image(
 
 async def find_event_data_sources_at_musicbrainz(
     artist_name: str,
-) -> tuple[Optional[MusicBrainzArtist], EventSourceArtist]:
+) -> tuple[MusicBrainzArtist | None, EventSourceArtist]:
     fetched_artist = EventSourceArtist(artist_name)
 
     try:
@@ -75,7 +74,7 @@ async def find_event_data_sources_at_musicbrainz(
 
 async def find_event_data_sources(
     artist_name: str,
-) -> tuple[Optional[MusicBrainzArtist], EventSourceArtist]:
+) -> tuple[MusicBrainzArtist | None, EventSourceArtist]:
     musicbrainz_artist, fetched_artist = await find_event_data_sources_at_musicbrainz(artist_name)
 
     if (

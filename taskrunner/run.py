@@ -3,7 +3,7 @@ import signal
 import sys
 import time
 from threading import Thread
-from typing import Any, Optional
+from typing import Any
 from wsgiref.simple_server import WSGIServer
 
 from django_q.cluster import Cluster
@@ -18,8 +18,8 @@ class MottleCluster(Cluster):
         self.prometheus_registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(self.prometheus_registry)
 
-        self.metrics_server: Optional[WSGIServer] = None
-        self.metrics_server_thread: Optional[Thread] = None
+        self.metrics_server: WSGIServer | None = None
+        self.metrics_server_thread: Thread | None = None
 
         signal.signal(signal.SIGHUP, self.sig_handler)
 
