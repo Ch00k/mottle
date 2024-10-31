@@ -2,6 +2,7 @@ import logging
 import unicodedata
 from typing import TYPE_CHECKING
 
+import country_converter as coco
 from django.conf import settings
 from thefuzz import fuzz
 from unidecode import unidecode
@@ -13,7 +14,20 @@ from .exceptions import HeuristicsException
 if TYPE_CHECKING:
     from .data import Event
 
+coco_logger = coco.logging.getLogger()
+coco_logger.setLevel(logging.CRITICAL)
+
 logger = logging.getLogger(__name__)
+
+cc = coco.CountryConverter()
+
+
+def get_normalized_country_name(country_name: str | None) -> str | None:
+    if country_name is None:
+        return None
+
+    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)  # pyright: ignore
+    return normalized_name
 
 
 def find_best_artist_name_match_simple(

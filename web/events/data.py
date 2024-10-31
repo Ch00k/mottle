@@ -34,6 +34,7 @@ from .http import (
 from .utils import (
     find_best_artist_name_match_advanced,
     find_best_artist_name_match_simple,
+    get_normalized_country_name,
     normalize_string,
     replace_unicode_characters,
     should_fetch_event,
@@ -433,7 +434,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
                 postcode=venue_address.get("postalCode"),
                 address=venue_address.get("streetAddress"),
                 city=venue_address.get("addressLocality"),
-                country=venue_address.get("addressCountry"),
+                country=get_normalized_country_name(venue_address.get("addressCountry")),
                 geo_lat=venue_geolocation.get("latitude"),
                 geo_lon=venue_geolocation.get("longitude"),
             )
@@ -554,7 +555,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
                 postcode=venue_address.get("postalCode"),
                 address=venue_address.get("streetAddress"),
                 city=venue_address.get("addressLocality"),
-                country=venue_address.get("addressCountry"),
+                country=get_normalized_country_name(venue_address.get("addressCountry")),
                 geo_lat=venue_geolocation.get("latitude"),
                 geo_lon=venue_geolocation.get("longitude"),
             )
