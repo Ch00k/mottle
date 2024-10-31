@@ -1,0 +1,15 @@
+{% extends "web/base.html" %}
+{% load static %}
+{% block title %}
+    {{ artist.name }} - events
+{% endblock title %}
+{% block page_title %}
+    Events
+{% endblock page_title %}
+{% block content %}
+    {% if events %}
+        {% include "web/parts/events.html" %}
+    {% else %}
+        {{ artist.name }} has no events
+    {% endif %}
+{% endblock content %}

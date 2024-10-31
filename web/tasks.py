@@ -99,7 +99,7 @@ async def find_event_data_sources(
     return musicbrainz_artist, fetched_artist
 
 
-async def track_artist_events(artist_spotify_id: str, artist_name: str, spotify_user_id: str) -> None:
+async def track_artist_events(artist_spotify_id: str, artist_name: str, spotify_user_id: str) -> EventArtist:
     artist, created = await Artist.objects.aget_or_create(spotify_id=artist_spotify_id)
 
     if created:
@@ -123,6 +123,8 @@ async def track_artist_events(artist_spotify_id: str, artist_name: str, spotify_
         logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")  # pyright: ignore
         # https://github.com/typeddjango/django-stubs/issues/997
         await artist.event_artist.watching_users.aadd(spotify_user_id)  # type: ignore  # pyright: ignore
+
+    return artist.event_artist  # pyright: ignore
 
 
 async def atrack_artists_events(artists_data: dict[str, str], spotify_user_id: str) -> None:

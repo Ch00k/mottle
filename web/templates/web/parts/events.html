@@ -1,0 +1,16 @@
+<table>
+    <thead>
+        <tr>
+            <th class="sortable" onClick="sortTable(this)">Country</th>
+            <th class="sortable" onClick="sortTable(this)">City</th>
+            <th class="sortable" onClick="sortTable(this)">Date</th>
+            <th class="sortable" onClick="sortTable(this)">Venue</th>
+            <th class="sortable" onClick="sortTable(this)">Tickets</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+            {% include "web/parts/event_row.html" %}
+        {% endfor %}
+    </tbody>
+</table>

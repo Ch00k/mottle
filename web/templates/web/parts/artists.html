@@ -13,6 +13,16 @@
                            hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>{{ artist.name }}</a>
                     </td>
                     <td>{{ artist.genres | join:", " }}</td>
+                    {% if events_enabled %}
+                        <td>
+                            <a href="{% url 'artist_events' artist.id %}"
+                               hx-boost="true"
+                               hx-indicator="#spinner"
+                               hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>
+                                {% include "web/icons/calendar.html" %}
+                            </a>
+                        </td>
+                    {% endif %}
                 </tr>
             {% endfor %}
         </tbody>

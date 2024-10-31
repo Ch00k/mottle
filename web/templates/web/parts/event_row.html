@@ -1,0 +1,11 @@
+<tr>
+    <td>{{ event.country }}</td>
+    <td>{{ event.city }}</td>
+    <td>{{ event.date | date:"Y-m-d" }}</td>
+    <td>{{ event.venue }}</td>
+    <td>
+        {% for u in event.tickets_urls %}
+            <a href="{{ u }}">{% include "web/icons/ticket.html" %}</a>
+        {% endfor %}
+    </td>
+</tr>
