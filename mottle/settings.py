@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import sentry_sdk
 from cryptography.fernet import Fernet, MultiFernet
@@ -129,14 +130,19 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOG_FORMAT = env.str("LOG_FORMAT", "json")
+DEBUG_SQL = env.bool("DEBUG_SQL", False)
 
-LOGGING = {
+LOGGING: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "plain": {
             "format": "{asctime} {levelname:<8s} {name:<15s} {message}",
             "style": "{",
+        },
+        "json": {
+            "()": "mottle.logging.MottleJSONFormatter",
         },
     },
     "filters": {
@@ -145,9 +151,13 @@ LOGGING = {
         }
     },
     "handlers": {
-        "console": {
+        "plain": {
             "class": "logging.StreamHandler",
             "formatter": "plain",
+        },
+        "json": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
         },
         "sql": {
             "class": "logging.StreamHandler",
@@ -156,49 +166,48 @@ LOGGING = {
         },
     },
     "root": {
-        "handlers": ["console"],
         "level": "INFO",
+        "handlers": [LOG_FORMAT],
     },
     "loggers": {
-        # Uncomment to log all SQL queries
-        #
-        # "django.db.backends": {
-        #     "handlers": ["sql"],
-        #     "level": "DEBUG",
-        #     "propagate": False,
-        # },
         "__main__": {
-            "handlers": ["console"],
             "level": "DEBUG",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
         "web": {
-            "handlers": ["console"],
             "level": "DEBUG",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
         "scheduler": {
-            "handlers": ["console"],
             "level": "DEBUG",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
         "taskrunner": {
-            "handlers": ["console"],
             "level": "DEBUG",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
-        "django-q": {
-            "handlers": ["console"],
+        "django_q": {
             "level": "DEBUG",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
         "django.channels.server": {
-            "handlers": ["console"],
             "level": "WARNING",
+            "handlers": [LOG_FORMAT],
             "propagate": False,
         },
     },
 }
+
+if DEBUG_SQL:
+    LOGGING["loggers"]["django.db.backends"]["level"] = "DEBUG"
+    LOGGING["loggers"]["django.db.backends"]["handlers"] = ["sql"]
+    LOGGING["loggers"]["django.db.backends"]["proagate"] = False
+
 
 TEKORE_HTTP_TIMEOUT = env.int("TEKORE_HTTP_TIMEOUT", 15)
 
