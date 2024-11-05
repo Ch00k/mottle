@@ -130,6 +130,7 @@ DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
 LOG_FORMAT = env.str("LOG_FORMAT", "json")
 DEBUG_SQL = env.bool("DEBUG_SQL", False)
 

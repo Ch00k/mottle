@@ -104,6 +104,11 @@ services:
     logging:
       driver: none
     user: 65534:65534
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --log.level=warn
+      - --log.format=json
     volumes:
       - ./runtime_data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./runtime_data/prometheus/data:/prometheus
@@ -118,6 +123,11 @@ services:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: true
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_LOG_MODE: console
+      GF_LOG_LEVEL: warn
+      GF_LOG_FORMAT: json
+      GF_LOG_CONSOLE_LEVEL: warn
+      GF_LOG_CONSOLE_FORMAT: json
     volumes:
       - ./runtime_data/grafana:/var/lib/grafana
     ports:
