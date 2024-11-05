@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 from json_log_formatter import BUILTIN_ATTRS, JSONFormatter
 
@@ -13,7 +13,7 @@ class MottleJSONFormatter(JSONFormatter):
         }
 
     def json_record(self, message: str, extra: dict, record: logging.LogRecord) -> dict:
-        extra["timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(timespec="microseconds")
+        extra["timestamp"] = datetime.fromtimestamp(record.created).isoformat(timespec="microseconds") + "Z"
         extra["level"] = record.levelname
         extra["logger"] = record.name
         extra["module"] = record.module

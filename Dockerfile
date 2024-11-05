@@ -29,7 +29,8 @@ ARG APP_VERSION=dev
 
 ENV APP_VERSION=${APP_VERSION} \
     PATH=/app/.venv/bin:${PATH} \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install \
     --no-install-recommends --no-install-suggests -y \
