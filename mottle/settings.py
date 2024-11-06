@@ -191,7 +191,7 @@ LOGGING: dict[str, Any] = {
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
-        "django_q": {
+        "django-q": {
             "level": "DEBUG",
             "handlers": [LOG_FORMAT],
             "propagate": False,
