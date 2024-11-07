@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import datetime
 from typing import Any
@@ -26,5 +25,5 @@ class MottleJSONFormatter(JSONFormatter):
         new_extra["stack_trace"] = self.formatException(record.exc_info) if record.exc_info else None
         new_extra["message"] = message
 
-        new_extra["extra"] = json.dumps(extra)
+        new_extra["extra"] = str(extra)
         return new_extra
