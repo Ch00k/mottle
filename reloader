@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# https://github.com/cirosantilli/cirosantilli.github.io/blob/adf4c57cdcc4bde958e55939a27f0457730ccd23/run
+
+set -eu
+
+inotifywait --quiet --event close_write --monitor --recursive . |
+    while read -r directory events filename; do
+        if ! echo "$directory" | grep -Eq '^\.\/\.git'&& ! git check-ignore --non-matching --verbose "${directory}/${filename}" >/dev/null 2>&1; then
+            echo "${directory} | ${filename} | ${events}"
+            docker-compose --progress quiet restart web
+        fi
+    done

@@ -8,6 +8,9 @@ build_dev:
 up:
 	docker-compose up --remove-orphans
 
+watch:
+	./reloader
+
 down:
 	docker-compose down --remove-orphans
 

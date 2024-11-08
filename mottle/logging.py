@@ -25,5 +25,5 @@ class MottleJSONFormatter(JSONFormatter):
         new_extra["stack_trace"] = self.formatException(record.exc_info) if record.exc_info else None
         new_extra["message"] = message
 
-        new_extra["extra"] = str(extra)
+        new_extra["extra"] = str(extra) if extra else None
         return new_extra
