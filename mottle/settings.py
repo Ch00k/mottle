@@ -107,7 +107,7 @@ Q_CLUSTER = {
     "max_attempts": 1,
     "ack_failures": True,
     "save_limit": 0,
-    "schedule": False,
+    "scheduler": False,
     "log_level": "DEBUG",
     "ALT_CLUSTERS": {
         "long_running": {
@@ -192,11 +192,6 @@ LOGGING: dict[str, Any] = {
         },
         "django-q": {
             "level": "DEBUG",
-            "handlers": [LOG_FORMAT],
-            "propagate": False,
-        },
-        "django.channels.server": {
-            "level": "WARNING",
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
