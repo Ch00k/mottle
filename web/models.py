@@ -157,7 +157,7 @@ class SpotifyAuth(BaseModel):
     async def update_from_tekore_token(self, token: Token) -> None:
         self.access_token = token.access_token
         self.refresh_token = token.refresh_token
-        self.expires_at = datetime.datetime.fromtimestamp(token.expires_at)
+        self.expires_at = datetime.datetime.fromtimestamp(token.expires_at, tz=datetime.UTC)
         await self.asave()
 
 

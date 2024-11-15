@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -177,7 +177,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
         defaults={
             "access_token": token.access_token,
             "refresh_token": token.refresh_token,
-            "expires_at": datetime.fromtimestamp(token.expires_at),
+            "expires_at": datetime.fromtimestamp(token.expires_at, tz=UTC),
             "token_scope": list(token.scope),
         },
     )

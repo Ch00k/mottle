@@ -8,26 +8,24 @@ https://docs.djangoproject.com/en/5.0/howto/deployment/asgi/
 """
 
 import os
-from typing import Any
 
 from django.core.asgi import get_asgi_application
-from uvicorn.workers import UvicornWorker
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "mottle.settings")
 
 application = get_asgi_application()
 
 
-# TODO: This neeeds to be executed with gunicorn
-class DjangoUvicornWorker(UvicornWorker):
-    """
-    https://stackoverflow.com/questions/75217343/django-can-only-handle-asgi-http-connections-not-lifespan-in-uvicorn
+# TODO: This must be used with gunicorn
+# class LifespanlessUvicornWorker(UvicornWorker):
+#     """
+#     https://stackoverflow.com/questions/75217343/django-can-only-handle-asgi-http-connections-not-lifespan-in-uvicorn
 
-    Generate UvicornWorker with lifespan='off', because Django does not
-    (and probably will not, as per https://code.djangoproject.com/ticket/31508)
-    support Lifespan.
-    """
+#     Generate UvicornWorker with lifespan='off', because Django does not
+#     (and probably will not, as per https://code.djangoproject.com/ticket/31508)
+#     support Lifespan.
+#     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.config.lifespan = "off"
+#     def __init__(self, *args: Any, **kwargs: Any) -> None:
+#         super().__init__(*args, **kwargs)
+#         self.config.lifespan = "off"
