@@ -10,7 +10,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("web", "0007_spotifyauth_token_scope"),
+        ("web", "0008_playlistupdate_unique_constraint"),
     ]
 
     operations = [
