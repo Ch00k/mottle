@@ -317,7 +317,7 @@ class PlaylistUpdate(BaseModel):
     tracks_added = models.JSONField(null=True)
     tracks_removed = models.JSONField(null=True)
 
-    update_hash = models.CharField(max_length=64, unique=True)
+    update_hash = models.CharField(max_length=64)
     is_notified_of = models.BooleanField(default=False)
     is_accepted = models.BooleanField(null=True, default=None)
     is_overridden_by = models.ForeignKey("self", on_delete=models.CASCADE, null=True, related_name="overrides")
@@ -330,7 +330,10 @@ class PlaylistUpdate(BaseModel):
                     & ~models.Q(source_playlist__isnull=False, source_artist__isnull=False)
                 ),
                 name="source_playlist_or_artist",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["target_playlist", "update_hash"], name="unique_target_playlist_update_hash"
+            ),
         ]
 
     def __str__(self) -> str:
