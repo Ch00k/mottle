@@ -17,5 +17,13 @@ async def send_email(address: str, subject: str, body: str) -> Response:
 
     client = AsyncClient(timeout=Timeout(settings.MAILERSEND_HTTP_TIMEOUT))
     resp = await client.post(URL, headers=HEADERS, json=request_body)
+
+    try:
+        resp_body = resp.json()
+    except Exception:
+        resp_body = resp.text
+
+    logger.debug(f"Mailersend response: {resp_body}")
+
     resp.raise_for_status()
     return resp
