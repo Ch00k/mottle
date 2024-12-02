@@ -8,9 +8,6 @@ build_dev:
 up:
 	docker-compose up --remove-orphans
 
-watch:
-	./reloader
-
 down:
 	docker-compose down --remove-orphans
 
@@ -19,6 +16,9 @@ shell:
 
 test:
 	poetry run pytest web/tests
+
+debug:
+	docker compose attach web
 
 check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi

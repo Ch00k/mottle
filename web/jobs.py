@@ -98,6 +98,7 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
                 logger.info("Adding to updates list")
                 updates.append(update)
 
+    logger.debug(f"Updates for playlist {playlist}: {updates}")
     return updates
 
 
@@ -156,11 +157,15 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
         return
 
     logger.info(f"Sending email to {user.email}")
-    await send_email(user.email, "We've got updates for you", message)
-
-    await PlaylistUpdate.objects.filter(
-        target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))  # pyright: ignore
-    ).aupdate(is_notified_of=True)
+    try:
+        await send_email(user.email, "We've got updates for you", message)
+    except Exception as e:
+        logger.error(f"Failed to send email to {user.email}: {e}")
+    else:
+        # TODO: This will update all PlaylistUpdates, not just the ones that were sent
+        await PlaylistUpdate.objects.filter(
+            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))  # pyright: ignore
+        ).aupdate(is_notified_of=True)
 
 
 async def check_playlists_for_updates(send_notifications: bool = False) -> None:

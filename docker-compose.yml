@@ -38,13 +38,15 @@ services:
       - *image
     environment:
       <<: *env
-    command: uvicorn mottle.asgi:application --host 0.0.0.0 --port 65534 --log-level debug --loop uvloop --http httptools --no-access-log
+    command: ./manage.py runserver 0.0.0.0:65534
     volumes:
       - ./runtime_data/database:/app/database
       - .:/app/mounted
     working_dir: /app/mounted
     ports:
       - 127.0.0.1:65534:65534
+    stdin_open: true
+    tty: true
     depends_on:
       migrate:
         condition: service_completed_successfully

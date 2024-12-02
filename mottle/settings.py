@@ -24,6 +24,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 APP_VERSION = env.str("APP_VERSION", "dev")
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -73,7 +74,6 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "mottle.wsgi.application"
 ASGI_APPLICATION = "mottle.asgi.application"
 
 DATABASES = {
