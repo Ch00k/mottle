@@ -226,7 +226,7 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     user_playlists = await request.spotify_client.get_current_user_playlists()
     user_playlist_ids = [playlist.id for playlist in user_playlists]
 
-    playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists]
+    playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists if playlist is not None]
 
     if request.htmx:
         return render(
@@ -366,7 +366,7 @@ async def playlists(request: MottleHttpRequest) -> HttpResponse:
         logger.exception(e)
         return HttpResponseServerError("Failed to get playlists")
 
-    playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists]
+    playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists if playlist is not None]
 
     db_watching_playlists = PlaylistWatchConfig.objects.filter(
         watching_playlist__spotify_user__id=request.session["spotify_user_id"],
