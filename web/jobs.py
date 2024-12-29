@@ -1,3 +1,4 @@
+import itertools
 import logging
 import timeit
 from collections import defaultdict
@@ -10,7 +11,7 @@ from django.db.models import Q
 
 from .email import send_email
 from .events.enums import EventType
-from .models import EventArtist, Playlist, PlaylistUpdate, SpotifyUser
+from .models import EventArtist, EventUpdate, Playlist, PlaylistUpdate, SpotifyUser
 from .spotify import get_client_token
 from .utils import MottleException, MottleSpotifyClient
 from .views_utils import compile_event_updates_email, compile_playlist_updates_email
@@ -219,6 +220,13 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
                 async for update in event.updates.filter(is_notified_of=False).all():
                     artists_with_events[event_artist].append(update)
 
+        if not artists_with_events:
+            logger.info(f"No event updates for user {user}")
+            continue
+
+        all_updates = list(itertools.chain.from_iterable(artists_with_events.values()))
+        logger.info(f"Event updates for user {user}: {all_updates}")
+
         message = await compile_event_updates_email(artists_with_events, spotify_client)
 
         logger.debug(f"Email message for {user}:\n{message}")
@@ -232,7 +240,13 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
             continue
 
         logger.info(f"Sending email to {user.email}")
-        await send_email(user.email, "We've got updates for you", message)
+        try:
+            await send_email(user.email, "We've got updates for you", message)
+        except Exception as e:
+            logger.error(f"Failed to send email to {user.email}: {e}")
+        else:
+            logger.info("Marking updates as notified of")
+            await EventUpdate.objects.filter(id__in=[u.id for u in all_updates]).aupdate(is_notified_of=True)
 
     elapsed_time = timeit.default_timer() - start_time
     logger.debug(f"Elapsed time: {elapsed_time}")

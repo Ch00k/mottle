@@ -1,4 +1,5 @@
 from pathlib import Path
+from socket import gethostbyname, gethostname
 from typing import Any
 
 import sentry_sdk
@@ -14,8 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env.str("SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", False)
 
-# web is the name of the Docker Compose service, and is needed for Prometheus scraping target
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # ["127.0.0.1", "localhost", "web", "mottle.it", "www.mottle.it"]
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
+ALLOWED_HOSTS.append(gethostbyname(gethostname()))  # Needed for Prometheus scraping to work
+
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # ["https://mottle.it", "https://www.mottle.it"]
 SESSION_COOKIE_DOMAIN = env.str("SESSION_COOKIE_DOMAIN", None)
 # SESSION_COOKIE_AGE = 3_153_600_000  # 100 years

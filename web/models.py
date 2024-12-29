@@ -235,6 +235,9 @@ class Event(DirtyFieldsMixin, BaseModel):
     stream_urls = models.JSONField(null=True)
     tickets_urls = models.JSONField(null=True)
 
+    def __str__(self) -> str:
+        return f"<Event {self.id} date={self.date} artist={self.artist}>"
+
     @staticmethod
     async def update_or_create_from_fetched_event(
         fetched_event: FetchedEvent, event_artist: EventArtist
@@ -307,6 +310,9 @@ class EventUpdate(BaseModel):
     type = models.CharField(max_length=50, choices=EVENT_UPDATE_TYPES)
     changes = models.JSONField(null=True)
     is_notified_of = models.BooleanField(default=False)
+
+    def __str__(self) -> str:
+        return f"<EventUpdate {self.id} type={self.type}>"
 
 
 class Playlist(SpotifyEntityModel):
