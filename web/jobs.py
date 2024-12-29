@@ -245,6 +245,7 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
         except Exception as e:
             logger.error(f"Failed to send email to {user.email}: {e}")
         else:
+            # TODO: This will cause other users to not get notifications if they follow the same artists
             logger.info("Marking updates as notified of")
             await EventUpdate.objects.filter(id__in=[u.id for u in all_updates]).aupdate(is_notified_of=True)
 

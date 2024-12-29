@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import json
 import logging
 import uuid
 from typing import Any
@@ -9,6 +10,7 @@ from dirtyfields import DirtyFieldsMixin
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from tekore import Token
 from tekore.model import PlaylistTrack
@@ -24,6 +26,23 @@ from .utils import MottleException, MottleSpotifyClient
 TOKEN_EXPIRATION_THRESHOLD = 60
 
 logger = logging.getLogger(__name__)
+
+
+class EventUpdateChangesJSONEncoder(DjangoJSONEncoder):
+    def default(self, obj: Any) -> Any:
+        if isinstance(obj, Point):
+            return obj.coords
+        return super().default(obj)
+
+
+class EventUpdateChangesJSONDecoder(json.JSONDecoder):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(object_hook=self.object_hook, *args, **kwargs)
+
+    def object_hook(self, obj: Any) -> Any:
+        if "geolocation" in obj:
+            obj["geolocation"] = Point(obj["geolocation"], srid=settings.GEODJANGO_SRID)
+        return obj
 
 
 def encrypt_value(value: str) -> str:
@@ -73,7 +92,7 @@ class SpotifyEntityModel(BaseModel):
 class SpotifyUser(SpotifyEntityModel):
     display_name = models.CharField(max_length=48, null=True)
     email = models.EmailField(null=True)
-    location = gis_models.PointField(null=True, srid=settings.GEODJANGO_SRID)
+    location = gis_models.PointField(null=True, geography=True, srid=settings.GEODJANGO_SRID)
 
     def __str__(self) -> str:
         return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
@@ -231,7 +250,7 @@ class Event(DirtyFieldsMixin, BaseModel):
     address = models.CharField(max_length=1000, null=True)
     city = models.CharField(max_length=100, null=True)
     country = models.CharField(max_length=100, null=True)
-    geolocation = gis_models.PointField(null=True, srid=settings.GEODJANGO_SRID)
+    geolocation = gis_models.PointField(null=True, geography=True, srid=settings.GEODJANGO_SRID)
     stream_urls = models.JSONField(null=True)
     tickets_urls = models.JSONField(null=True)
 
@@ -308,7 +327,7 @@ class EventUpdate(BaseModel):
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="updates")
     type = models.CharField(max_length=50, choices=EVENT_UPDATE_TYPES)
-    changes = models.JSONField(null=True)
+    changes = models.JSONField(null=True, encoder=EventUpdateChangesJSONEncoder, decoder=EventUpdateChangesJSONDecoder)
     is_notified_of = models.BooleanField(default=False)
 
     def __str__(self) -> str:
