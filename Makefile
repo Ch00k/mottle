@@ -63,4 +63,4 @@ deploy:
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
 pre_release: check tag build deploy_pre
-release: deploy
+release: check tag build deploy
