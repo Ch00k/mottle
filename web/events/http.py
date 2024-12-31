@@ -88,7 +88,9 @@ class AsyncRetryingClient(httpx.AsyncClient):
             try:
                 response = await super().send(request, *args, **kwargs)
             except httpx.TimeoutException as e:
-                if self.exceptions_counter_metric is not None:
+                if self.exceptions_counter_metric is None:
+                    logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
+                else:
                     self.exceptions_counter_metric.labels("timeout").inc()
 
                 self.requests_timedout += 1
@@ -96,7 +98,9 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 retries -= 1
                 continue
             except Exception as e:
-                if self.exceptions_counter_metric is not None:
+                if self.exceptions_counter_metric is None:
+                    logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
+                else:
                     self.exceptions_counter_metric.labels("other").inc()
 
                 self.requests_errored += 1
@@ -106,7 +110,9 @@ class AsyncRetryingClient(httpx.AsyncClient):
             else:
                 request_time = max(timeit.default_timer() - start, 0)
 
-                if self.response_time_metric is not None:
+                if self.response_time_metric is None:
+                    logger.warning(f"response_time_metric for {self.name} is None. Skipping metric recording")
+                else:
                     self.response_time_metric.observe(request_time)
 
                 if self.delay_seconds:
@@ -119,7 +125,9 @@ class AsyncRetryingClient(httpx.AsyncClient):
                     next_request_allowed_in_seconds = self.next_request_allowed_at - now
 
             if self.throttle_response_code is not None and response.status_code == self.throttle_response_code:
-                if self.throttle_counter_metric is not None:
+                if self.throttle_counter_metric is None:
+                    logger.warning(f"throttle_counter_metric for {self.name} is None. Skipping metric recording")
+                else:
                     self.throttle_counter_metric.inc()
 
                 self.requests_throttled += 1
@@ -145,8 +153,13 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
                 logger.debug(log_msg)
 
-            if response.status_code >= 400 and self.responses_gte_400_counter_metric is not None:
-                self.responses_gte_400_counter_metric.labels(response.status_code).inc()
+            if response.status_code >= 400:
+                if self.responses_gte_400_counter_metric is None:
+                    logger.warning(
+                        f"responses_gte_400_counter_metric for {self.name} is None. Skipping metric recording"
+                    )
+                else:
+                    self.responses_gte_400_counter_metric.labels(response.status_code).inc()
 
             if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
                 return response

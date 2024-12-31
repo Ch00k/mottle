@@ -52,14 +52,15 @@ deploy_pre:
 	docker-compose -f ${DEPLOYMENT_DIR_PRE}/docker-compose.yml up -d
 
 deploy:
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
-	@echo Deploying version: $(VERSION)
-	docker image tag mottle:$(VERSION) ghcr.io/ch00k/mottle:$(VERSION)
-	docker image tag mottle:$(VERSION) ghcr.io/ch00k/mottle:latest
-	docker push ghcr.io/ch00k/mottle:$(VERSION)
+	@$(eval APP_VERSION=$(shell poetry version --short))
+	@echo Deploying version: $(APP_VERSION)
+	docker image tag mottle:$(APP_VERSION) ghcr.io/ch00k/mottle:$(APP_VERSION)
+	docker image tag mottle:$(APP_VERSION) ghcr.io/ch00k/mottle:latest
+	docker push ghcr.io/ch00k/mottle:$(APP_VERSION)
 	docker push ghcr.io/ch00k/mottle:latest
-	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(VERSION)
-	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
+	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(APP_VERSION)
+	cp ${DEPLOYMENT_DIR}/database/tasks.sqlite3 ${DEPLOYMENT_DIR}/database/tasks.sqlite3.pre_$(APP_VERSION)
+	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
 	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
 
 pre_release: check tag build deploy_pre
