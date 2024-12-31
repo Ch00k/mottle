@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from sentry_sdk import capture_exception, capture_message
 
+from urlshortener.models import ShortURL
+
 from .constants import (
     BANDSINTOWN_BASE_URL,
     BANDSINTOWN_WINDOW_DATA_XPATH,
@@ -440,8 +442,8 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
             )
 
     # TODO: Can an event have both ticket and live stream URLs?
-    stream_urls: list[str] = []
-    tickets_urls: list[str] = []
+    stream_urls = []
+    tickets_urls = []
 
     if event_type == EventType.live_stream:
         xpath = SONGKICK_LIVE_STREAM_XPATH
@@ -461,7 +463,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
             capture_exception(r)
         else:
             if r[2] is not None:
-                result_urls.append(r[2])
+                result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
 
     if event_type == EventType.live_stream:
         stream_urls = result_urls
@@ -533,7 +535,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
         stream_url = event_details.get("streamingUrl")
         if stream_url:
-            stream_urls = [stream_url]
+            stream_urls = [(await ShortURL.shorten(stream_url)).full_short_url]
         else:
             logger.warning(
                 f"eventView.body.hybridEventDetails.streamingUrl key not found in 'window.__data' on {event_url}"
@@ -568,7 +570,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
             for ticket in ticket_list:
                 ticket_url = ticket.get("directTicketUrl")
                 if ticket_url:
-                    tickets_urls.append(ticket_url)
+                    tickets_urls.append((await ShortURL.shorten(ticket_url)).full_short_url)
                 else:
                     logger.warning(
                         f"directTicketUrl not found in one of the elements in "

@@ -35,6 +35,10 @@ class SpotifyAuthMiddleware:
             markcoroutinefunction(self)
 
     async def __call__(self, request: MottleHttpRequest) -> HttpResponse:
+        if request.host.name == "urlshortener":  # type: ignore
+            logger.debug(f"Request host: {request.host.name}. Skipping {self.__class__.__name__} middleware")  # type: ignore
+            return await self.get_response(request)
+
         if request.path_info != "/metrics":
             logger.debug(f"Request path: {request.path_info}")
 

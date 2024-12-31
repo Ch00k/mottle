@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "web",
+    "urlshortener",
+    "django_hosts",
     "django_htmx",
     "django_prometheus",
     "django_q",
@@ -41,6 +43,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "django_hosts.middleware.HostsRequestMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -50,10 +53,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "web.middleware.SpotifyAuthMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
+    "django_hosts.middleware.HostsResponseMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
+URLSHORTENER_BASE_URL = env.str("URLSHORTENER_BASE_URL", "https://mottle.it")
+
+ROOT_HOSTCONF = "mottle.hosts"
 ROOT_URLCONF = "mottle.urls"
+
+DEFAULT_HOST = "default"
 
 LOGIN_URL = "/login/"
 AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/", "/metrics", "/changelog/"]

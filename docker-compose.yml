@@ -3,14 +3,15 @@ x-image: &image
 
 x-env: &env
   PYTHONPATH: /app/mounted
-  ALLOWED_HOSTS: 127.0.0.1,localhost,web
+  ALLOWED_HOSTS: 127.0.0.1,localhost,mottle-dev.it,s.mottle-dev.it
+  URLSHORTENER_BASE_URL: http://s.mottle-dev.it:65534
   CSRF_TRUSTED_ORIGINS: http://127.0.0.1,http://localhost
   SECRET_KEY: ${SECRET_KEY:-foobar}
   DATABASE_FILE: /app/database/db.sqlite3
   DATABASE_FILE_TASKS: /app/database/tasks.sqlite3
   SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
   SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
-  SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-http://127.0.0.1:65534/callback/}
+  SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-http://mottle-dev.it:65534/callback/}
   SPOTIFY_TOKEN_ENCRYPTION_KEYS: ${SPOTIFY_TOKEN_ENCRYPTION_KEYS}
   MAILERSEND_API_TOKEN: ${MAILERSEND_API_TOKEN}
   MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL}
@@ -38,6 +39,8 @@ services:
       - *image
     environment:
       <<: *env
+    labels:
+      - prometheus.scrape-port=65534
     command: ./manage.py runserver 0.0.0.0:65534
     volumes:
       - ./runtime_data/database:/app/database
@@ -57,6 +60,8 @@ services:
     environment:
       <<: *env
       DJANGO_SETTINGS_MODULE: mottle.settings
+    labels:
+      - prometheus.scrape-port=10001
     command: python ./scheduler/run.py 0.0.0.0 10001
     volumes:
       - ./runtime_data/database:/app/database
@@ -74,6 +79,8 @@ services:
       DJANGO_SETTINGS_MODULE: mottle.settings
       Q_CLUSTER_NAME: default
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
+    labels:
+      - prometheus.scrape-port=10002
     command: python ./taskrunner/run.py 0.0.0.0 10002
     volumes:
       - ./runtime_data/database:/app/database
@@ -92,6 +99,8 @@ services:
       DJANGO_SETTINGS_MODULE: mottle.settings
       Q_CLUSTER_NAME: long_running
       PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
+    labels:
+      - prometheus.scrape-port=10003
     command: python ./taskrunner/run.py 0.0.0.0 10003
     volumes:
       - ./runtime_data/database:/app/database
@@ -101,36 +110,36 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  prometheus:
-    image: prom/prometheus
-    logging:
-      driver: none
-    user: 65534:65534
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --log.level=warn
-      - --log.format=json
-    volumes:
-      - ./runtime_data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./runtime_data/prometheus/data:/prometheus
-    ports:
-      - 127.0.0.1:9797:9090
+  #prometheus:
+  #  image: prom/prometheus
+  #  logging:
+  #    driver: none
+  #  user: 65534:65534
+  #  command:
+  #    - --config.file=/etc/prometheus/prometheus.yml
+  #    - --storage.tsdb.path=/prometheus
+  #    - --log.level=warn
+  #    - --log.format=json
+  #  volumes:
+  #    - ./runtime_data/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+  #    - ./runtime_data/prometheus/data:/prometheus
+  #  ports:
+  #    - 127.0.0.1:9797:9090
 
-  grafana:
-    image: grafana/grafana
-    logging:
-      driver: none
-    user: 65534:65534
-    environment:
-      GF_AUTH_ANONYMOUS_ENABLED: true
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
-      GF_LOG_MODE: console
-      GF_LOG_LEVEL: warn
-      GF_LOG_FORMAT: json
-      GF_LOG_CONSOLE_LEVEL: warn
-      GF_LOG_CONSOLE_FORMAT: json
-    volumes:
-      - ./runtime_data/grafana:/var/lib/grafana
-    ports:
-      - 127.0.0.1:3737:3000
+  #grafana:
+  #  image: grafana/grafana
+  #  logging:
+  #    driver: none
+  #  user: 65534:65534
+  #  environment:
+  #    GF_AUTH_ANONYMOUS_ENABLED: true
+  #    GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+  #    GF_LOG_MODE: console
+  #    GF_LOG_LEVEL: warn
+  #    GF_LOG_FORMAT: json
+  #    GF_LOG_CONSOLE_LEVEL: warn
+  #    GF_LOG_CONSOLE_FORMAT: json
+  #  volumes:
+  #    - ./runtime_data/grafana:/var/lib/grafana
+  #  ports:
+  #    - 127.0.0.1:3737:3000

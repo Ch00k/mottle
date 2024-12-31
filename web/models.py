@@ -262,6 +262,7 @@ class Event(DirtyFieldsMixin, BaseModel):
         fetched_event: FetchedEvent, event_artist: EventArtist
     ) -> tuple["Event", bool]:
         venue = fetched_event.venue
+
         if venue is None:
             venue_name = None
             postcode = None
@@ -290,6 +291,7 @@ class Event(DirtyFieldsMixin, BaseModel):
                 "city": city,
                 "country": country,
                 "geolocation": geolocation,
+                # TODO: Move this logic to a custom JSON endoder/decoder?
                 "stream_urls": fetched_event.stream_urls,
                 "tickets_urls": fetched_event.tickets_urls,
             },
@@ -513,12 +515,13 @@ class PlaylistUpdate(BaseModel):
         return f"<PlaylistUpdate {self.id} hash={self.update_hash}>"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        self.update_hash = generate_playlist_update_hash(
-            self.albums_added,
-            self.albums_removed,
-            self.tracks_added,
-            self.tracks_removed,
-        )
+        if not self.update_hash:
+            self.update_hash = generate_playlist_update_hash(
+                self.albums_added,
+                self.albums_removed,
+                self.tracks_added,
+                self.tracks_removed,
+            )
         super().save(*args, **kwargs)
 
     @property
