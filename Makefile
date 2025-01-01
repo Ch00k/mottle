@@ -6,13 +6,13 @@ build_dev:
 	docker build . -t mottle:latest
 
 up:
-	docker-compose up --remove-orphans
+	docker compose up --remove-orphans
 
 down:
-	docker-compose down --remove-orphans
+	docker compose down --remove-orphans
 
 shell:
-	docker-compose exec web ./manage.py shell
+	docker compose exec web ./manage.py shell
 
 test:
 	poetry run pytest web/tests
@@ -48,8 +48,8 @@ deploy_pre:
 	@$(eval APP_VERSION=$(shell poetry version --short))
 	@echo Deploying version: $(APP_VERSION)
 	cp ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3 ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3.pre_$(APP_VERSION)
-	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR_PRE}/docker-compose.yml
-	docker-compose -f ${DEPLOYMENT_DIR_PRE}/docker-compose.yml up -d
+	sed -i 's/image: mottle:.*/image: mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR_PRE}/compose.yml
+	docker compose -f ${DEPLOYMENT_DIR_PRE}/compose.yml up -d
 
 deploy:
 	@$(eval APP_VERSION=$(shell poetry version --short))
@@ -60,8 +60,8 @@ deploy:
 	docker push ghcr.io/ch00k/mottle:latest
 	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(APP_VERSION)
 	cp ${DEPLOYMENT_DIR}/database/tasks.sqlite3 ${DEPLOYMENT_DIR}/database/tasks.sqlite3.pre_$(APP_VERSION)
-	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/docker-compose.yml
-	docker-compose -f ${DEPLOYMENT_DIR}/docker-compose.yml up -d
+	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/compose.yml
+	docker compose -f ${DEPLOYMENT_DIR}/compose.yml up -d
 
 pre_release: check tag build deploy_pre
 release: check tag build deploy
