@@ -109,6 +109,17 @@ if gdal_library_path := env.str("GDAL_LIBRARY_PATH", None):
 if geos_library_path := env.str("GEOS_LIBRARY_PATH", None):
     GEOS_LIBRARY_PATH = geos_library_path
 
+sentry_sdk.init(
+    dsn=env.str("SENTRY_DSN", ""),
+    enable_tracing=True,
+    release=f"mottle@{APP_VERSION}",
+    environment=env.str("SENTRY_ENVIRONMENT", "dev"),
+    integrations=[
+        DjangoIntegration(transaction_style="url", middleware_spans=True, signals_spans=False, cache_spans=False),
+        LoggingIntegration(level=None, event_level=None),
+    ],
+)
+
 Q_CLUSTER = {
     "name": "default",
     "orm": "tasks",
@@ -126,6 +137,9 @@ Q_CLUSTER = {
             "timeout": 20 * 60 * 60,  # 20 hours
             "retry": 21 * 60 * 60,  # 21 hours
         },
+    },
+    "error_reporter": {
+        "sentry": {},
     },
 }
 
@@ -254,17 +268,6 @@ MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY", None)
 OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_dump")
-
-sentry_sdk.init(
-    dsn=env.str("SENTRY_DSN", ""),
-    enable_tracing=True,
-    release=f"mottle@{APP_VERSION}",
-    environment=env.str("SENTRY_ENVIRONMENT", "dev"),
-    integrations=[
-        DjangoIntegration(transaction_style="url", middleware_spans=True, signals_spans=False, cache_spans=False),
-        LoggingIntegration(level=None, event_level=None),
-    ],
-)
 
 HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
 BRIGHTDATA_PROXY_URL = env.str("BRIGHTDATA_PROXY_URL", None)
