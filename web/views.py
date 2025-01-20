@@ -16,7 +16,7 @@ from django.views.decorators.http import (
     require_POST,
     require_safe,
 )
-from django_htmx.http import HttpResponseClientRedirect
+from django_htmx.http import HttpResponseClientRedirect, trigger_client_event
 from ipware import get_client_ip
 from tekore.model import AlbumType, FullPlaylistTrack
 
@@ -41,6 +41,7 @@ from .views_utils import (
     AlbumMetadata,
     ArtistMetadata,
     PlaylistMetadata,
+    catch_errors,
     get_duplicates_message,
     get_playlist_modal_response,
 )
@@ -50,6 +51,7 @@ ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilati
 logger = logging.getLogger(__name__)
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def login(request: MottleHttpRequest) -> HttpResponse:
     redirect_uri: str | None
@@ -115,12 +117,14 @@ async def login(request: MottleHttpRequest) -> HttpResponse:
         return redirect(auth.url)
 
 
+@catch_errors
 @require_GET
 async def logout(request: MottleHttpRequest) -> HttpResponse:
     await sync_to_async(request.session.flush)()
     return redirect("login")
 
 
+@catch_errors
 @require_GET
 async def callback(request: MottleHttpRequest) -> HttpResponse:
     code = request.GET.get("code")
@@ -194,15 +198,18 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     return redirect(spotify_auth_request.redirect_uri or "index")
 
 
+@catch_errors
 @require_safe  # Accept HEAD requests from UptimeRobot
 def index(request: MottleHttpRequest) -> HttpResponse:
     return render(request, "web/index.html")
 
 
+@catch_errors
 def changelog(request: MottleHttpRequest) -> HttpResponse:
     return render(request, "web/changelog.html")
 
 
+@catch_errors
 @require_GET
 async def search_artists(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query")
@@ -213,12 +220,7 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
     if query == "":
         return render(request, "web/parts/artists.html", context={"artists": [], "query": ""})
 
-    try:
-        artists = await request.spotify_client.get_artists(query)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to search for artists")
-
+    artists = await request.spotify_client.get_artists(query)
     artists = [ArtistData.from_tekore_model(artist) for artist in artists]
 
     if request.htmx:
@@ -228,6 +230,7 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
             "web/parts/artists.html",
             context={"artists": artists, "query": query, "events_enabled": events_enabled},
         )
+
     else:
         return render(
             request,
@@ -236,6 +239,7 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
         )
 
 
+@catch_errors
 @require_GET
 async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query")
@@ -246,11 +250,7 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     if query == "":
         return render(request, "web/parts/playlists.html", context={"artists": [], "query": ""})
 
-    try:
-        playlists = await request.spotify_client.get_playlists(query)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to search for playlists")
+    playlists = await request.spotify_client.get_playlists(query)
 
     # TODO: There should be another way to check if a playlist belongs to the current user
     user_playlists = await request.spotify_client.get_current_user_playlists()
@@ -283,17 +283,13 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
         )
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     artist_metadata = ArtistMetadata(request, artist_id)
     artist = await ArtistData.from_metadata(artist_metadata)
 
-    try:
-        all_albums = await request.spotify_client.get_artist_albums_separately_by_type(artist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get albums")
-
+    all_albums = await request.spotify_client.get_artist_albums_separately_by_type(artist_id)
     albums_sorted = sorted(
         sorted(all_albums, key=lambda x: x.release_date, reverse=True),
         key=lambda x: ALBUM_SORT_ORDER[x.album_type],
@@ -323,27 +319,22 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     else:
         requested_album_ids = request.POST.getlist("album")
         if not requested_album_ids:
-            return HttpResponseBadRequest("No albums selected")
+            error_message = "No albums selected"
+            return trigger_client_event(
+                HttpResponseBadRequest(error_message), "HXToast", {"type": "error", "body": error_message}
+            )
 
         name = request.POST.get("name", f"{artist.name} discography")
         is_public = bool(request.POST.get("is-public", False))
 
-        try:
-            tracks = await request.spotify_client.get_tracks_in_albums(requested_album_ids)
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to get album tracks")
+        tracks = await request.spotify_client.get_tracks_in_albums(requested_album_ids)
 
-        try:
-            playlist = await request.spotify_client.create_playlist_with_tracks(
-                request.session["spotify_user_spotify_id"],
-                name=name,
-                track_uris=[track.uri for track in tracks],
-                is_public=is_public,
-            )
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to create playlist")
+        playlist = await request.spotify_client.create_playlist_with_tracks(
+            request.session["spotify_user_spotify_id"],
+            name=name,
+            track_uris=[track.uri for track in tracks],
+            is_public=is_public,
+        )
 
         if bool(request.POST.get("auto-update", False)):
             albums_ignored = list(set(album_ids) - set(requested_album_ids))
@@ -375,20 +366,17 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
             )
 
+        # TODO: Toast
         return redirect("playlist", playlist_id=playlist.id)
 
 
+@catch_errors
 @require_GET
 async def album(request: MottleHttpRequest, album_id: str) -> HttpResponse:
     album_metadata = AlbumMetadata(request, album_id)
     album = await AlbumData.from_metadata(album_metadata)
 
-    try:
-        tracks = await request.spotify_client.get_album_tracks(album_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get album tracks")
-
+    tracks = await request.spotify_client.get_album_tracks(album_id)
     tracks = [TrackData.from_tekore_model(track, album=album) for track in tracks]
 
     return render(
@@ -398,13 +386,10 @@ async def album(request: MottleHttpRequest, album_id: str) -> HttpResponse:
     )
 
 
+@catch_errors
 @require_GET
 async def playlists(request: MottleHttpRequest) -> HttpResponse:
-    try:
-        playlists = await request.spotify_client.get_current_user_playlists()
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get playlists")
+    playlists = await request.spotify_client.get_current_user_playlists()
 
     # https://community.spotify.com/t5/Spotify-for-Developers/null-values-when-using-quot-Get-Current-User-s-Playlists-quot/td-p/6549968
     playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists if playlist is not None]
@@ -424,16 +409,12 @@ async def playlists(request: MottleHttpRequest) -> HttpResponse:
 
 # @require_GET
 # async def followed_artists(request: MottleHttpRequest) -> HttpResponse:
-#     try:
-#         artists = await request.spotify_client.get_current_user_followed_artists()
-#     except MottleException as e:
-#         logger.exception(e)
-#         return HttpResponseServerError("Failed to get followed artists")
-
+#     artists = await request.spotify_client.get_current_user_followed_artists()
 #     context = {"artists": artists}
 #     return render(request, "web/followed_artists.html", context)
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -490,6 +471,7 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
         )
 
 
+@catch_errors
 @require_POST
 async def accept_playlist_update(request: MottleHttpRequest, playlist_id: str, update_id: str) -> HttpResponse:
     update = await aget_object_or_404(
@@ -499,25 +481,20 @@ async def accept_playlist_update(request: MottleHttpRequest, playlist_id: str, u
         target_playlist__spotify_user__id=request.session["spotify_user_id"],
     )
 
-    try:
-        await update.accept(request.spotify_client)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to add tracks to playlist")
+    await update.accept(request.spotify_client)
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Update accepted"},
+    )
 
-    return HttpResponse()
 
-
+@catch_errors
 @require_GET
 async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
-
-    try:
-        playlist_tracks = await request.spotify_client.get_playlist_tracks(playlist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get playlist items")
+    playlist_tracks = await request.spotify_client.get_playlist_tracks(playlist_id)
 
     # TODO: There should be another way to check if a playlist belongs to the current user
     user_playlists = await request.spotify_client.get_current_user_playlists()
@@ -561,20 +538,21 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
     return render(request, "web/playlist.html", context)
 
 
+@catch_errors
 @require_POST
 async def follow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
 
-    try:
-        await request.spotify_client.follow_playlist(playlist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to follow playlist")
+    await request.spotify_client.follow_playlist(playlist_id)
 
     source = request.headers.get("M-Source")
     if not source:
-        return HttpResponseServerError("Failed to follow playlist")
+        return trigger_client_event(
+            HttpResponseServerError("Failed to follow playlist"),
+            "HXToast",
+            {"type": "error", "body": "Failed to follow playlist"},
+        )
 
     return render(
         request,
@@ -583,24 +561,21 @@ async def follow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
     )
 
 
+@catch_errors
 @require_POST
 async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
 
+    await request.spotify_client.unfollow_playlist(playlist_id)
+
     try:
-        await request.spotify_client.unfollow_playlist(playlist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to unfollow playlist")
+        db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
+    except Playlist.DoesNotExist:
+        logger.info(f"Playlist {playlist_id} not found in database. Skipping")
+        pass
     else:
-        try:
-            db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
-        except Playlist.DoesNotExist:
-            logger.info(f"Playlist {playlist_id} not found in database. Skipping")
-            pass
-        else:
-            await db_playlist.unfollow()
+        await db_playlist.unfollow()
 
     if request.headers.get("M-Source") == "playlists_search":
         return render(
@@ -610,26 +585,39 @@ async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> Htt
         )
     elif request.headers.get("M-Source") == "playlists_my":
         if playlist.owner_id == request.session["spotify_user_spotify_id"]:
-            return HttpResponse()
+            return trigger_client_event(
+                HttpResponse(),
+                "HXToast",
+                {"type": "success", "body": "Successfully unfollowed playlist"},
+            )
         else:
-            return render(
-                request,
-                "web/parts/playlist_follow.html",
-                {"playlist": playlist, "source": "playlists_my"},
+            return trigger_client_event(
+                render(
+                    request,
+                    "web/parts/playlist_follow.html",
+                    {"playlist": playlist, "source": "playlists_my"},
+                ),
+                "HXToast",
+                {"type": "success", "body": "Successfully unfollowed playlist"},
             )
     elif request.headers.get("M-Source") == "playlist":
         if playlist.owner_id == request.session["spotify_user_spotify_id"]:
             return HttpResponseClientRedirect("/playlists")
         else:
-            return render(
-                request,
-                "web/parts/playlist_follow.html",
-                {"playlist": playlist, "source": "playlist"},
+            return trigger_client_event(
+                render(
+                    request,
+                    "web/parts/playlist_follow.html",
+                    {"playlist": playlist, "source": "playlist"},
+                ),
+                "HXToast",
+                {"type": "success", "body": "Successfully unfollowed playlist"},
             )
     else:
         return HttpResponseServerError("Failed to unfollow playlist")
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -655,20 +643,11 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
 
         tracks = [f"spotify:track:{track_id}" for track_id in tracks_to_remove]
 
-        try:
-            # await request.spotify_client.remove_tracks_at_positions_from_playlist(
-            #     playlist_id, tracks_to_remove, playlist_snapshot_id
-            # )
-            await request.spotify_client.remove_tracks_from_playlist(playlist_id, tracks)
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to remove tracks from playlist")
-
-        try:
-            await request.spotify_client.add_tracks_to_playlist(playlist_id, tracks)
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to add tracks to playlist")
+        # await request.spotify_client.remove_tracks_at_positions_from_playlist(
+        #     playlist_id, tracks_to_remove, playlist_snapshot_id
+        # )
+        await request.spotify_client.remove_tracks_from_playlist(playlist_id, tracks)
+        await request.spotify_client.add_tracks_to_playlist(playlist_id, tracks)
 
         return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
 
@@ -676,6 +655,7 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         duplicates = await request.spotify_client.find_duplicate_tracks_in_playlist(playlist_id)
         duplicates = [(TrackData.from_tekore_model(track), _) for track, _ in duplicates]
 
+        # TODO: Toast
         return render(
             request,
             "web/deduplicate.html",
@@ -687,17 +667,14 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         )
 
 
+@catch_errors
 @require_GET
 async def playlist_audio_features(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist_name = await playlist_metadata.name
 
-    # TODO: This view will be navigated to from the playlist view, so playlist items could could be passed from there?
-    try:
-        playlist_items = await request.spotify_client.get_playlist_tracks(playlist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get playlist items")
+    # TODO: This view will be navigated to from the playlist view, so playlist items could be passed from there?
+    playlist_items = await request.spotify_client.get_playlist_tracks(playlist_id)
 
     tracks = [item.track for item in playlist_items if item.track is not None and item.track.id is not None]
 
@@ -717,16 +694,12 @@ async def playlist_audio_features(request: MottleHttpRequest, playlist_id: str) 
     )
 
 
+@catch_errors
 @require_POST
 async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist_name = await playlist_metadata.name
-
-    try:
-        playlist_items = await request.spotify_client.get_playlist_tracks(playlist_id)
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to get playlist items")
+    playlist_items = await request.spotify_client.get_playlist_tracks(playlist_id)
 
     # TODO: Uploading playlist cover image is weird. Right after playlist is created, the upload returns a 404 for
     # some time, then it returns a 502 for some time, and only then it returns a 202.
@@ -747,28 +720,26 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
     # else:
     #     cover_image_base64_data = None
 
-    try:
-        playlist = await request.spotify_client.create_playlist_with_tracks(
-            request.session["spotify_user_spotify_id"],
-            name=f"Copy of {playlist_name}",
-            track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
-            is_public=True,  # TODO: How do we decide on the value?
-            # cover_image=cover_image_base64_data,
-            cover_image=None,
-            add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
-            fail_on_cover_image_upload_error=False,
-        )
-    except MottleException as e:
-        logger.exception(e)
-        return HttpResponseServerError("Failed to create playlist")
+    playlist = await request.spotify_client.create_playlist_with_tracks(
+        request.session["spotify_user_spotify_id"],
+        name=f"Copy of {playlist_name}",
+        track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
+        is_public=True,  # TODO: How do we decide on the value?
+        # cover_image=cover_image_base64_data,
+        cover_image=None,
+        add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
+        fail_on_cover_image_upload_error=False,
+    )
 
     # When the playlist is initially created, it is empty, and its attributes (e.g. owner) are still not defined.
     # Therefore we fetch it again.
     playlist = await request.spotify_client.get_playlist(playlist.id)
 
+    # TODO: Toast
     return render(request, "web/parts/playlist_row.html", context={"playlist": playlist})
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     source_playlist_id = playlist_id
@@ -789,24 +760,24 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
                     )
                     target_playlist_id = target_playlist.id
                 else:
-                    return HttpResponseBadRequest("No new playlist name provided")
+                    return trigger_client_event(
+                        HttpResponseBadRequest("No new playlist name provided"),
+                        "HXToast",
+                        {"type": "error", "body": "No new playlist name provided"},
+                    )
         else:
-            return HttpResponseBadRequest("No merge target provided")
-
-        try:
-            source_playlist_items = await request.spotify_client.get_playlist_tracks(source_playlist_id)
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to get playlist items")
-
-        try:
-            await request.spotify_client.add_tracks_to_playlist(
-                target_playlist_id,  # type: ignore [arg-type]  # TODO: WTF!?
-                [item.track.uri for item in source_playlist_items if isinstance(item.track, FullPlaylistTrack)],
+            return trigger_client_event(
+                HttpResponseBadRequest("No merge target provided"),
+                "HXToast",
+                {"type": "error", "body": "No merge target provided"},
             )
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to add items to playlist")
+
+        source_playlist_items = await request.spotify_client.get_playlist_tracks(source_playlist_id)
+
+        await request.spotify_client.add_tracks_to_playlist(
+            target_playlist_id,  # type: ignore [arg-type]  # TODO: WTF!?
+            [item.track.uri for item in source_playlist_items if isinstance(item.track, FullPlaylistTrack)],
+        )
 
         auto_update = bool(request.POST.get("auto-update", False))
         if auto_update:
@@ -827,9 +798,14 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
                 auto_accept_updates=auto_accept,
             )
 
-        return HttpResponse()
+        return trigger_client_event(
+            HttpResponse(),
+            "HXToast",
+            {"type": "success", "body": "Successfully merged playlists"},
+        )
 
 
+@catch_errors
 @require_GET
 async def configure_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -877,6 +853,7 @@ async def configure_playlist(request: MottleHttpRequest, playlist_id: str) -> Ht
     )
 
 
+@catch_errors
 @require_http_methods(["GET", "POST", "DELETE"])
 async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -887,20 +864,23 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
     elif request.method == "POST":
         name = request.POST.get("name")
         if not name:
-            return HttpResponseBadRequest("No name provided")
+            return trigger_client_event(
+                HttpResponseBadRequest("No name provided"),
+                "HXToast",
+                {"type": "error", "body": "No name provided"},
+            )
 
-        try:
-            await request.spotify_client.change_playlist_details(playlist_id, name)
-        except MottleException as e:
-            logger.exception(e)
-            return HttpResponseServerError("Failed to rename playlist")
+        await request.spotify_client.change_playlist_details(playlist_id, name)
 
         playlist.name = name
+        # TODO: Toast
         return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
     else:
+        # TODO: Toast
         return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -919,9 +899,14 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
             spotify_user_id=request.session["spotify_user_id"],
             dump_to_disk=True,
         )
-        return HttpResponse()
+        return trigger_client_event(
+            HttpResponse(),
+            "HXToast",
+            {"type": "success", "body": "Cover image requested successfully"},
+        )
 
 
+@catch_errors
 @require_http_methods(["GET", "POST"])
 async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     if request.method == "GET":
@@ -940,12 +925,24 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
                     )
                     watching_playlist_id = watching_playlist.id
                 else:
-                    return HttpResponseBadRequest("No watching playlist name provided")
+                    return trigger_client_event(
+                        HttpResponseBadRequest("No watching playlist name provided"),
+                        "HXToast",
+                        {"type": "error", "body": "No watching playlist name provided"},
+                    )
         else:
-            return HttpResponseBadRequest("No watching playlist ID provided")
+            return trigger_client_event(
+                HttpResponseBadRequest("No watching playlist provided"),
+                "HXToast",
+                {"type": "error", "body": "No watching playlist provided"},
+            )
 
         if not watching_playlist_id:
-            return HttpResponseBadRequest("No watching playlist ID provided")
+            return trigger_client_event(
+                HttpResponseBadRequest("No watching playlist ID provided"),
+                "HXToast",
+                {"type": "error", "body": "No watching playlist ID provided"},
+            )
 
         auto_accept = bool(request.POST.get("auto-accept", False))
         if auto_accept:
@@ -958,9 +955,14 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
             auto_accept_updates=auto_accept,
         )
 
-        return HttpResponse()
+        return trigger_client_event(
+            HttpResponse(),
+            "HXToast",
+            {"type": "success", "body": "Successfully started watching playlist"},
+        )
 
 
+@catch_errors
 @require_POST
 async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     # https://stackoverflow.com/a/22294734
@@ -968,7 +970,11 @@ async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> Http
     watching_playlist_id = body.get("watching-playlist-id")
 
     if not watching_playlist_id:
-        return HttpResponseBadRequest("No watching playlist ID provided")
+        return trigger_client_event(
+            HttpResponseBadRequest("No watching playlist ID provided"),
+            "HXToast",
+            {"type": "error", "body": "No watching playlist ID provided"},
+        )
 
     watching_playlist = await aget_object_or_404(
         Playlist,
@@ -978,9 +984,14 @@ async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> Http
     watched_playlist = await aget_object_or_404(Playlist, spotify_id=playlist_id)
 
     await watching_playlist.unwatch(watched_playlist)
-    return HttpResponse()
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Successfully unwatched playlist"},
+    )
 
 
+@catch_errors
 @require_POST
 async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     watching_playlist = await aget_object_or_404(
@@ -1005,15 +1016,25 @@ async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: 
             watched_artist__spotify_id=watched_artist_id,
         )
     else:
-        return HttpResponseBadRequest("No watched playlist or artist ID provided")
+        return trigger_client_event(
+            HttpResponseBadRequest("No watched playlist or artist ID provided"),
+            "HXToast",
+            {"type": "error", "body": "No watched playlist or artist ID provided"},
+        )
 
     new_setting = not config.auto_accept_updates
     config.auto_accept_updates = new_setting
     await config.asave()
 
-    return render(request, "web/icons/accept.html", {"enabled": new_setting})
+    # TODO: Toast
+    return trigger_client_event(
+        render(request, "web/icons/accept.html", {"enabled": new_setting}),
+        "HXToast",
+        {"type": "success", "body": "Auto-accept setting updated"},
+    )
 
 
+@catch_errors
 @require_GET
 async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     artist_metadata = ArtistMetadata(request, artist_id)

@@ -17,7 +17,11 @@ Including another URLconf
 
 from django.urls import include, path
 
+from .views import server_error
+
 urlpatterns = [
     path("", include("web.urls")),
     path("", include("urlshortener.urls")),
 ]
+
+handler500 = server_error

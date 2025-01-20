@@ -112,7 +112,7 @@ class SpotifyAuthRequest(BaseModel):
         try:
             token = authenticate(code, self.state)
         except Exception as e:
-            raise MottleException(f"Failed to authenticate: {e}")
+            raise MottleException("Failed to authenticate") from e
 
         return token
 
@@ -168,7 +168,7 @@ class SpotifyAuth(BaseModel):
         try:
             tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(self.as_tekore_token)
         except Exception as e:
-            raise MottleException(f"Failed to refresh token: {e}")
+            raise MottleException("Failed to refresh token") from e
 
         await self.update_from_tekore_token(tekore_token)
         logger.debug(f"{self} refreshed")

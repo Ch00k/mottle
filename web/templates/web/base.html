@@ -5,8 +5,9 @@
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
         <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
         <link rel="stylesheet" href="{% static 'web/style.css' %}">
-        <script src="https://unpkg.com/htmx.org@1.9.11"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+        <script defer src="{% static 'web/htmx-toaster.js' %}"></script>
         <meta charset="utf-8">
         <meta name="description" content="My description">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,12 +23,12 @@
     <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <header>
             <nav>
-                <a href="{% url 'index' %}">
+                <a href="{% url 'index' %}" hx-boost="true" hx-indicator="#spinner">
                     <img class="logo" alt="Logo" src="{% static 'web/logo.png' %}" height=50">
                 </a>
                 <ul>
                     <li>
-                        <a href="{% url 'index' %}">Home</a>
+                        <a href="{% url 'index' %}" hx-boost="true" hx-indicator="#spinner">Home</a>
                     </li>
                     <li>
                         <a href="#">Search</a>
@@ -61,13 +62,13 @@
                                 {% comment %}    <a href="{% url 'artists' %}">Followed artists</a>{% endcomment %}
                                 {% comment %}</li>{% endcomment %}
                                 <li>
-                                    <a href="{% url 'logout' %}">Logout</a>
+                                    <a href="{% url 'logout' %}" hx-boost="true" hx-indicator="#spinner">Logout</a>
                                 </li>
                             </ul>
                         </li>
                     {% else %}
                         <li>
-                            <a href="{% url 'login' %}">Login</a>
+                            <a href="{% url 'login' %}" hx-boost="true" hx-indicator="#spinner">Login</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -94,7 +95,7 @@
                 <small>Icons by <a href="https://www.s-ings.com/typicons/">Typicons</a></small>
                 <small><a href="mailto:feedback@mottle.it">Feedback</a></small>
                 <small><a href="https://stats.uptimerobot.com/twLEyKzrW7/796740106">Status</a></small>
-                <small><a href="{% url 'changelog' %}">v{{ APP_VERSION }}</a></small>
+                <small><a href="{% url 'changelog' %}" hx-boost="true" hx-indicator="#spinner">v{{ APP_VERSION }}</a></small>
             </div>
         </footer>
     </body>

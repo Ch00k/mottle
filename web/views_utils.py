@@ -1,13 +1,16 @@
+import inspect
 import logging
 import re
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from typing import Any
 from urllib.parse import unquote
 
+import sentry_sdk
 from asgiref.sync import sync_to_async
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.urls import reverse
+from django_htmx.http import trigger_client_event
 
 from .events.enums import EventType
 from .middleware import MottleHttpRequest
@@ -84,7 +87,7 @@ class SpotifyEntityMetadata:
 
             self._is_data_fetched = True
 
-    def _fetch_additional_data(self, entity: Any) -> None:
+    def _fetch_additional_data(self, _: Any) -> None:
         pass
 
     def _get_attr_from_header(self, attr_name: str) -> str:
@@ -344,3 +347,34 @@ async def compile_playlist_updates_email(
 
 def camel_to_snake(string: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", string).lower()
+
+
+def catch_errors(view_func: Callable) -> Callable:
+    def catch_e(e: Exception) -> HttpResponse:
+        logger.exception(e)
+        sentry_sdk.capture_exception(e)
+
+        return trigger_client_event(
+            HttpResponseServerError(),
+            "HXToast",
+            {"type": "error", "body": f"Error: {e}"},
+        )
+
+    async def ainner(*args: Any, **kwargs: Any) -> Any:
+        try:
+            resp = await view_func(*args, **kwargs)
+        except MottleException as e:
+            catch_e(e)
+        return resp
+
+    def inner(*args: Any, **kwargs: Any) -> Any:
+        try:
+            resp = view_func(*args, **kwargs)
+        except MottleException as e:
+            catch_e(e)
+        return resp
+
+    if inspect.iscoroutinefunction(view_func):
+        return ainner
+    else:
+        return inner

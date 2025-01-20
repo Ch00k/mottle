@@ -46,7 +46,7 @@ class MottleSpotifyClient:
         try:
             return await self.spotify_client.current_user()  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to get current user: {e}")
+            raise MottleException("Failed to get current user") from e
 
     async def get_current_user_saved_tracks(self) -> list[SavedTrack]:
         func = partial(self.spotify_client.saved_tracks)
@@ -59,13 +59,13 @@ class MottleSpotifyClient:
                     self.spotify_client.saved_tracks_delete, track_ids, chunk_size=50
                 )
         except Exception as e:
-            raise MottleException(f"Failed to delete saved tracks: {e}")
+            raise MottleException("Failed to delete saved tracks") from e
 
     async def get_artists(self, query: str) -> list[FullArtist]:
         try:
             artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(query, types=("artist",))  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to search for artists with query {query}: {e}")
+            raise MottleException("Failed to search for artists with query {query}") from e
         else:
             ret: list[FullArtist] = artists[0].items
             return ret
@@ -79,7 +79,7 @@ class MottleSpotifyClient:
             artist = await self.spotify_client.artist(artist_id)  # pyright: ignore
             return artist
         except Exception as e:
-            raise MottleException(f"Failed to get artist {artist_id}: {e}")
+            raise MottleException(f"Failed to get artist {artist_id}") from e
 
     async def get_artist_albums(self, artist_id: str, album_types: list[str] | None = None) -> list[SimpleAlbum]:
         func = partial(
@@ -101,7 +101,7 @@ class MottleSpotifyClient:
         try:
             albums = await asyncio.gather(*calls)
         except Exception as e:
-            raise MottleException(f"Failed to get artist albums: {e}")
+            raise MottleException("Failed to get artist albums") from e
 
         return list(itertools.chain(*albums))
 
@@ -110,7 +110,7 @@ class MottleSpotifyClient:
             album = await self.spotify_client.album(album_id)  # pyright: ignore
             return album
         except Exception as e:
-            raise MottleException(f"Failed to get album: {e}")
+            raise MottleException("Failed to get album") from e
 
     async def get_albums(self, album_ids: list[str]) -> list[FullAlbum]:
         albums: list[FullAlbum] = await get_all_chunked(self.spotify_client.albums, album_ids)
@@ -121,7 +121,7 @@ class MottleSpotifyClient:
             with chunked_off(self.spotify_client):
                 return await get_all_chunked(self.spotify_client.tracks, track_ids, chunk_size=50)
         except Exception as e:
-            raise MottleException(f"Failed to get tracks: {e}")
+            raise MottleException("Failed to get tracks") from e
 
     async def get_album_tracks(self, album_id: str) -> list[SimpleTrack]:
         func = partial(self.spotify_client.album_tracks, album_id)
@@ -134,7 +134,7 @@ class MottleSpotifyClient:
         try:
             album_tracks = await asyncio.gather(*calls)
         except Exception as e:
-            raise MottleException(f"Failed to get items: {e}")
+            raise MottleException("Failed to get tracks") from e
 
         for album in album_tracks:
             tracks.extend(album)
@@ -147,13 +147,13 @@ class MottleSpotifyClient:
         try:
             await self.spotify_client.playlist_add(playlist_id, track_uris, position)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to add tracks to playlist {playlist_id}: {e}")
+            raise MottleException(f"Failed to add tracks to playlist {playlist_id}") from e
 
     async def remove_tracks_from_playlist(self, playlist_id: str, track_uris: list[str]) -> None:
         try:
             await self.spotify_client.playlist_remove(playlist_id, track_uris)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
+            raise MottleException(f"Failed to remove tracks from playlist {playlist_id}") from e
 
     # async def remove_tracks_at_positions_from_playlist(
     #     self, playlist_id: str, tracks: list[dict], playlist_snapshot_id: str
@@ -163,7 +163,7 @@ class MottleSpotifyClient:
     #             playlist_id, tracks, playlist_snapshot_id
     #         )  # pyright: ignore
     #     except Exception as e:
-    #         raise MottleException(f"Failed to remove tracks from playlist {playlist_id}: {e}")
+    #         raise MottleException(f"Failed to remove tracks from playlist {playlist_id}") from e
 
     async def create_playlist(self, current_user_id: str, name: str, is_public: bool = True) -> FullPlaylist:
         try:
@@ -173,7 +173,7 @@ class MottleSpotifyClient:
                 public=is_public,
             )
         except Exception as e:
-            raise MottleException(f"Failed to create playlist: {e}")
+            raise MottleException("Failed to create playlist") from e
 
         return playlist
 
@@ -181,7 +181,7 @@ class MottleSpotifyClient:
         try:
             await self.spotify_client.playlist_cover_image_upload(playlist_id, cover_image)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to upload cover image to playlist: {e}")
+            raise MottleException("Failed to upload cover image to playlist") from e
 
     async def create_playlist_with_tracks(
         self,
@@ -203,7 +203,7 @@ class MottleSpotifyClient:
                 public=is_public,
             )
         except Exception as e:
-            raise MottleException(f"Failed to create playlist: {e}")
+            raise MottleException("Failed to create playlist") from e
 
         if add_tracks_parallelized:
             try:
@@ -212,19 +212,19 @@ class MottleSpotifyClient:
                         partial(self.add_tracks_to_playlist, playlist.id), track_uris
                     )
             except Exception as e:
-                raise MottleException(f"Failed to add tracks to playlist: {e}")
+                raise MottleException("Failed to add tracks to playlist") from e
         else:
             try:
                 await self.add_tracks_to_playlist(playlist.id, track_uris)
             except Exception as e:
-                raise MottleException(f"Failed to add tracks to playlist: {e}")
+                raise MottleException("Failed to add tracks to playlist") from e
 
         if cover_image is not None:
             try:
                 await self.spotify_client.playlist_cover_image_upload(playlist.id, cover_image)  # pyright: ignore
             except Exception as e:
                 if fail_on_cover_image_upload_error:
-                    raise MottleException(f"Failed to upload cover image to playlist {playlist.id}")
+                    raise MottleException(f"Failed to upload cover image to playlist {playlist.id}") from e
                 else:
                     logger.error(f"Failed to upload cover image to playlist {playlist.id}: {e}")
 
@@ -240,7 +240,7 @@ class MottleSpotifyClient:
         try:
             return await self.spotify_client.playlist(playlist_id)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to get playlist {playlist_id}: {e}")
+            raise MottleException(f"Failed to get playlist {playlist_id}") from e
 
     async def change_playlist_details(
         self,
@@ -259,25 +259,25 @@ class MottleSpotifyClient:
                 description=description,  # pyright: ignore
             )
         except Exception as e:
-            raise MottleException(f"Failed to change playlist details {playlist_id}: {e}")
+            raise MottleException(f"Failed to change playlist details {playlist_id}") from e
 
     async def follow_playlist(self, playlist_id: str) -> None:
         try:
             await self.spotify_client.playlist_follow(playlist_id)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to follow playlist {playlist_id}: {e}")
+            raise MottleException(f"Failed to follow playlist {playlist_id}") from e
 
     async def unfollow_playlist(self, playlist_id: str) -> None:
         try:
             await self.spotify_client.playlist_unfollow(playlist_id)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to unfollow playlist {playlist_id}: {e}")
+            raise MottleException(f"Failed to unfollow playlist {playlist_id}") from e
 
     async def get_playlist_cover_images(self, playlist_id: str) -> list[Image]:
         try:
             images: list[Image] = await self.spotify_client.playlist_cover_image(playlist_id)  # pyright: ignore
         except Exception as e:
-            raise MottleException(f"Failed to get playlist cover images {playlist_id}: {e}")
+            raise MottleException(f"Failed to get playlist cover images {playlist_id}") from e
 
         return images
 
@@ -291,7 +291,7 @@ class MottleSpotifyClient:
             with chunked_off(self.spotify_client):
                 return await get_all_chunked(self.spotify_client.tracks_audio_features, track_ids)
         except Exception as e:
-            raise MottleException(f"Failed to get audio features for tracks: {e}")
+            raise MottleException("Failed to get audio features for tracks") from e
 
     async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> list[tuple[FullPlaylistTrack, int]]:
         # TODO: This implementation is quite awful
@@ -322,7 +322,7 @@ async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:
     try:
         results = await asyncio.gather(*calls)
     except Exception as e:
-        raise MottleException(f"Failed to perform parallel requests: {e}")
+        raise MottleException("Failed to perform parallel requests") from e
 
     return results
 
@@ -336,7 +336,7 @@ async def perform_parallel_chunked_requests(func: Callable, items: list[str], ch
     try:
         results = await asyncio.gather(*calls)
     except Exception as e:
-        raise MottleException(f"Failed to perform parallel chunked requests: {e}")
+        raise MottleException("Failed to perform parallel chunked requests") from e
 
     return results
 
@@ -352,7 +352,7 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
     try:
         paging = await func()
     except Exception as e:
-        raise MottleException(f"Failed to get items: {e}")
+        raise MottleException("Failed to get items") from e
 
     paging_total = paging[0].total if isinstance(paging, tuple) else paging.total
     page_size = paging[0].limit if isinstance(paging, tuple) else paging.limit
@@ -377,7 +377,7 @@ async def get_all_offset_paging_items(func: Callable) -> list[Model]:
     try:
         pages = [paging] + await asyncio.gather(*calls)
     except Exception as e:
-        raise MottleException(f"Failed to get items: {e}")
+        raise MottleException("Failed to get items") from e
 
     for page in pages:
         items.extend(page[0].items if isinstance(page, tuple) else page.items)
@@ -396,7 +396,7 @@ async def get_all_cursor_paging_items(func: Callable) -> list[Model]:
     try:
         items = spotify_client.all_items(await func())
     except Exception as e:
-        raise MottleException(f"Failed to get items: {e}")
+        raise MottleException("Failed to get items") from e
 
     return [i async for i in items]  # pyright: ignore
 

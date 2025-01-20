@@ -10,7 +10,7 @@
     {% if albums %}
         <section>
             <form action="." method="post" id="albums-form">
-                {% csrf_token %}
+                {% comment %}{% csrf_token %}{% endcomment %}
                 <button id="create">Create playlist</button>
                 <label for="playlist-name">Name</label>
                 <input type="text"
