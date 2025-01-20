@@ -215,6 +215,11 @@ LOGGING: dict[str, Any] = {
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
+        "django.channels.server": {
+            "level": "WARNING",
+            "handlers": [LOG_FORMAT],
+            "propagate": False,
+        },
         "django-q": {
             "level": "DEBUG",
             "handlers": [LOG_FORMAT],
