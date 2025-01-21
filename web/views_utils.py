@@ -364,14 +364,14 @@ def catch_errors(view_func: Callable) -> Callable:
         try:
             resp = await view_func(*args, **kwargs)
         except MottleException as e:
-            catch_e(e)
+            return catch_e(e)
         return resp
 
     def inner(*args: Any, **kwargs: Any) -> Any:
         try:
             resp = view_func(*args, **kwargs)
         except MottleException as e:
-            catch_e(e)
+            return catch_e(e)
         return resp
 
     if inspect.iscoroutinefunction(view_func):
