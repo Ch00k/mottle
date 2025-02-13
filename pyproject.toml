@@ -15,7 +15,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.12"
-django = "~5.0.3"
+django = "~5.1"
 environs = "^11.0.0"
 cryptography = "^43.0.1"
 django-htmx = "^1.17.3"
@@ -41,8 +41,8 @@ daphne = "^4.1.2"
 django-hosts = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "~1.11.0"
-django-stubs = "~5.0.0"
+mypy = "~1.15"
+django-stubs = "~5.1"
 factory-boy = "^3.3.0"
 pytest = "^8.2.0"
 pytest-django = "^4.8.0"

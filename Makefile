@@ -33,7 +33,7 @@ check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi
 	@if [ -n "$(shell git ls-files --exclude-standard --others)" ]; then echo "Working directory has untracked files" && exit 1; fi
 
-tag:
+tag: check
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
 	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))
 	@echo Releasing version: $(APP_VERSION)
@@ -43,7 +43,7 @@ tag:
 	git tag -a $(APP_VERSION) -m $(APP_VERSION)
 	git push origin $(APP_VERSION)
 
-build:
+build: tag
 	@$(eval TAG_NAME=$(shell git name-rev --name-only --tags --no-undefined HEAD 2>/dev/null | sed -n 's/^\([^^~]\{1,\}\)\(\^0\)\{0,1\}$$/\1/p'))
 	@echo Git tag: $(TAG_NAME)
 	@if [ -z "$(TAG_NAME)" ]; then echo "Not on a tag" && exit 1; fi
