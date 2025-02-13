@@ -165,11 +165,6 @@ td.nowrap {
 }
 
 #map {
-    max-width: 535px;
-    height: 535px;
-}
-
-#map-event-location {
     max-width: 600px;
     height: 600px;
 }

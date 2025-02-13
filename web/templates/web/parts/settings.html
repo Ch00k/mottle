@@ -1,14 +1,16 @@
 {% load static %}
 <section>
-    <form class="settings">
+    <form style="min-width: 600px">
         {% csrf_token %}
-        <label for="playlist-notifications">Notify about changes in watched playlists</label>
+        <label for="playlist-notifications">Receive email notifications about changes in watched playlists</label>
         <input type="checkbox"
                id="playlist-notifications"
                name="playlist-notifications"
                {% if playlist_notifications %}checked{% endif %}>
         <br style="display: none">
-        <label style="display: none" for="release-notifications">Notify about new releases of watched artists</label>
+        <label style="display: none" for="release-notifications">
+            Receive email notifications about new releases of watched artists
+        </label>
         <input style="display: none"
                type="checkbox"
                id="release-notifications"
@@ -16,14 +18,14 @@
                {% if release_notifications %}checked{% endif %}>
         <br>
         {% if events_enabled %}
-            <label for="event-notifications">Notify about events of watched artists</label>
+            <label for="event-notifications">Receive email notifications about events of watched artists</label>
             <input type="checkbox"
                    id="event-notifications"
                    name="event-notifications"
                    {% if event_notifications %}checked{% endif %}>
             <br>
             <div>
-                Select your location and radius to get notifications about events near you.
+                Select your location and area radius to get notified about events within the area
                 <br>
                 <br>
                 <div id="map"></div>
