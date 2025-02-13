@@ -1,0 +1,38 @@
+{% load static %}
+<div id="modal" _="on closeModal remove me">
+    <div class="modal-underlay" _="on click trigger closeModal"></div>
+    <div class="modal-content">
+        <h2>{{ artist }}</h2>
+        {{ event.date }} in {{ event.venue }}, {{ event.city }}, {{ event.country }}
+        <div>
+            {% if event.type == 'live_stream' %}
+                <b>Live stream</b>
+                {% for u in event.stream_urls %}
+                    <a href="{{ u }}">{% include "web/icons/video.html" with title="Live stream" %}</a>
+                {% empty %}
+                    not available yet
+                {% endfor %}
+            {% else %}
+                <b>Tickets</b>
+                {% for u in event.tickets_urls %}
+                    <a href="{{ u }}">{% include "web/icons/ticket.html" %}</a>
+                {% empty %}
+                    not available yet
+                {% endfor %}
+            {% endif %}
+        </div>
+        <br>
+        {% if event.type != 'live_stream' %}
+            <div id="map-event-location"></div>
+            <input type="hidden"
+                   id="latitude"
+                   name="latitude"
+                   value="{{ event.geolocation.y | default_if_none:'' }}">
+            <input type="hidden"
+                   id="longitude"
+                   name="longitude"
+                   value="{{ event.geolocation.x | default_if_none:'' }}">
+            <script defer src="{% static 'web/map_event_location.js' %}"></script>
+        {% endif %}
+    </div>
+</div>

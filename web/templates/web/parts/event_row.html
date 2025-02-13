@@ -1,11 +1,16 @@
 <tr>
-    <td>{{ event.country }}</td>
-    <td>{{ event.city }}</td>
-    <td>{{ event.date | date:"Y-m-d" }}</td>
-    <td>{{ event.venue }}</td>
+    <td>{{ event.date }}</td>
+    <td>{{ event.venue | default_if_none:'' }}</td>
+    <td>{{ event.city | default_if_none:'' }}</td>
+    <td>{{ event.country | default_if_none:'' }}</td>
     <td>
-        {% for u in event.tickets_urls %}
-            <a href="{{ u }}">{% include "web/icons/ticket.html" %}</a>
-        {% endfor %}
+        <a href=""
+           hx-get="{% url 'event_details' event.id %}"
+           hx-target="body"
+           hx-swap="beforeend"
+           hx-indicator="#spinner"
+           hx-headers='{"M-Artist-Name": "{{ artist.name | urlencode }}"}'>
+            {% include "web/icons/info.html" with title="Info and tickets" %}
+        </a>
     </td>
 </tr>

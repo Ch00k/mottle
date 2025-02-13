@@ -1,0 +1,53 @@
+{% load static %}
+<nav>
+    <a href="{% url 'index' %}" hx-boost="true" hx-indicator="#spinner">
+        <img class="logo" alt="Logo" src="{% static 'web/logo.png' %}" height=50">
+    </a>
+    <ul>
+        <li>
+            <a href="{% url 'index' %}" hx-boost="true" hx-indicator="#spinner">Home</a>
+        </li>
+        <li>
+            <a href="#">Search</a>
+            <ul>
+                <li>
+                    <a href="{% url 'search_artists' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner">Artists</a>
+                </li>
+                <li>
+                    <a href="{% url 'search_playlists' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner">Playlists</a>
+                </li>
+            </ul>
+        </li>
+        {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
+            <li>
+                <a href="#">{{ request.session.spotify_user_display_name }}</a>
+                <ul>
+                    <li>
+                        <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner">Playlists</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'user_events' %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner">Events</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'user_settings' %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner">Settings</a>
+                    </li>
+                    <li>
+                        <a href="{% url 'logout' %}" hx-boost="true" hx-indicator="#spinner">Logout</a>
+                    </li>
+                </ul>
+            </li>
+        {% else %}
+            <li>
+                <a href="{% url 'login' %}" hx-boost="true" hx-indicator="#spinner">Login</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>

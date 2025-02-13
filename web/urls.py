@@ -43,4 +43,7 @@ urlpatterns = [
     path("login/", views.login, name="login"),
     path("logout/", views.logout, name="logout"),
     path("callback/", views.callback, name="callback"),
+    path("settings/", views.user_settings, name="user_settings"),
+    path("events/", views.user_events, name="user_events"),
+    path("event/<str:event_id>/", views.event_details, name="event_details"),
 ]

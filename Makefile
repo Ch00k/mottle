@@ -6,7 +6,16 @@ build_dev:
 	docker build . -t mottle:latest
 
 up:
-	docker compose up --remove-orphans
+	@# TODO: This is awful
+	@if [ "$(PROFILE)" == "T" ]; then \
+		docker compose --profile default --profile taskrunner up --remove-orphans; \
+	elif [ "$(PROFILE)" == "S" ]; then \
+		docker compose --profile default --profile scheduler up --remove-orphans; \
+	elif [ "$(PROFILE)" == "TS" ]; then \
+		docker compose --profile default --profile taskrunner --profile scheduler up --remove-orphans; \
+	else \
+		docker compose --profile default up --remove-orphans; \
+	fi
 
 down:
 	docker compose down --remove-orphans

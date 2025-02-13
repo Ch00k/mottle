@@ -1,3 +1,4 @@
+import datetime
 import itertools
 import logging
 import timeit
@@ -5,7 +6,6 @@ from collections import defaultdict
 from typing import Any
 
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from django.contrib.gis.measure import Distance
 from django.db.models import Q
 
@@ -153,6 +153,11 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
         logger.warning("Email notifications disabled")
         return
 
+    user_config = await sync_to_async(lambda: user.user)()  # pyright: ignore
+    if not user_config.playlist_notifications:
+        logger.warning("Playlist notifications disabled for user {user}")
+        return
+
     if user.email is None:
         logger.warning(f"No email for user {user}")
         return
@@ -197,23 +202,28 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
     token = get_client_token()
     spotify_client = MottleSpotifyClient(token.access_token)
 
-    async for user in SpotifyUser.objects.filter(
+    async for spotify_user in SpotifyUser.objects.filter(
         ~Q(watched_event_artists=None),
-        location__isnull=False,
         email__isnull=False,
+        user__location__isnull=False,
+        user__radius__isnull=False,
     ):
         artists_with_events = defaultdict(list)
+        user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
 
-        async for event_artist in user.watched_event_artists.all():  # pyright: ignore
+        async for event_artist in spotify_user.watched_event_artists.all():  # pyright: ignore
             # Two cases:
             # 1. Streaming event
             # 2. Non-streaming event with geolocation defined, and its geolocation is within 100 km of user's location
             # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
             events_query = event_artist.events.filter(
-                Q(type=EventType.live_stream)
-                | (
-                    Q(~Q(type=EventType.live_stream), geolocation__isnull=False)
-                    & Q(geolocation__distance_lte=(user.location, Distance(km=settings.EVENT_DISTANCE_THRESHOLD_KM)))
+                Q(date__gte=datetime.date.today())
+                & (
+                    Q(type=EventType.live_stream)
+                    | (
+                        Q(~Q(type=EventType.live_stream), geolocation__isnull=False)
+                        & Q(geolocation__distance_lte=(user.location, Distance(km=user.event_distance_threshold)))
+                    )
                 )
             )
 
@@ -222,29 +232,33 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
                     artists_with_events[event_artist].append(update)
 
         if not artists_with_events:
-            logger.info(f"No event updates for user {user}")
+            logger.info(f"No event updates for user {spotify_user}")
             continue
 
         all_updates = list(itertools.chain.from_iterable(artists_with_events.values()))
-        logger.info(f"Event updates for user {user}: {all_updates}")
+        logger.info(f"Event updates for user {spotify_user}: {all_updates}")
 
         message = await compile_event_updates_email(artists_with_events, spotify_client)
 
-        logger.debug(f"Email message for {user}:\n{message}")
+        logger.debug(f"Email message for {spotify_user}:\n{message}")
 
         if not send_notifications:
             logger.warning("Email notifications disabled")
             continue
 
-        if user.email is None:
-            logger.warning(f"No email for user {user}")
+        if not user.event_notifications:
+            logger.warning("Playlist notifications disabled for user {spotify_user}")
+            return
+
+        if spotify_user.email is None:
+            logger.warning(f"No email for user {spotify_user}")
             continue
 
-        logger.info(f"Sending email to {user.email}")
+        logger.info(f"Sending email to {spotify_user.email}")
         try:
-            await send_email(user.email, "We've got updates for you", message)
+            await send_email(spotify_user.email, "We've got updates for you", message)
         except Exception as e:
-            logger.error(f"Failed to send email to {user.email}: {e}")
+            logger.error(f"Failed to send email to {spotify_user.email}: {e}")
         else:
             # TODO: This will cause other users to not get notifications if they follow the same artists
             logger.info("Marking updates as notified of")

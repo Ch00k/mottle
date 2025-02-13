@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
+from functools import total_ordering
 
 from tekore.model import (
     FullArtist,
@@ -15,17 +16,45 @@ from .templatetags.tekore_model_extras import get_largest_image, get_smallest_im
 from .views_utils import AlbumMetadata, ArtistMetadata, PlaylistMetadata
 
 
+@total_ordering
 @dataclass
-class AlbumData:
+class SpotifyEntityData:
     id: str
     name: str
     url: str
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SpotifyEntityData):
+            raise TypeError(f"Cannot compare {self.__class__} with {other.__class__}")
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, SpotifyEntityData):
+            raise TypeError(f"Cannot compare {self.__class__} with {other.__class__}")
+        return self.name.lower() < other.name.lower()
+
+
+@total_ordering
+@dataclass
+class AlbumData(SpotifyEntityData):
     type: str | None = None
     release_year: int | None = None
     image_url_small: str | None = None
     image_url_large: str | None = None
     track_image_url: str | None = None
     num_tracks: int | None = None
+
+    def __eq__(self, other: object) -> bool:
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __lt__(self, other: object) -> bool:
+        return super().__lt__(other)
 
     @staticmethod
     def from_tekore_model(album: SimpleAlbum) -> "AlbumData":
@@ -53,14 +82,21 @@ class AlbumData:
         )
 
 
+@total_ordering
 @dataclass
-class ArtistData:
-    id: str
-    name: str
-    url: str
+class ArtistData(SpotifyEntityData):
     image_url_small: str | None = None
     image_url_large: str | None = None
     genres: list[str] = field(default_factory=list)
+
+    def __eq__(self, other: object) -> bool:
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __lt__(self, other: object) -> bool:
+        return super().__lt__(other)
 
     @staticmethod
     def from_tekore_model(artist: FullArtist) -> "ArtistData":
@@ -84,15 +120,22 @@ class ArtistData:
         )
 
 
+@total_ordering
 @dataclass
-class TrackData:
-    id: str
-    name: str
-    url: str
+class TrackData(SpotifyEntityData):
     duration: str
     album: AlbumData | None
     added_at: date | None = None
     artists: list[ArtistData] = field(default_factory=list)
+
+    def __eq__(self, other: object) -> bool:
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __lt__(self, other: object) -> bool:
+        return super().__lt__(other)
 
     @staticmethod
     def from_tekore_model(
@@ -132,11 +175,9 @@ class TrackData:
         )
 
 
+@total_ordering
 @dataclass
-class PlaylistData:
-    id: str
-    name: str
-    url: str
+class PlaylistData(SpotifyEntityData):
     image_url_small: str | None
     image_url_large: str | None
     owner_id: str
@@ -145,6 +186,15 @@ class PlaylistData:
     snapshot_id: str
     num_tracks: int
     tracks: list[TrackData] = field(default_factory=list)
+
+    def __eq__(self, other: object) -> bool:
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __lt__(self, other: object) -> bool:
+        return super().__lt__(other)
 
     @staticmethod
     async def from_metadata(

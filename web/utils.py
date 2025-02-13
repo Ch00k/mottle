@@ -61,7 +61,7 @@ class MottleSpotifyClient:
         except Exception as e:
             raise MottleException("Failed to delete saved tracks") from e
 
-    async def get_artists(self, query: str) -> list[FullArtist]:
+    async def find_artists(self, query: str) -> list[FullArtist]:
         try:
             artists: tuple[FullArtistOffsetPaging] = await self.spotify_client.search(query, types=("artist",))  # pyright: ignore
         except Exception as e:
@@ -70,9 +70,16 @@ class MottleSpotifyClient:
             ret: list[FullArtist] = artists[0].items
             return ret
 
-    async def get_playlists(self, query: str) -> list[SimplePlaylist]:
+    async def find_playlists(self, query: str) -> list[SimplePlaylist]:
         func = partial(self.spotify_client.search, query, types=("playlist",))
         return await get_all_offset_paging_items(func)  # pyright: ignore
+
+    async def get_artists(self, artist_ids: list[str]) -> list[FullArtist]:
+        try:
+            with chunked_off(self.spotify_client):
+                return await get_all_chunked(self.spotify_client.artists, artist_ids, chunk_size=50)
+        except Exception as e:
+            raise MottleException("Failed to get artists") from e
 
     async def get_artist(self, artist_id: str) -> FullArtist:
         try:

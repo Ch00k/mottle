@@ -1,8 +1,10 @@
 import logging
 from datetime import UTC, datetime
+from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -17,17 +19,15 @@ from django.views.decorators.http import (
     require_safe,
 )
 from django_htmx.http import HttpResponseClientRedirect, trigger_client_event
-from ipware import get_client_ip
 from tekore.model import AlbumType, FullPlaylistTrack
 
 from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
-from web.tasks import track_artist_events
 
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
-from .geolocation import GeolocationError, get_ip_location
 from .jobs import check_playlist_for_updates
 from .middleware import MottleHttpRequest, get_token_scope_changes
 from .models import (
+    Event,
     Playlist,
     PlaylistUpdate,
     PlaylistWatchConfig,
@@ -36,6 +36,7 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
+from .tasks import track_artist_events
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import (
     AlbumMetadata,
@@ -151,25 +152,21 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
 
-    client_ip, is_routable = get_client_ip(request)
-    logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
+    # client_ip, is_routable = get_client_ip(request)
+    # logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
 
-    user_location = None
-    if client_ip is not None and is_routable:
-        try:
-            user_location = await get_ip_location(client_ip)
-        except GeolocationError as e:
-            logger.error(e)
+    # user_location = None
+    # if client_ip is not None and is_routable:
+    #     try:
+    #         user_location = await get_ip_location(client_ip)
+    #     except GeolocationError as e:
+    #         logger.error(e)
 
-    logger.debug(f"User's location: {user_location}")
+    # logger.debug(f"User's location: {user_location}")
 
     spotify_user, created = await SpotifyUser.objects.aupdate_or_create(
         spotify_id=user.id,
-        defaults={
-            "display_name": user.display_name,
-            "email": user.email,
-            "location": user_location,  # TODO: Should the location be updated on every login?
-        },
+        defaults={"display_name": user.display_name, "email": user.email},
     )
     if created:
         logger.debug(f"Created new user: {spotify_user}")
@@ -220,7 +217,7 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
     if query == "":
         return render(request, "web/parts/artists.html", context={"artists": [], "query": ""})
 
-    artists = await request.spotify_client.get_artists(query)
+    artists = await request.spotify_client.find_artists(query)
     artists = [ArtistData.from_tekore_model(artist) for artist in artists]
 
     if request.htmx:
@@ -250,7 +247,7 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     if query == "":
         return render(request, "web/parts/playlists.html", context={"artists": [], "query": ""})
 
-    playlists = await request.spotify_client.get_playlists(query)
+    playlists = await request.spotify_client.find_playlists(query)
 
     # TODO: There should be another way to check if a playlist belongs to the current user
     user_playlists = await request.spotify_client.get_current_user_playlists()
@@ -1043,8 +1040,123 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
     event_artist = await track_artist_events(artist_id, artist.name, request.session["spotify_user_id"])
     await event_artist.update_events()
 
-    events = [e async for e in event_artist.events.filter(date__gte=datetime.today())]  # pyright: ignore
-    events = sorted(
-        events, key=lambda x: (x.country is None, x.country, x.city is None, x.city, x.date is None, x.date)
-    )
+    events = [e async for e in event_artist.events.filter(date__gte=datetime.today()).order_by("date")]  # pyright: ignore
     return render(request, "web/events.html", context={"artist": artist, "events": events})
+
+
+@catch_errors
+@require_http_methods(["GET", "POST"])
+async def user_settings(request: MottleHttpRequest) -> HttpResponse:
+    spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
+    events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
+    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
+
+    if request.method == "GET":
+        if user.location:
+            longitude, latitude = user.location
+            radius = user.event_distance_threshold
+        else:
+            longitude, latitude, radius = None, None, None
+
+        return render(
+            request,
+            "web/settings.html",
+            context={
+                "playlist_notifications": user.playlist_notifications,
+                "release_notifications": user.release_notifications,
+                "event_notifications": user.event_notifications,
+                "latitude": latitude,
+                "longitude": longitude,
+                "radius": radius,
+                "events_enabled": events_enabled,
+            },
+        )
+    else:
+        playlist_notifications = bool(request.POST.get("playlist-notifications", False))
+        release_notifications = bool(request.POST.get("release-notifications", False))
+        event_notifications = bool(request.POST.get("event-notifications", False))
+
+        if lat := request.POST.get("latitude"):
+            latitude = float(lat)
+        else:
+            latitude = None
+
+        if lon := request.POST.get("longitude"):
+            longitude = float(lon)
+        else:
+            longitude = None
+
+        if rad := request.POST.get("radius"):
+            radius = float(rad)
+        else:
+            radius = None
+
+        user.playlist_notifications = playlist_notifications
+        user.release_notifications = release_notifications
+        user.event_notifications = event_notifications
+
+        if event_notifications:
+            if all((latitude, longitude, radius)):
+                user.location = Point(longitude, latitude, srid=settings.GEODJANGO_SRID)
+                user.event_distance_threshold = radius
+            else:
+                return trigger_client_event(
+                    HttpResponseBadRequest("Location and radius must be provided for event notifications"),
+                    "HXToast",
+                    {"type": "error", "body": "Location and radius must be provided for event notifications"},
+                )
+
+        await user.asave()
+
+        return trigger_client_event(
+            render(
+                request,
+                "web/parts/settings.html",
+                context={
+                    "playlist_notifications": user.playlist_notifications,
+                    "release_notifications": user.release_notifications,
+                    "event_notifications": user.event_notifications,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "radius": radius,
+                },
+            ),
+            "HXToast",
+            {"type": "success", "body": "Settings updated successfully"},
+        )
+
+
+@catch_errors
+@require_GET
+async def user_events(request: MottleHttpRequest) -> HttpResponse:
+    spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
+    events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
+
+    if not events_enabled:
+        return trigger_client_event(
+            HttpResponseBadRequest("Events are not available yet. Please check back later"),
+            "HXToast",
+            {"type": "error", "body": "Events are not available yet. Please check back later"},
+        )
+
+    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
+
+    events = await user.upcoming_events()  # pyright: ignore
+
+    artist_ids = [(await sync_to_async(lambda: a.artist)()).spotify_id for a in events.keys()]
+    artists = await request.spotify_client.get_artists(artist_ids)
+    artists = [ArtistData.from_tekore_model(a) for a in artists]
+
+    events_data = dict(zip(artists, events.values()))
+    return render(request, "web/user_events.html", context={"upcoming_events": dict(sorted(events_data.items()))})
+
+
+@catch_errors
+@require_GET
+async def event_details(request: MottleHttpRequest, event_id: str) -> HttpResponse:
+    artist = request.headers.get("M-Artist-Name")
+    if artist is not None:
+        artist = unquote(artist)
+
+    event = await Event.objects.aget(id=event_id)
+    return render(request, "web/modals/event_details.html", context={"artist": artist, "event": event})

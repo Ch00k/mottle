@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import uuid
+from collections import defaultdict
 from typing import Any
 
 from asgiref.sync import sync_to_async
@@ -10,6 +11,7 @@ from dirtyfields import DirtyFieldsMixin
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
 from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import Distance
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from tekore import Token
@@ -82,6 +84,52 @@ class BaseModel(models.Model):
         abstract = True
 
 
+class User(BaseModel):
+    spotify_user = models.OneToOneField("SpotifyUser", on_delete=models.CASCADE, related_name="user")
+    playlist_notifications = models.BooleanField(default=True)
+    release_notifications = models.BooleanField(default=False)
+    event_notifications = models.BooleanField(default=False)
+    location = gis_models.PointField(null=True, geography=True, srid=settings.GEODJANGO_SRID)
+    event_distance_threshold = models.FloatField(null=True)
+
+    def __str__(self) -> str:
+        return f"<User {self.id} spotify_user={self.spotify_user}>"
+
+    async def upcoming_events(self) -> dict["EventArtist", list["Event"]]:
+        artists_with_events = defaultdict(list)
+
+        if self.location is None:
+            async for event_artist in self.spotify_user.watched_event_artists.all():  # pyright: ignore
+                async for event in event_artist.events.filter(date__gte=datetime.date.today()).all():
+                    artists_with_events[event_artist].append(event)
+        else:
+            async for event_artist in self.spotify_user.watched_event_artists.all():  # pyright: ignore
+                # Two cases:
+                # 1. Streaming event
+                # 2. Non-streaming event with geolocation defined, and its geolocation is within X km of user's location
+                # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
+                events_query = event_artist.events.filter(
+                    models.Q(date__gte=datetime.date.today())
+                    & (
+                        models.Q(type=EventType.live_stream)
+                        | (
+                            models.Q(~models.Q(type=EventType.live_stream), geolocation__isnull=False)
+                            & models.Q(
+                                geolocation__distance_lte=(
+                                    self.location,
+                                    Distance(km=self.event_distance_threshold),
+                                )
+                            )
+                        )
+                    )
+                ).order_by("date")
+
+                async for event in events_query.all():
+                    artists_with_events[event_artist].append(event)
+
+        return artists_with_events
+
+
 class SpotifyEntityModel(BaseModel):
     spotify_id = models.CharField(max_length=32, unique=True)
 
@@ -92,10 +140,13 @@ class SpotifyEntityModel(BaseModel):
 class SpotifyUser(SpotifyEntityModel):
     display_name = models.CharField(max_length=48, null=True)
     email = models.EmailField(null=True)
-    location = gis_models.PointField(null=True, geography=True, srid=settings.GEODJANGO_SRID)
 
     def __str__(self) -> str:
         return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
+
+    async def get_spotipy_client(self) -> MottleSpotifyClient:
+        await self.spotify_auth.maybe_refresh()  # pyright: ignore
+        return MottleSpotifyClient(self.spotify_auth.access_token)  # pyright: ignore
 
 
 class SpotifyAuthRequest(BaseModel):

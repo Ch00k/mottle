@@ -1,5 +1,7 @@
 {% extends "web/base.html" %}
-{% load static %}
+{% block head %}
+    {% include "web/parts/leafletjs.html" %}
+{% endblock head %}
 {% block title %}
     {{ artist.name }} - events
 {% endblock title %}

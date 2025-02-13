@@ -1,0 +1,48 @@
+{% load static %}
+<section>
+    <form class="settings">
+        {% csrf_token %}
+        <label for="playlist-notifications">Notify about changes in watched playlists</label>
+        <input type="checkbox"
+               id="playlist-notifications"
+               name="playlist-notifications"
+               {% if playlist_notifications %}checked{% endif %}>
+        <br style="display: none">
+        <label style="display: none" for="release-notifications">Notify about new releases of watched artists</label>
+        <input style="display: none"
+               type="checkbox"
+               id="release-notifications"
+               name="release-notifications"
+               {% if release_notifications %}checked{% endif %}>
+        <br>
+        {% if events_enabled %}
+            <label for="event-notifications">Notify about events of watched artists</label>
+            <input type="checkbox"
+                   id="event-notifications"
+                   name="event-notifications"
+                   {% if event_notifications %}checked{% endif %}>
+            <br>
+            <div>
+                Select your location and radius to get notifications about events near you.
+                <br>
+                <br>
+                <div id="map"></div>
+                <br>
+            </div>
+            <input type="hidden"
+                   id="latitude"
+                   name="latitude"
+                   value="{{ latitude | default_if_none:'' }}">
+            <input type="hidden"
+                   id="longitude"
+                   name="longitude"
+                   value="{{ longitude | default_if_none:'' }}">
+            <input type="hidden"
+                   id="radius"
+                   name="radius"
+                   value="{{ radius | default_if_none:'' }}">
+        {% endif %}
+        <button hx-post="." hx-target="#content" hx-indicator="#spinner">Save</button>
+    </form>
+</section>
+<script src="{% static 'web/map.js' %}"></script>
