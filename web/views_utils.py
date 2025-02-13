@@ -234,7 +234,7 @@ async def compile_event_updates_email(
             event_type = " ".join(event.type.split("_"))
             if update.type == EventUpdate.FULL:
                 if event.type == EventType.live_stream:
-                    stream_urls = "\n".join(event.stream_urls)
+                    stream_urls = "\n".join(event.stream_urls)  # type: ignore [arg-type]  # TODO: WTF!?
                     message += f"New {event_type}: {event.date}\n"
                     if stream_urls:
                         message += "Stream available at:\n"
@@ -243,7 +243,7 @@ async def compile_event_updates_email(
                         message += "Stream is not available yet"
                     message += "\n"
                 else:
-                    tickets_urls = "\n".join(event.tickets_urls)
+                    tickets_urls = "\n".join(event.tickets_urls)  # type: ignore [arg-type]  # TODO: WTF!?
                     message += f"New {event_type}: {event.date} at {event.venue} ({event.city}, {event.country})\n"
                     if tickets_urls:
                         message += "Tickets available at:\n"
@@ -253,15 +253,15 @@ async def compile_event_updates_email(
                     message += "\n"
             else:
                 if event.type == EventType.live_stream:
-                    if "stream_urls" in update.changes:
-                        stream_urls = "\n".join(update.changes["stream_urls"]["new"])
+                    if "stream_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
+                        stream_urls = "\n".join(update.changes["stream_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
                         message += f"Stream URLs for {event_type} on {event.date} have changed\n"
                         message += "Stream available at:\n"
                         message += stream_urls
                         message += "\n"
                 else:
-                    if "tickets_urls" in update.changes:
-                        tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])
+                    if "tickets_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
+                        tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
                         message += (
                             f"Tickets URLs for {event_type} on {event.date} at {event.venue} "
                             f"({event.city}, {event.country}) have changed\n"

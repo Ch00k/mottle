@@ -433,12 +433,12 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
 
         if watched_playlist is not None:
             watched_playlist_data = await request.spotify_client.get_playlist(watched_playlist.spotify_id)
-            watched_playlist_tracks = await request.spotify_client.get_tracks(update.tracks_added)
+            watched_playlist_tracks = await request.spotify_client.get_tracks(update.tracks_added)  # type: ignore [arg-type]  # TODO: WTF!?
             tracks = [TrackData.from_tekore_model(track) for track in watched_playlist_tracks]
             updates.append((update.id, watched_playlist_data, tracks))
         elif watched_artist is not None:
             watched_artist_data = await request.spotify_client.get_artist(watched_artist.spotify_id)
-            tracks = await request.spotify_client.get_tracks_in_albums(update.albums_added)
+            tracks = await request.spotify_client.get_tracks_in_albums(update.albums_added)  # type: ignore [arg-type]  # TODO: WTF!?
             track_ids = [track.id for track in tracks]
             watched_artist_tracks = await request.spotify_client.get_tracks(track_ids)
             tracks = [TrackData.from_tekore_model(track) for track in watched_artist_tracks]
@@ -1119,6 +1119,7 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
                     "latitude": latitude,
                     "longitude": longitude,
                     "radius": radius,
+                    "events_enabled": events_enabled,
                 },
             ),
             "HXToast",

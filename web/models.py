@@ -368,8 +368,8 @@ class Event(DirtyFieldsMixin, BaseModel):
             type=EventType(self.type),
             date=self.date,
             venue=venue,
-            stream_urls=self.stream_urls,
-            tickets_urls=self.tickets_urls,
+            stream_urls=self.stream_urls,  # type: ignore [arg-type]  # TODO: WTF!?
+            tickets_urls=self.tickets_urls,  # type: ignore [arg-type]  # TODO: WTF!?
         )
 
 
@@ -517,7 +517,7 @@ class PlaylistWatchConfig(BaseModel):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     models.Q(models.Q(watched_playlist__isnull=False) | models.Q(watched_artist__isnull=False))
                     & ~models.Q(watched_playlist__isnull=False, watched_artist__isnull=False)
                 ),
@@ -551,7 +551,7 @@ class PlaylistUpdate(BaseModel):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(
+                condition=(
                     models.Q(models.Q(source_playlist__isnull=False) | models.Q(source_artist__isnull=False))
                     & ~models.Q(source_playlist__isnull=False, source_artist__isnull=False)
                 ),
