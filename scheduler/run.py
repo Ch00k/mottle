@@ -6,6 +6,7 @@ from functools import partial
 from typing import Any
 
 import django
+from django.conf import settings
 
 django.setup()
 
@@ -25,8 +26,19 @@ async def run() -> None:
     loop_shutdown_event = asyncio.Event()
 
     scheduler = AsyncIOScheduler(event_loop=loop)
-    scheduler.add_job(get_playlist_updates, CronTrigger.from_crontab("0 10 * * *"))
-    scheduler.add_job(get_event_updates, CronTrigger.from_crontab("0 2 * * *"))
+
+    if schedule_playlist_updates := settings.SCHEDULE["PLAYLIST_UPDATES"]:
+        logger.info(f"Setting up playlist updates job with schedule {schedule_playlist_updates}")
+        scheduler.add_job(get_playlist_updates, CronTrigger.from_crontab(schedule_playlist_updates))
+    else:
+        logger.warning("No schedule for playlist updates, skipping...")
+
+    if schedule_event_updates := settings.SCHEDULE["EVENT_UPDATES"]:
+        logger.info(f"Setting up event updates job with schedule {schedule_event_updates}")
+        scheduler.add_job(get_event_updates, CronTrigger.from_crontab(schedule_event_updates))
+    else:
+        logger.warning("No schedule for event updates, skipping...")
+
     scheduler.start()
 
     def signal_handler_metrics_server(signum: int, _: Any) -> None:
