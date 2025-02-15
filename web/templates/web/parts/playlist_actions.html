@@ -58,14 +58,10 @@
             {% include "web/parts/playlist_unfollow.html" %}
         {% endif %}
     {% elif source == "playlists_search" %}
-        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-            {% include "web/parts/playlist_delete.html" %}
+        {% if playlist.id in user_playlist_ids %}
+            {% include "web/parts/playlist_unfollow.html" %}
         {% else %}
-            {% if playlist.id in user_playlist_ids %}
-                {% include "web/parts/playlist_unfollow.html" %}
-            {% else %}
-                {% include "web/parts/playlist_follow.html" %}
-            {% endif %}
+            {% include "web/parts/playlist_follow.html" %}
         {% endif %}
     {% elif source == "playlist" %}
         {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
@@ -79,5 +75,4 @@
         {% endif %}
     {% else %}
     {% endif %}
-    {% comment %}# TODO: Apart from `target="this"` "playlists_search" and "playlist" are the same{% endcomment %}
 </div>

@@ -7,16 +7,19 @@
     Search artists
 {% endblock page_title %}
 {% block content %}
-    <section>
-        <input type="search"
-               name="query"
-               value="{{ query }}"
-               placeholder="Start typing an artist name..."
-               hx-get="."
-               hx-trigger="input changed delay:500ms, search"
-               hx-target="#search-results"
-               hx-indicator="#spinner">
-    </section>
+    <div class="centered">
+        <form>
+            <input type="search"
+                   id="query"
+                   name="query"
+                   value="{{ query }}"
+                   placeholder="Artist name">
+            <button hx-get="."
+                    hx-target="#search-results"
+                    hx-include="#query"
+                    hx-indicator="#spinner">Search</button>
+        </form>
+    </div>
     <br>
     <section id="search-results">
         {% if artists %}

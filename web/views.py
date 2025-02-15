@@ -18,7 +18,7 @@ from django.views.decorators.http import (
     require_POST,
     require_safe,
 )
-from django_htmx.http import HttpResponseClientRedirect, trigger_client_event
+from django_htmx.http import HttpResponseClientRedirect, push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
 from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
@@ -211,23 +211,22 @@ def changelog(request: MottleHttpRequest) -> HttpResponse:
 async def search_artists(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query")
 
-    if query is None:
+    if not query:
         return render(request, "web/search_artists.html", context={"artists": [], "query": ""})
-
-    if query == "":
-        return render(request, "web/parts/artists.html", context={"artists": [], "query": ""})
 
     artists = await request.spotify_client.find_artists(query)
     artists = [ArtistData.from_tekore_model(artist) for artist in artists]
 
     if request.htmx:
         events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
-        return render(
-            request,
-            "web/parts/artists.html",
-            context={"artists": artists, "query": query, "events_enabled": events_enabled},
+        return push_url(
+            render(
+                request,
+                "web/parts/artists.html",
+                context={"artists": artists, "query": query, "events_enabled": events_enabled},
+            ),
+            "?query=" + unquote(query),
         )
-
     else:
         return render(
             request,
@@ -241,11 +240,8 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
 async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query")
 
-    if query is None:
+    if not query:
         return render(request, "web/search_playlists.html", context={"playlists": [], "query": ""})
-
-    if query == "":
-        return render(request, "web/parts/playlists.html", context={"artists": [], "query": ""})
 
     playlists = await request.spotify_client.find_playlists(query)
 
@@ -256,16 +252,22 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
     # https://community.spotify.com/t5/Spotify-for-Developers/null-values-when-using-quot-Get-Current-User-s-Playlists-quot/td-p/6549968
     playlists = [PlaylistData.from_tekore_model(playlist) for playlist in playlists if playlist is not None]
 
+    # Skip own playlists
+    playlists = [p for p in playlists if p.owner_id != request.session["spotify_user_spotify_id"]]
+
     if request.htmx:
-        return render(
-            request,
-            "web/parts/playlists.html",
-            context={
-                "playlists": playlists,
-                "user_playlist_ids": user_playlist_ids,
-                "query": query,
-                "source": "playlists_search",
-            },
+        return push_url(
+            render(
+                request,
+                "web/parts/playlists.html",
+                context={
+                    "playlists": playlists,
+                    "user_playlist_ids": user_playlist_ids,
+                    "query": query,
+                    "source": "playlists_search",
+                },
+            ),
+            "?query=" + unquote(query),
         )
     else:
         return render(
