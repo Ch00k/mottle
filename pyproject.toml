@@ -27,7 +27,6 @@ apscheduler = "^3.10.4"
 openai = "^1.42.0"
 pillow = "^10.4.0"
 tiktoken = "^0.7.0"
-tekore = { git = "https://github.com/ch00k/tekore" }
 django-ipware = "^7.0.1"
 django-q2 = "^1.7.3"
 lxml = "^5.3.0"
@@ -39,6 +38,7 @@ country-converter = "^1.2"
 json-log-formatter = "^1.1"
 daphne = "^4.1.2"
 django-hosts = "^6.0"
+tekore = "^6.0.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "~1.15"

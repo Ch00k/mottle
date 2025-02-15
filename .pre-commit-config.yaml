@@ -52,7 +52,6 @@ repos:
           - openai (>=1.42.0,<2.0.0)
           - pillow (>=10.4.0,<11.0.0)
           - tiktoken (>=0.7.0,<0.8.0)
-          - tekore @ git+https://github.com/ch00k/tekore
           - django-ipware (>=7.0.1,<8.0.0)
           - django-q2 (>=1.7.3,<2.0.0)
           - lxml (>=5.3.0,<6.0.0)
@@ -64,3 +63,4 @@ repos:
           - json-log-formatter (>=1.1,<2.0)
           - daphne (>=4.1.2,<5.0.0)
           - django-hosts (>=6.0,<7.0)
+          - tekore (>=6.0.0,<7.0.0)

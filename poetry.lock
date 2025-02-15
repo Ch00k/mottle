@@ -2438,23 +2438,19 @@ tests = ["cython", "littleutils", "pygments", "pytest", "typeguard"]
 
 [[package]]
 name = "tekore"
-version = "5.5.0"
+version = "6.0.0"
 description = "Client for the Spotify Web API"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "tekore-6.0.0-py3-none-any.whl", hash = "sha256:19e6f4861f82f1e99717845eb9effc34983d6379b4c16f4498a82412adc7c861"},
+    {file = "tekore-6.0.0.tar.gz", hash = "sha256:df87e264fcf18c2d72ae014f958dc65c6c80775d05a946a464d76bf8c7bf0476"},
+]
 
 [package.dependencies]
-httpx = ">=0.15,<0.28"
+httpx = ">=0.15,<0.29"
 pydantic = ">=1.8,<2.4.0 || >2.4.0,<2.5.0 || >2.5.0,<2.5.1 || >2.5.1"
-
-[package.source]
-type = "git"
-url = "https://github.com/ch00k/tekore"
-reference = "HEAD"
-resolved_reference = "1ade40802f4fab89f4a01fa168944387b53d34f2"
 
 [[package]]
 name = "thefuzz"
@@ -2817,4 +2813,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "649a2127ea2c285a48764d4a56ecee762ba8aa2973ba69c0942a08ef7e942b88"
+content-hash = "816b62e84d80be8b144b483142379ec6205810fbae46d9d93f88a1dc1dda6558"
