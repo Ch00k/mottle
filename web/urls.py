@@ -36,6 +36,11 @@ urlpatterns = [
         name="auto_accept_playlist_updates",
     ),
     path(
+        "playlist/<str:playlist_id>/remove-tracks/",
+        views.remove_tracks_from_playlist,
+        name="remove_tracks_from_playlist",
+    ),
+    path(
         "playlist/<str:playlist_id>/updates/<str:update_id>/accept/",
         views.accept_playlist_update,
         name="accept_playlist_update",

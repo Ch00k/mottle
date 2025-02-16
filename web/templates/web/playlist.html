@@ -44,7 +44,11 @@
                     </td>
                     <td>{{ track.duration }}</td>
                     <td>{{ track.added_at | date:"Y-m-d" }}</td>
-                    <td></td>
+                    <td>
+                        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+                            {% include "web/parts/track_delete.html" %}
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

@@ -666,6 +666,24 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
 
 
 @catch_errors
+@require_POST
+async def remove_tracks_from_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
+    track_ids = request.POST.getlist("track-id")
+    if not track_ids:
+        return HttpResponseBadRequest("No tracks selected")
+
+    track_uris = [f"spotify:track:{track_id}" for track_id in track_ids]
+
+    await request.spotify_client.remove_tracks_from_playlist(playlist_id, track_uris)
+
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Track(s) removed from playlist"},
+    )
+
+
+@catch_errors
 @require_GET
 async def playlist_audio_features(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
@@ -961,6 +979,7 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 @require_POST
 async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     # https://stackoverflow.com/a/22294734
+    # TODO: This is probably not needed anymore since we are using POST. A leftover from an appempt to use DELETE?
     body = QueryDict(request.body)  # pyright: ignore
     watching_playlist_id = body.get("watching-playlist-id")
 
