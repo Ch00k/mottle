@@ -5,8 +5,14 @@
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
         <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
         <link rel="stylesheet" href="{% static 'web/style.css' %}">
+        <link rel="stylesheet"
+              href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="stylesheet"
+              href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
         <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
         <script src="{% static 'web/htmx-toaster.js' %}"></script>
         <meta charset="utf-8">
         <meta name="description" content="My description">
@@ -22,7 +28,8 @@
             <script src="{% static 'web/script.js' %}"></script>
         {% endblock script %}
     </head>
-    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <body hx-ext="head-support"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <header>
             {% include "web/parts/nav.html" %}
             <h1>
