@@ -12,7 +12,7 @@
     {% for artist, events in upcoming_events.items %}
         <h2>
             <div class="centered">
-                <img src="{{ artist.image_url_small }}">
+                <img class="small" src="{{ artist.image_url_small }}">
                 <a href="{{ artist.url }}">{{ artist.name }}</a>
             </div>
         </h2>

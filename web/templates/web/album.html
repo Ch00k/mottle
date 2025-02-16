@@ -4,7 +4,7 @@
 {% endblock title %}
 {% block page_title %}
     <div class="centered">
-        <img class="cover" src="{{ album.image_url_large }}" />
+        <img class="large" src="{{ album.image_url_large }}" />
         <a href="{{ album.url }}">{{ album.name }}</a>
     </div>
 {% endblock page_title %}
@@ -22,7 +22,7 @@
             {% for track in tracks %}
                 <tr>
                     <td>
-                        <img src="{{ album.track_image_url }}" />
+                        <img class="small" src="{{ album.track_image_url }}" />
                     </td>
                     <td>
                         {% for artist in track.artists %}

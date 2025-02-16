@@ -9,8 +9,12 @@
 {% block content %}
     {% if albums %}
         <section>
-            <form action="." method="post" id="albums-form">
-                {% comment %}{% csrf_token %}{% endcomment %}
+            <form action="."
+                  method="post"
+                  id="albums-form"
+                  hx-boost="true"
+                  hx-indicator="#spinner">
+                {% csrf_token %}
                 <button id="create">Create playlist</button>
                 <label for="playlist-name">Name</label>
                 <input type="text"
@@ -97,7 +101,7 @@
                                        {% if album.type in 'album,single' %}checked{% endif %}>
                             </td>
                             <td>
-                                <img src="{{ album.image_url_small }}">
+                                <img class="small" src="{{ album.image_url_small }}">
                             </td>
                             <td>
                                 <a href="{% url 'album' album.id %}"

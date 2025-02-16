@@ -25,7 +25,7 @@
                 {% for track, count in duplicates %}
                     <tr>
                         <td>
-                            <img src="{{ track.album.image_url_small }}" />
+                            <img class="small" src="{{ track.album.image_url_small }}" />
                         </td>
                         <td>
                             {% for artist in track.artists %}

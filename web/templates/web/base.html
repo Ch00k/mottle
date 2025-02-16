@@ -32,7 +32,7 @@
         </header>
         <main {% if use_max_width %}class="max-width"{% endif %}>
             <div id="spinner" class="htmx-indicator">
-                <img id="spinner-img" src="{% static 'web/spinner.gif' %}" />
+                <img class="spinner" src="{% static 'web/spinner.gif' %}" />
             </div>
             <div id="content">
                 {% block content %}

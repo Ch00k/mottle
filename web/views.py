@@ -414,7 +414,7 @@ async def playlists(request: MottleHttpRequest) -> HttpResponse:
 
 
 @catch_errors
-@require_http_methods(["GET", "POST"])
+@require_GET
 async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
@@ -424,8 +424,7 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
         spotify_user__id=request.session["spotify_user_id"],
     )
 
-    if request.method == "POST":
-        await check_playlist_for_updates(db_playlist, request.spotify_client)
+    await check_playlist_for_updates(db_playlist, request.spotify_client)
 
     updates = []
 
@@ -810,36 +809,40 @@ async def configure_playlist(request: MottleHttpRequest, playlist_id: str) -> Ht
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
 
-    db_playlist = await aget_object_or_404(
-        Playlist,
-        spotify_id=playlist_id,
-        spotify_user__id=request.session["spotify_user_id"],
-    )
-    configs = PlaylistWatchConfig.objects.filter(watching_playlist=db_playlist)
-    watched_playlist_settings = []
-    watched_artist_settings = []
+    try:
+        db_playlist = await Playlist.objects.aget(
+            spotify_id=playlist_id,
+            spotify_user__id=request.session["spotify_user_id"],
+        )
+    except Playlist.DoesNotExist:
+        watched_playlist_settings: list[tuple[PlaylistData, bool]] = []
+        watched_artist_settings: list[tuple[ArtistData, bool]] = []
+    else:
+        configs = PlaylistWatchConfig.objects.filter(watching_playlist=db_playlist)
+        watched_playlist_settings = []
+        watched_artist_settings = []
 
-    async for config in configs:
-        db_watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
-        db_watched_artist = await sync_to_async(lambda: config.watched_artist)()
+        async for config in configs:
+            db_watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
+            db_watched_artist = await sync_to_async(lambda: config.watched_artist)()
 
-        if db_watched_playlist is not None:
-            watched_playlist = await request.spotify_client.get_playlist(db_watched_playlist.spotify_id)
-            watched_playlist_settings.append(
-                (
-                    PlaylistData.from_tekore_model(watched_playlist),
-                    config.auto_accept_updates,
+            if db_watched_playlist is not None:
+                watched_playlist = await request.spotify_client.get_playlist(db_watched_playlist.spotify_id)
+                watched_playlist_settings.append(
+                    (
+                        PlaylistData.from_tekore_model(watched_playlist),
+                        config.auto_accept_updates,
+                    )
                 )
-            )
 
-        if db_watched_artist is not None:
-            watched_artist = await request.spotify_client.get_artist(db_watched_artist.spotify_id)
-            watched_artist_settings.append(
-                (
-                    ArtistData.from_tekore_model(watched_artist),
-                    config.auto_accept_updates,
+            if db_watched_artist is not None:
+                watched_artist = await request.spotify_client.get_artist(db_watched_artist.spotify_id)
+                watched_artist_settings.append(
+                    (
+                        ArtistData.from_tekore_model(watched_artist),
+                        config.auto_accept_updates,
+                    )
                 )
-            )
 
     return render(
         request,
@@ -880,29 +883,22 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
 
 
 @catch_errors
-@require_http_methods(["GET", "POST"])
+@require_POST
 async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
 
-    if request.method == "GET":
-        return render(
-            request,
-            "web/modals/playlist_cover_image.html",
-            context={"playlist": playlist},
-        )
-    else:
-        await sync_to_async(task_upload_cover_image)(
-            playlist_title=playlist.name,
-            playlist_spotify_id=playlist_id,
-            spotify_user_id=request.session["spotify_user_id"],
-            dump_to_disk=True,
-        )
-        return trigger_client_event(
-            HttpResponse(),
-            "HXToast",
-            {"type": "success", "body": "Cover image requested successfully"},
-        )
+    await sync_to_async(task_upload_cover_image)(
+        playlist_title=playlist.name,
+        playlist_spotify_id=playlist_id,
+        spotify_user_id=request.session["spotify_user_id"],
+        dump_to_disk=True,
+    )
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Cover image generation requested. It may take a while to update."},
+    )
 
 
 @catch_errors

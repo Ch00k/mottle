@@ -2,7 +2,29 @@
 <div id="modal" _="on closeModal remove me">
     <div class="modal-underlay" _="on click trigger closeModal"></div>
     <div class="modal-content">
-        <h2>Configuration</h2>
+        <label>
+            Cover image &nbsp;
+            <a href=""
+               hx-post="{% url 'playlist_cover_image' playlist.id %}"
+               hx-confirm="Are you sure you want to generate new cover image?"
+               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                {% include "web/icons/regenerate.html" with title="Generate new" %}
+            </a>
+        </label>
+        <img class="medium" src="{{ playlist.image_url_large }}">
+        <br>
+        <br>
+        <label>
+            Name &nbsp;
+            <a href=""
+               hx-get="{% url 'rename_playlist' playlist.id %}"
+               hx-target="next div"
+               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                {% include "web/icons/edit.html" with title="Rename" %}
+            </a>
+        </label>
+        {% include "web/parts/playlist_name.html" %}
+        <br>
         <label>Playlists watched for new tracks</label>
         {% if watched_playlists %}
             <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
@@ -32,7 +54,9 @@
                                hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
                                hx-target="closest tr"
                                hx-swap="outerHTML"
-                               hx-indicator="#spinner">{% include "web/icons/unfollow.html" %}</a>
+                               hx-indicator="#spinner">
+                                {% include "web/icons/unfollow.html" with title="Stop watching" %}
+                            </a>
                         </td>
                     </tr>
                 {% endfor %}
@@ -40,6 +64,7 @@
         {% else %}
             <p>No playlists watched</p>
         {% endif %}
+        <br>
         <label>Artists watched for new releases</label>
         {% if watched_artists %}
             <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
@@ -60,31 +85,30 @@
                                hx-indicator="#spinner">
                                 {% include "web/icons/accept.html" with enabled=auto_accept_updates title="Auto accept updates" %}
                             </a>
-                            {% comment %}<a href=""
-   {% endcomment %}
-   {% comment %}
-   hx-delete="{% url 'watch_playlist' watched_playlist.id %}"
-   {% endcomment %}
-   {% comment %}
-   hx-include="[name='watching-playlist-id']"
-   {% endcomment %}
-   {% comment %}
-   hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
-   {% endcomment %}
-   {% comment %}
-   hx-target="closest tr"
-   {% endcomment %}
-   {% comment %}
-   hx-swap="outerHTML"
-   {% endcomment %}
-   {% comment %}
-   hx-indicator="#spinner">{% include "web/icons/unfollow.html" %}</a>{% endcomment %}
                         </td>
                     </tr>
                 {% endfor %}
             </table>
         {% else %}
-            <p>No playlists watched</p>
+            <p>No artists watched</p>
         {% endif %}
+        <br>
+        <label>
+            Actions &nbsp;
+            <a href="{% url 'deduplicate_playlist' playlist.id %}"
+               hx-boost="true"
+               hx-indicator="#spinner"
+               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                {% include "web/icons/find_duplicates.html" %}
+            </a>
+            {% if watched_playlists or watched_artists %}
+                <a href="{% url 'playlist_updates' playlist.id %}"
+                   hx-boost="true"
+                   hx-indicator="#spinner"
+                   hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                    {% include "web/icons/update.html" with title="Check for updates" %}
+                </a>
+            {% endif %}
+        </label>
     </div>
 </div>

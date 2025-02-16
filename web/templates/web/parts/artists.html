@@ -4,7 +4,7 @@
             {% for artist in artists %}
                 <tr>
                     <td>
-                        <img src="{{ artist.image_url_small }}">
+                        <img class="small" src="{{ artist.image_url_small }}">
                     </td>
                     <td>
                         <a href="{% url 'albums' artist.id %}"
