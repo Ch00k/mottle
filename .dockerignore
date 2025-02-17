@@ -1,5 +1,6 @@
 *.pyc
-__pycache__/*
+**/__pycache__
+**/*.pyc
 .git
 .direnv
 .envrc
@@ -8,7 +9,10 @@ __pycache__/*
 .pre-commit-config.yaml
 .prettierignore
 .prettierrc
+.lvimrc
 docker-compose.yml
+compose.yml
+README.md
 Dockerfile
 Makefile
 precommit_mypy_deps_update
