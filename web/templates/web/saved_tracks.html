@@ -1,15 +1,9 @@
 {% extends "web/base.html" %}
 {% block title %}
-    {{ playlist.name }}
+    Saved tracks
 {% endblock title %}
 {% block page_title %}
-    <div class="centered">
-        <img class="large" src="{{ playlist.image_url_large }}" />
-        <div>
-            <a href="{{ playlist.url }}">{{ playlist.name }}</a>
-        </div>
-        {% include "web/parts/playlist_actions.html" with source="playlist" %}
-    </div>
+    Saved tracks
 {% endblock page_title %}
 {% block content %}
     {% if tracks %}
@@ -45,11 +39,7 @@
                         </td>
                         <td>{{ track.duration }}</td>
                         <td>{{ track.added_at | date:"Y-m-d" }}</td>
-                        <td>
-                            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-                                {% include "web/parts/playlist_track_delete.html" %}
-                            {% endif %}
-                        </td>
+                        <td>{% include "web/parts/saved_track_delete.html" %}</td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -57,7 +47,7 @@
     {% else %}
         <article>
             <aside>
-                <h3>No tracks found</h3>
+                <h3>No saved tracks found</h3>
             </aside>
         </article>
     {% endif %}

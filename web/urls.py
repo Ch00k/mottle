@@ -51,4 +51,6 @@ urlpatterns = [
     path("settings/", views.user_settings, name="user_settings"),
     path("events/", views.user_events, name="user_events"),
     path("event/<str:event_id>/", views.event_details, name="event_details"),
+    path("saved-tracks/", views.saved_tracks, name="saved_tracks"),
+    path("remove-saved-tracks/", views.remove_saved_tracks, name="remove_saved_tracks"),
 ]

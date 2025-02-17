@@ -1178,3 +1178,28 @@ async def event_details(request: MottleHttpRequest, event_id: str) -> HttpRespon
 
     event = await Event.objects.aget(id=event_id)
     return render(request, "web/modals/event_details.html", context={"artist": artist, "event": event})
+
+
+@catch_errors
+@require_GET
+async def saved_tracks(request: MottleHttpRequest) -> HttpResponse:
+    tracks = await request.spotify_client.get_current_user_saved_tracks()
+    tracks = [TrackData.from_tekore_model(t.track, added_at=t.added_at) for t in tracks]
+
+    return render(request, "web/saved_tracks.html", context={"tracks": tracks})
+
+
+@catch_errors
+@require_POST
+async def remove_saved_tracks(request: MottleHttpRequest) -> HttpResponse:
+    track_ids = request.POST.getlist("track-id")
+    if not track_ids:
+        return HttpResponseBadRequest("No tracks selected")
+
+    await request.spotify_client.remove_user_saved_tracks(track_ids)
+
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Saved track(s) removed"},
+    )

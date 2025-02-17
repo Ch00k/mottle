@@ -52,6 +52,12 @@ class MottleSpotifyClient:
         func = partial(self.spotify_client.saved_tracks)
         return await get_all_offset_paging_items(func)  # pyright: ignore
 
+    async def remove_user_saved_tracks(self, track_ids: list[str]) -> None:
+        try:
+            await self.spotify_client.saved_tracks_delete(track_ids)  # pyright: ignore
+        except Exception as e:
+            raise MottleException("Failed to remove saved tracks") from e
+
     async def delete_current_user_saved_tracks(self, track_ids: list[str]) -> None:
         try:
             with chunked_off(self.spotify_client):
