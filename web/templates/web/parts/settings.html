@@ -47,4 +47,5 @@
         <button hx-post="." hx-target="#content" hx-indicator="#spinner">Save</button>
     </form>
 </section>
-<script src="{% static 'web/map.js' %}"></script>
+<!-- https://developers.cloudflare.com/speed/optimization/content/rocket-loader/ignore-javascripts/ -->
+<script data-cfasync="false" src="{% static 'web/map.js' %}"></script>
