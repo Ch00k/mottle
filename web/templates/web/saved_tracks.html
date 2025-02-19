@@ -10,6 +10,9 @@
         <table>
             <thead>
                 <tr>
+                    <th>
+                        <input type="checkbox" onClick="toggleCheckboxes(this, 'saved-track')">
+                    </th>
                     <th>Artwork</th>
                     <th class="sortable" onClick="sortTable(this)">Artist</th>
                     <th class="sortable" onClick="sortTable(this)">Album</th>
@@ -22,6 +25,12 @@
             <tbody>
                 {% for track in tracks %}
                     <tr>
+                        <td>
+                            <input type="checkbox"
+                                   name="track"
+                                   value="{{ track.id }}"
+                                   class="saved-track">
+                        </td>
                         <td>
                             <img class="small" src="{{ track.album.image_url_small }}" />
                         </td>

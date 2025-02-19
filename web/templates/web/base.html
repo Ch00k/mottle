@@ -1,19 +1,27 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+    {% comment %}
+        mvp 1.17.1
+
+        htmx 2.0.4
+        hyperscript 0.19.4
+        leaflet 1.9.4
+        leaflet-control-geocoder 3.1.0
+        htmx-toaster 0.0.20
+    {% endcomment %}
     <head>
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
         <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
         <link rel="stylesheet" href="{% static 'web/style.css' %}">
+        <link rel="stylesheet" href="{% static 'web/leaflet.css' %}">
         <link rel="stylesheet"
-              href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <link rel="stylesheet"
-              href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-        <script src="{% static 'web/htmx-toaster.js' %}"></script>
+              href="{% static 'web/leaflet-control-geocoder.css' %}">
+        <script src="{% static 'web/htmx.min.js' %}"></script>
+        <script src="{% static 'web/hyperscript.min.js' %}"></script>
+        <script src="{% static 'web/leaflet.min.js' %}"></script>
+        <script src="{% static 'web/leaflet-control-geocoder.min.js' %}"></script>
+        <script src="{% static 'web/htmx-toaster.min.js' %}"></script>
         <meta charset="utf-8">
         <meta name="description" content="My description">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,7 +47,7 @@
         </header>
         <main {% if use_max_width %}class="max-width"{% endif %}>
             <div id="spinner" class="htmx-indicator">
-                <img class="spinner" src="{% static 'web/spinner.gif' %}" />
+                <img class="spinner" src="{% static 'web/spinner.svg' %}" />
             </div>
             <div id="content">
                 {% block content %}

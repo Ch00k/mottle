@@ -5,6 +5,13 @@ function toggleCheckboxGroup(source, album_type) {
     }
 }
 
+function toggleCheckboxes(source, cbClass) {
+    checkboxes = document.querySelectorAll(`.${cbClass}`);
+    for (checkbox of checkboxes) {
+        checkbox.checked = source.checked;
+    }
+}
+
 function toggleSubmitButton() {
     checkboxes = document.querySelectorAll('.toggling');
     isChecked = Array.prototype.slice.call(checkboxes).some((x) => x.checked);
