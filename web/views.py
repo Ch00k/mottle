@@ -1044,7 +1044,7 @@ async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: 
     return trigger_client_event(
         render(request, "web/icons/accept.html", {"enabled": new_setting}),
         "HXToast",
-        {"type": "success", "body": "Auto-accept setting updated"},
+        {"type": "success", "body": f"Auto-accept {'enabled' if new_setting else 'disabled'}"},
     )
 
 

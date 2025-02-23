@@ -5,12 +5,6 @@
        hx-swap="beforeend"
        hx-indicator="#spinner"
        hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{% include "web/icons/merge.html" %}</a>
-    <a href=""
-       hx-get="{% url 'watch_playlist' playlist.id %}"
-       hx-target="body"
-       hx-swap="beforeend"
-       hx-indicator="#spinner"
-       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{% include "web/icons/watch.html" %}</a>
     {% if source == "playlists_my" and playlist.owner_id == request.session.spotify_user_spotify_id %}
         <a href=""
            hx-get="{% url 'configure_playlist' playlist.id %}"
@@ -22,26 +16,12 @@
         </a>
     {% endif %}
     {% if source == "playlists_my" %}
-        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-            {% include "web/parts/playlist_delete.html" %}
-        {% else %}
-            {% include "web/parts/playlist_unfollow.html" %}
-        {% endif %}
-    {% elif source == "playlists_search" %}
+        {% include "web/parts/playlist_unfollow.html" %}
+    {% else %}
         {% if playlist.id in user_playlist_ids %}
             {% include "web/parts/playlist_unfollow.html" %}
         {% else %}
             {% include "web/parts/playlist_follow.html" %}
-        {% endif %}
-    {% elif source == "playlist" %}
-        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-            {% include "web/parts/playlist_delete.html" with target="this" %}
-        {% else %}
-            {% if playlist.id in user_playlist_ids %}
-                {% include "web/parts/playlist_unfollow.html" %}
-            {% else %}
-                {% include "web/parts/playlist_follow.html" %}
-            {% endif %}
         {% endif %}
     {% endif %}
 </div>

@@ -6,6 +6,7 @@
         <small>Icons by <a href="https://www.s-ings.com/typicons/">Typicons</a></small>
         <small><a href="mailto:feedback@mottle.it">Feedback</a></small>
         <small><a href="https://stats.uptimerobot.com/twLEyKzrW7/796740106">Status</a></small>
-        <small><a href="{% url 'changelog' %}" hx-boost="true" hx-indicator="#spinner">v{{ APP_VERSION }}</a></small>
+        {% comment %}<small><a href="{% url 'changelog' %}" hx-boost="true" hx-indicator="#spinner">v{{ APP_VERSION }}</a></small>{% endcomment %}
+        <small>v{{ APP_VERSION }}</small>
     </div>
 </footer>
