@@ -6,6 +6,7 @@ from functools import partial
 from typing import Any
 
 import django
+from apscheduler.events import EVENT_JOB_ERROR, JobExecutionEvent
 from django.conf import settings
 
 django.setup()
@@ -13,10 +14,16 @@ django.setup()
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from prometheus_client import start_http_server
+from sentry_sdk import capture_exception
 
 from scheduler.jobs import get_event_updates, get_playlist_updates
 
 logger = logging.getLogger(__name__)
+
+
+def sentry_reporter(event: JobExecutionEvent) -> None:
+    if event.exception:
+        capture_exception(event.exception)
 
 
 async def run() -> None:
@@ -26,6 +33,7 @@ async def run() -> None:
     loop_shutdown_event = asyncio.Event()
 
     scheduler = AsyncIOScheduler(event_loop=loop)
+    scheduler.add_listener(sentry_reporter, EVENT_JOB_ERROR)
 
     if schedule_playlist_updates := settings.SCHEDULE["PLAYLIST_UPDATES"]:
         logger.info(f"Setting up playlist updates job with schedule {schedule_playlist_updates}")
