@@ -195,8 +195,14 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
 
     async for artist in all_artists:
         logger.info(f"Processing artist {artist} ({counter} of {num_artists})")
-        await artist.update_events()
-        counter += 1
+
+        try:
+            await artist.update_events()
+        except Exception as e:
+            logger.error(f"Failed to update events for artist {artist}: {e}")
+            continue
+        else:
+            counter += 1
 
     # TODO: Only do it if there are updates
     token = get_client_token()
