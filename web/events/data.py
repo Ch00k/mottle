@@ -319,7 +319,10 @@ class EventSourceArtist:
                     events[r.url] = r
 
         if self.bandsintown_url is not None:
-            events_data = await extract_bandsintown_events_data(self.bandsintown_url)
+            try:
+                events_data = await extract_bandsintown_events_data(self.bandsintown_url)
+            except HTTPClientException as exc:
+                raise BandsintownException(f"Failed to fetch events from Bandsintown: {exc}")
 
             # This assumes that there are no duplicate dates in the following `for` loop
             existing_event_dates = [e.date for e in events.values()]
