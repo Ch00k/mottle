@@ -212,7 +212,7 @@ async def check_artists_for_event_updates(send_notifications: bool = False) -> N
         ~Q(watched_event_artists=None),
         email__isnull=False,
         user__location__isnull=False,
-        user__radius__isnull=False,
+        user__event_distance_threshold__isnull=False,
     ):
         artists_with_events = defaultdict(list)
         user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
