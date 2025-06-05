@@ -67,6 +67,11 @@ MUSICBRAINZ_API_RESPONSES_THROTTLED = Counter(
     documentation="MusicBrainz API responses that indicate that client is being throttled",
 )
 
+MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS = Summary(
+    name="musicbrainz_api_request_delay_time_seconds",
+    documentation="Time spent waiting to send the next MusicBrainz API request (to avoid being throttled) in seconds",
+)
+
 SONGKICK_API_RESPONSE_TIME_SECONDS = Summary(
     name="songkick_api_response_time_seconds",
     documentation="Songkick API response time in seconds",

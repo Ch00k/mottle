@@ -15,6 +15,7 @@ from web.metrics import (
     BANDSINTOWN_API_RESPONSES_GTE_400,
     BANDSINTOWN_API_RESPONSES_THROTTLED,
     MUSICBRAINZ_API_EXCEPTIONS,
+    MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS,
     MUSICBRAINZ_API_RESPONSE_TIME_SECONDS,
     MUSICBRAINZ_API_RESPONSES_GTE_400,
     MUSICBRAINZ_API_RESPONSES_THROTTLED,
@@ -47,6 +48,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         responses_gte_400_counter_metric: Counter | None = None,
         exceptions_counter_metric: Counter | None = None,
         throttle_counter_metric: Counter | None = None,
+        delay_time_metric: Summary | None = None,
         log_request_details: bool = False,
         *args: Any,
         **kwargs: Any,
@@ -61,6 +63,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.responses_gte_400_counter_metric = responses_gte_400_counter_metric
         self.exceptions_counter_metric = exceptions_counter_metric
         self.throttle_counter_metric = throttle_counter_metric
+        self.delay_time_metric = delay_time_metric
         self.log_request_details = log_request_details
         self.requests_total = 0
         self.requests_timedout = 0
@@ -78,6 +81,8 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 time_to_sleep_seconds = max(self.next_request_allowed_at - time.time(), 0.0)
 
                 if time_to_sleep_seconds:
+                    if self.delay_time_metric is not None:
+                        self.delay_time_metric.observe(time_to_sleep_seconds)
                     logger.debug(f"Sleeping for {time_to_sleep_seconds} seconds")
                     await asyncio.sleep(time_to_sleep_seconds)
 
@@ -179,6 +184,7 @@ async_musicbrainz_client = AsyncRetryingClient(
     responses_gte_400_counter_metric=MUSICBRAINZ_API_RESPONSES_GTE_400,
     exceptions_counter_metric=MUSICBRAINZ_API_EXCEPTIONS,
     throttle_counter_metric=MUSICBRAINZ_API_RESPONSES_THROTTLED,
+    delay_time_metric=MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS,
     log_request_details=True,
     timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
