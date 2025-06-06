@@ -244,7 +244,7 @@ class Artist(SpotifyEntityModel):
         return [album.id for album in albums]
 
 
-class EventArtist(BaseModel):
+class EventArtist(DirtyFieldsMixin, BaseModel):
     artist = models.OneToOneField(Artist, on_delete=models.CASCADE, related_name="event_artist")  # TODO: Cascade?
     musicbrainz_id = models.UUIDField(null=True)
     songkick_url = models.CharField(max_length=2000, null=True)
@@ -282,9 +282,17 @@ class EventArtist(BaseModel):
             songkick_name_match_accuracy=fetched_artist.songkick_match_accuracy,
             bandsintown_name_match_accuracy=fetched_artist.bandsintown_match_accuracy,
         )
-        # https://github.com/typeddjango/django-stubs/issues/997
-        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore # pyright: ignore
+        spotify_users = SpotifyUser.objects.filter(spotify_id__in=watching_spotify_user_ids)  # pyright: ignore
+        await event_artist.watching_users.aset(spotify_users)  # pyright: ignore
         return event_artist
+
+    async def update_from_fetched_artist(self, musicbrainz_id: str | None, fetched_artist: EventSourceArtist) -> None:
+        self.musicbrainz_id = musicbrainz_id
+        self.songkick_url = fetched_artist.songkick_url
+        self.bandsintown_url = fetched_artist.bandsintown_url
+        self.songkick_name_match_accuracy = fetched_artist.songkick_match_accuracy
+        self.bandsintown_name_match_accuracy = fetched_artist.bandsintown_match_accuracy
+        await self.asave()
 
     async def update_events(self) -> None:
         fetched_artist = await self.as_fetched_artist()

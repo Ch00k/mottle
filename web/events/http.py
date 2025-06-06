@@ -33,6 +33,7 @@ from .constants import (
     SONGKICK_BASE_URL,
 )
 from .exceptions import HTTPClientException, RetriesExhaustedException
+from .utils import get_proxy_url
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.log_request_details = log_request_details
         self.requests_total = 0
         self.requests_timedout = 0
+        self.requests_failed_to_connect = 0
         self.requests_errored = 0
         self.requests_accepted = 0
         self.requests_gte_400 = 0
@@ -92,6 +94,26 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
             try:
                 response = await super().send(request, *args, **kwargs)
+            except httpx.ConnectError as e:
+                if self.exceptions_counter_metric is None:
+                    logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
+                else:
+                    self.exceptions_counter_metric.labels("connect").inc()
+
+                self.requests_failed_to_connect += 1
+                logger.error(f"Failed to connect while requesting {request.url}: {e}. Retrying...")
+                retries -= 1
+                continue
+            except httpx.ProxyError as e:
+                if self.exceptions_counter_metric is None:
+                    logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
+                else:
+                    self.exceptions_counter_metric.labels("proxy").inc()
+
+                self.requests_failed_to_connect += 1
+                logger.error(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
+                retries -= 1
+                continue
             except httpx.TimeoutException as e:
                 if self.exceptions_counter_metric is None:
                     logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
@@ -109,7 +131,12 @@ class AsyncRetryingClient(httpx.AsyncClient):
                     self.exceptions_counter_metric.labels("other").inc()
 
                 self.requests_errored += 1
-                logger.error(f"Unexpected error while requesting {request.url}: {e}. Retrying...")
+
+                exc_msg = e.__class__.__name__
+                if str(e):
+                    exc_msg += f"({e})"
+
+                logger.error(f"Unexpected error while requesting {request.url}: {exc_msg}. Retrying...")
                 retries -= 1
                 continue
             else:
@@ -169,6 +196,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
             if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
                 return response
 
+            logger.error(f"Received {response.status_code} response while requesting {request.url}. Retrying...")
             retries -= 1
         else:
             raise RetriesExhaustedException(
@@ -178,8 +206,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
 async_musicbrainz_client = AsyncRetryingClient(
     name="musicbrainz",
-    throttle_response_code=429,
-    delay_seconds=1.0,
+    throttle_response_code=503,
     response_time_metric=MUSICBRAINZ_API_RESPONSE_TIME_SECONDS,
     responses_gte_400_counter_metric=MUSICBRAINZ_API_RESPONSES_GTE_400,
     exceptions_counter_metric=MUSICBRAINZ_API_EXCEPTIONS,
@@ -189,10 +216,13 @@ async_musicbrainz_client = AsyncRetryingClient(
     timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
+    proxy=get_proxy_url(country="eu"),
+    # limits=httpx.Limits(max_connections=1000, max_keepalive_connections=0),
 )
 
 async_songkick_client = AsyncRetryingClient(
     name="songkick",
+    throttle_response_code=429,
     timeout=httpx.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
     response_time_metric=SONGKICK_API_RESPONSE_TIME_SECONDS,
     responses_gte_400_counter_metric=SONGKICK_API_RESPONSES_GTE_400,
@@ -200,6 +230,8 @@ async_songkick_client = AsyncRetryingClient(
     log_request_details=True,
     base_url=SONGKICK_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
+    proxy=get_proxy_url(country="eu"),
+    # limits=httpx.Limits(max_connections=1000, max_keepalive_connections=0),
 )
 
 async_bandsintown_client = AsyncRetryingClient(
@@ -213,8 +245,8 @@ async_bandsintown_client = AsyncRetryingClient(
     log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
-    proxy=settings.BRIGHTDATA_PROXY_URL,
-    limits=httpx.Limits(max_connections=1000, max_keepalive_connections=0),
+    proxy=get_proxy_url(country="us"),
+    # limits=httpx.Limits(max_connections=1000, max_keepalive_connections=0),
 )
 
 

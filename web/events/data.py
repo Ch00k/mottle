@@ -53,14 +53,53 @@ class MusicBrainzArtist:
     bandsintown_url: str | None = None
 
     @staticmethod
-    async def find(artist_name: str) -> Optional["MusicBrainzArtist"]:
+    async def find(artist_spotify_id: str, artist_name: str) -> Optional["MusicBrainzArtist"]:
+        try:
+            return await MusicBrainzArtist.find_by_spotify_url(f"https://open.spotify.com/artist/{artist_spotify_id}")
+        except MusicBrainzException as e:
+            logger.warning(f"Failed to find artist by Spotify ID '{artist_spotify_id}': {e}. Trying search by name")
+            return await MusicBrainzArtist.find_by_name(artist_name)
+
+    @staticmethod
+    async def find_by_spotify_url(url: str) -> Optional["MusicBrainzArtist"]:
+        try:
+            resp = await async_musicbrainz_client.get("url", params={"resource": url, "inc": "artist-rels"})
+        except HTTPClientException as e:
+            raise MusicBrainzException(f"Failed to fetch artist by Spotify URL '{url}': {e}")
+
+        try:
+            data = resp.json()
+        except Exception as e:
+            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}")
+
+        relations = data.get("relations", [])
+        if not relations:
+            raise MusicBrainzException(f"No artist relations found for URL '{url}' in MusicBrainz")
+
+        artist_id = relations[0].get("artist", {}).get("id")
+        if not artist_id:
+            raise MusicBrainzException(f"No artist ID found for URL '{url}' in MusicBrainz")
+
+        logger.info(f"Found artist ID '{artist_id}' for Spotify URL '{url}' in MusicBrainz")
+
+        try:
+            artist = await MusicBrainzArtist.from_artist_id(artist_id)
+        except Exception as e:
+            raise MusicBrainzException(f"Failed to get artist info for {artist_id}: {e}")
+        else:
+            return artist
+
+    @staticmethod
+    async def find_by_name(artist_name: str) -> Optional["MusicBrainzArtist"]:
         if not artist_name:
             raise MusicBrainzException("Artist name is empty")
 
         logger.info(f"Searching for artist '{artist_name}' in MusicBrainz")
 
-        resp = await async_musicbrainz_client.get("artist", params={"query": artist_name, "limit": 100})
-        resp.raise_for_status()
+        try:
+            resp = await async_musicbrainz_client.get("artist", params={"query": artist_name, "limit": 100})
+        except HTTPClientException as e:
+            raise MusicBrainzException(f"Failed to fetch artist by name '{artist_name}': {e}")
 
         try:
             data = resp.json()
@@ -95,8 +134,10 @@ class MusicBrainzArtist:
 
     @staticmethod
     async def from_artist_id(artist_id: str) -> "MusicBrainzArtist":
-        resp = await async_musicbrainz_client.get(f"artist/{artist_id}", params={"inc": "aliases+url-rels"})
-        resp.raise_for_status()
+        try:
+            resp = await async_musicbrainz_client.get(f"artist/{artist_id}", params={"inc": "aliases+url-rels"})
+        except HTTPClientException as e:
+            raise MusicBrainzException(f"Failed to fetch artist by ID '{artist_id}': {e}")
 
         try:
             data = resp.json()

@@ -524,7 +524,9 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
                 artists[artist.id] = artist.name
 
         await sync_to_async(task_track_artists_events)(
-            artists_data=artists, spotify_user_id=request.session["spotify_user_id"]
+            artists_data=artists,
+            spotify_user_id=request.session["spotify_user_id"],
+            concurrent_execution=settings.CONCURRENT_ARTIST_EVENT_SOURCES_FETCH,
         )
 
     context = {

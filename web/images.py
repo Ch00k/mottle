@@ -86,7 +86,7 @@ def generate_image(prompt: str) -> bytes:
             size="1024x1024",
         )
 
-    data = image.data[0].b64_json
+    data = image.data[0].b64_json  # type: ignore[index]
     if not data:
         raise ValueError("Failed to generate image")
 

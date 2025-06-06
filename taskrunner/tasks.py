@@ -19,10 +19,17 @@ def task_upload_cover_image(
     )
 
 
-def task_track_artists_events(artists_data: dict[str, str], spotify_user_id: str) -> None:
+def task_track_artists_events(
+    artists_data: dict[str, str],
+    spotify_user_id: str,
+    force_reevaluate: bool = False,
+    concurrent_execution: bool = False,
+) -> None:
     async_task(
         track_artists_events,
         artists_data=artists_data,
         spotify_user_id=spotify_user_id,
+        force_reevaluate=force_reevaluate,
+        concurrent_execution=concurrent_execution,
         cluster="long_running",
     )

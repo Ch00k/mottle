@@ -4,9 +4,23 @@ from typing import Any
 from django.db.models import signals
 from django.dispatch import receiver
 
-from .models import Event, EventUpdate
+from .models import Event, EventArtist, EventUpdate
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(signals.pre_save, sender=EventArtist)
+def handle_pre_save_event_artist(instance: EventArtist, **__: Any) -> None:
+    old_values = instance.get_dirty_fields()
+    if not old_values:
+        return
+
+    changes = {}
+    for field, old_value in old_values.items():
+        new_value = getattr(instance, field)
+        changes[field] = {"old": old_value, "new": new_value}
+
+    logger.debug(f"EventArtist {instance} has changes: {changes}")
 
 
 @receiver(signals.post_save, sender=Event)
@@ -19,7 +33,7 @@ def handle_post_save_event(instance: Event, created: bool, **__: Any) -> None:
 
     old_values = instance.get_dirty_fields()
 
-    if "stream_urls" not in old_values and "tickets_urls" not in old_values:
+    if "stream_urls" not in old_values and "tickets_urls" not in old_values and "geolocation" not in old_values:
         logger.debug(f"No changes detected for {instance}")
         return
 

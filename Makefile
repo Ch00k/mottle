@@ -8,17 +8,20 @@ build_dev:
 up:
 	@# TODO: This is awful
 	@if [ "$(PROFILE)" == "T" ]; then \
-		docker compose --profile default --profile taskrunner up --remove-orphans; \
+		docker compose --profile default --profile taskrunner up --remove-orphans --detach; \
 	elif [ "$(PROFILE)" == "S" ]; then \
-		docker compose --profile default --profile scheduler up --remove-orphans; \
+		docker compose --profile default --profile scheduler up --remove-orphans --detach; \
 	elif [ "$(PROFILE)" == "TS" ]; then \
-		docker compose --profile default --profile taskrunner --profile scheduler up --remove-orphans; \
+		docker compose --profile default --profile taskrunner --profile scheduler up --remove-orphans --detach; \
 	else \
-		docker compose --profile default up --remove-orphans; \
+		docker compose --profile default up --remove-orphans --detach; \
 	fi
 
 down:
-	docker compose down --remove-orphans
+	docker compose --profile default --profile taskrunner --profile scheduler down --remove-orphans
+
+logs:
+	docker compose --profile default --profile taskrunner --profile scheduler logs -f
 
 shell:
 	docker compose exec web ./manage.py shell
@@ -28,6 +31,7 @@ test:
 
 debug:
 	docker compose attach web
+
 
 check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi
