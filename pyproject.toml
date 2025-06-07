@@ -9,6 +9,8 @@ packages = [
   { include = "web" },
   { include = "scheduler" },
   { include = "taskrunner" },
+  { include = "featureflags" },
+  { include = "urlshortener" },
   { include = "django_q_sentry" },
   { include = "manage.py" },
 ]

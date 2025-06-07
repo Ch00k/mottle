@@ -3,7 +3,7 @@ DOCKER_BUILDKIT := 1
 
 build_dev:
 	@echo Building development image
-	docker build . -t mottle:latest
+	docker build . -t mottle:latest --build-arg POETRY_GROUPS=main,debug,dev
 
 up:
 	@# TODO: This is awful
@@ -23,6 +23,9 @@ down:
 logs:
 	docker compose --profile default --profile taskrunner --profile scheduler logs -f
 
+ssh:
+	docker-compose --profile default run --rm web bash
+
 shell:
 	docker compose exec web ./manage.py shell
 
@@ -31,7 +34,6 @@ test:
 
 debug:
 	docker compose attach web
-
 
 check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi

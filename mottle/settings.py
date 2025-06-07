@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "web",
+    "featureflags",
     "urlshortener",
     "django_hosts",
     "django_htmx",
@@ -294,9 +295,6 @@ BRIGHTDATA_PROXY_PASSWORD = env.str("BRIGHTDATA_PROXY_PASSWORD", None)
 EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD", 85)
 
 GEODJANGO_SRID = 4326
-
-EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS = env.list("EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS", [])
-CONCURRENT_ARTIST_EVENT_SOURCES_FETCH = env.bool("CONCURRENT_ARTIST_EVENT_SOURCES_FETCH", False)
 
 SCHEDULE = {
     "PLAYLIST_UPDATES": env.str("SCHEDULE_PLAYLIST_UPDATES", ""),

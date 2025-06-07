@@ -1,3 +1,4 @@
+from featureflags.data import FeatureFlag
 from web.jobs import check_artists_for_event_updates, check_playlists_for_updates
 
 
@@ -6,4 +7,6 @@ async def get_playlist_updates() -> None:
 
 
 async def get_event_updates() -> None:
-    await check_artists_for_event_updates(send_notifications=True, concurrent_execution=False)
+    await check_artists_for_event_updates(
+        send_notifications=True, concurrent_execution=await FeatureFlag.concurrent_events_fetching()
+    )

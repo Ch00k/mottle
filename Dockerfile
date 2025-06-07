@@ -1,5 +1,7 @@
 FROM python:3.12-slim AS builder
 
+ARG POETRY_GROUPS=main,debug
+
 ENV PATH=/tmp/poetry/bin:${PATH} \
     POETRY_CACHE_DIR=/tmp/poetry_cache \
     POETRY_HOME=/tmp/poetry \
@@ -17,7 +19,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
-RUN --mount=type=cache,target=${POETRY_CACHE_DIR} poetry install --only main,debug --no-root
+RUN --mount=type=cache,target=${POETRY_CACHE_DIR} poetry install --only ${POETRY_GROUPS} --no-root
 
 COPY . ./
 

@@ -21,7 +21,6 @@ x-env: &env
   BRIGHTDATA_PROXY_ADDRESS: ${BRIGHTDATA_PROXY_ADDRESS}
   BRIGHTDATA_PROXY_USERNAME: ${BRIGHTDATA_PROXY_USERNAME}
   BRIGHTDATA_PROXY_PASSWORD: ${BRIGHTDATA_PROXY_PASSWORD}
-  EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS: ${EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS}
   #SENTRY_DSN: ${SENTRY_DSN}
   #SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT}
 
@@ -47,6 +46,7 @@ services:
       - *image
     environment:
       <<: *env
+      DJANGO_SETTINGS_MODULE: mottle.settings
     labels:
       - prometheus.scrape-port=65534
     command: ./manage.py runserver 0.0.0.0:65534

@@ -21,6 +21,7 @@ from django.views.decorators.http import (
 from django_htmx.http import HttpResponseClientRedirect, push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
+from featureflags.data import FeatureFlag
 from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
 
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
@@ -218,12 +219,17 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
     artists = [ArtistData.from_tekore_model(artist) for artist in artists]
 
     if request.htmx:
-        events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
         return push_url(
             render(
                 request,
                 "web/parts/artists.html",
-                context={"artists": artists, "query": query, "events_enabled": events_enabled},
+                context={
+                    "artists": artists,
+                    "query": query,
+                    "events_enabled": await FeatureFlag.events_enabled_for_user(
+                        request.session["spotify_user_spotify_id"]
+                    ),
+                },
             ),
             "?query=" + unquote(query),
         )
@@ -311,8 +317,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 "has_albums": has_albums,
                 "has_singles": has_simgles,
                 "has_compilations": has_compilations,
-                "events_enabled": request.session["spotify_user_spotify_id"]
-                in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS,
+                "events_enabled": await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]),
             },
         )
     else:
@@ -358,7 +363,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 dump_to_disk=True,
             )
 
-        if request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS and bool(
+        if await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]) and bool(
             request.POST.get("track-events", False)
         ):
             await sync_to_async(task_track_artists_events)(
@@ -515,7 +520,7 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         for track in playlist_tracks
         if isinstance(track.track, FullPlaylistTrack)
     ]
-    if request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS and request.GET.get(
+    if await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]) and request.GET.get(
         "track-artists", False
     ):
         artists = {}
@@ -526,7 +531,7 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         await sync_to_async(task_track_artists_events)(
             artists_data=artists,
             spotify_user_id=request.session["spotify_user_id"],
-            concurrent_execution=settings.CONCURRENT_ARTIST_EVENT_SOURCES_FETCH,
+            concurrent_execution=await FeatureFlag.concurrent_event_sources_fetching(),
         )
 
     context = {
@@ -1067,7 +1072,7 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
 @require_http_methods(["GET", "POST"])
 async def user_settings(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
-    events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
+    events_enabled = await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"])
     user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
 
     if request.method == "GET":
@@ -1150,7 +1155,7 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
 @require_GET
 async def user_events(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
-    events_enabled = request.session["spotify_user_spotify_id"] in settings.EVENTS_ENABLED_FOR_SPOTIFY_USER_IDS
+    events_enabled = FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"])
 
     if not events_enabled:
         return trigger_client_event(
