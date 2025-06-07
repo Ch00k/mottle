@@ -256,15 +256,15 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
     def __str__(self) -> str:
         return f"<EventArtist {self.id}>"
 
-    async def as_fetched_artist(self) -> EventSourceArtist:
+    async def as_fetched_artist(self, with_events: bool = True) -> EventSourceArtist:
+        if with_events:
+            # TODO: This is inefficient
+            events = [e.as_fetched_event() async for e in self.events.all()]  # pyright: ignore
+        else:
+            events = []
+
         return EventSourceArtist(
-            name="dummy",
-            songkick_url=self.songkick_url,
-            bandsintown_url=self.bandsintown_url,
-            events=[
-                e.as_fetched_event()
-                async for e in self.events.all()  # pyright: ignore
-            ],  # TODO: This is ineficient
+            name="dummy", songkick_url=self.songkick_url, bandsintown_url=self.bandsintown_url, events=events
         )
 
     @staticmethod
@@ -294,12 +294,15 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         self.bandsintown_name_match_accuracy = fetched_artist.bandsintown_match_accuracy
         await self.asave()
 
-    async def update_events(self) -> None:
-        fetched_artist = await self.as_fetched_artist()
+    async def update_events(self, force_refetch: bool = False) -> "EventArtist":
+        fetched_artist = await self.as_fetched_artist(with_events=not force_refetch)
         await fetched_artist.fetch_events()
 
         for event in fetched_artist.events:
             await Event.update_or_create_from_fetched_event(event, self)
+
+        # This is returned for logging purposes
+        return self
 
 
 class Event(DirtyFieldsMixin, BaseModel):

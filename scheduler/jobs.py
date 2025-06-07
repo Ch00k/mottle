@@ -6,4 +6,4 @@ async def get_playlist_updates() -> None:
 
 
 async def get_event_updates() -> None:
-    await check_artists_for_event_updates(send_notifications=True)
+    await check_artists_for_event_updates(send_notifications=True, concurrent_execution=False)

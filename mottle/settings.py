@@ -91,6 +91,17 @@ DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.spatialite",
         "NAME": env.path("DATABASE_FILE", BASE_DIR / "db.sqlite3"),
+        "OPTIONS": {
+            "transaction_mode": "IMMEDIATE",
+            "timeout": 5,  # seconds
+            "init_command": """
+                PRAGMA journal_mode=WAL;
+                PRAGMA synchronous=NORMAL;
+                PRAGMA mmap_size = 134217728;
+                PRAGMA journal_size_limit = 27103364;
+                PRAGMA cache_size=2000;
+            """,
+        },
     },
     "tasks": {
         "ENGINE": "django_prometheus.db.backends.sqlite3",

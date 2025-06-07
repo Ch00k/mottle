@@ -26,7 +26,7 @@ class Command(BaseCommand):
             "--force-reevaluate",
             action="store_true",
             default=False,
-            help="Force reevaluation of artists from event sounrces",
+            help="Force reevaluation of artists from event sources",
         )
         parser.add_argument(
             "--concurrent-execution",
