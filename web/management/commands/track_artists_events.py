@@ -19,9 +19,9 @@ class Command(BaseCommand):
     help = "Add artists to those that need to be checked for event updates"
 
     def add_arguments(self, parser: Any) -> None:
-        parser.add_argument("--user-id", type=str, help="The ID of the user whose artists to track")
-        parser.add_argument("--artist-id", type=str, help="The ID of the artist to track")
-        parser.add_argument("--playlist-id", type=str, help="The ID of the playlist whose artists to track")
+        parser.add_argument("--user-id", type=str, help="The Spotify ID of the user whose artists to track")
+        parser.add_argument("--artist-id", type=str, help="The Spotify ID of the artist to track")
+        parser.add_argument("--playlist-id", type=str, help="The Spotify ID of the playlist whose artists to track")
         parser.add_argument(
             "--force-reevaluate",
             action="store_true",
@@ -45,7 +45,7 @@ class Command(BaseCommand):
         if not user_id:
             raise CommandError("You must provide a user ID")
 
-        if not SpotifyUser.objects.filter(pk=user_id).exists():
+        if not SpotifyUser.objects.filter(spotify_id=user_id).exists():
             raise CommandError(f"User with ID {user_id} does not exist")
 
         if not artist_id and not playlist_id:
