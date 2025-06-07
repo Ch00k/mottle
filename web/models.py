@@ -282,8 +282,8 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
             songkick_name_match_accuracy=fetched_artist.songkick_match_accuracy,
             bandsintown_name_match_accuracy=fetched_artist.bandsintown_match_accuracy,
         )
-        spotify_users = SpotifyUser.objects.filter(spotify_id__in=watching_spotify_user_ids)  # pyright: ignore
-        await event_artist.watching_users.aset(spotify_users)  # pyright: ignore
+        # https://github.com/typeddjango/django-stubs/issues/997
+        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore  # pyright: ignore
         return event_artist
 
     async def update_from_fetched_artist(self, musicbrainz_id: str | None, fetched_artist: EventSourceArtist) -> None:

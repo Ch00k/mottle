@@ -11,7 +11,7 @@ from .events.data import EventSourceArtist, MusicBrainzArtist
 from .events.enums import ArtistNameMatchAccuracy
 from .events.exceptions import MusicBrainzException
 from .images import create_cover_image
-from .models import Artist, EventArtist, SpotifyAuth, SpotifyUser
+from .models import Artist, EventArtist, SpotifyAuth
 from .utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -124,8 +124,8 @@ async def track_artist_events(
         logger.debug(f"Created EventArtist: {event_artist}")
     else:
         logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")  # pyright: ignore
-        spotify_user = await SpotifyUser.objects.aget(spotify_id=spotify_user_id)
-        await event_artist.watching_users.aadd(spotify_user)  # pyright: ignore
+        # https://github.com/typeddjango/django-stubs/issues/997
+        await event_artist.watching_users.aadd(spotify_user_id)  # type: ignore  # pyright: ignore
 
         if force_reevaluate:
             logger.debug(f"Force reevaluating EventArtist {event_artist}")
