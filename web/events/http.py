@@ -71,6 +71,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.requests_total = 0
         self.requests_timedout = 0
         self.requests_failed_to_connect = 0
+        self.requests_failed_to_proxy = 0
         self.requests_errored = 0
         self.requests_accepted = 0
         self.requests_gte_400 = 0
@@ -118,7 +119,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 else:
                     self.exceptions_counter_metric.labels("proxy").inc()
 
-                self.requests_failed_to_connect += 1
+                self.requests_failed_to_proxy += 1
                 logger.error(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
@@ -180,13 +181,15 @@ class AsyncRetryingClient(httpx.AsyncClient):
             if self.log_request_details:
                 log_msg = (
                     f"{self.__class__.__name__}({self.name}): "
-                    f"requests total: {self.requests_total}, "
-                    f"requests timed out: {self.requests_timedout}, "
-                    f"requests errored: {self.requests_errored}, "
-                    f"requests succeeded: {self.requests_accepted}, "
-                    f"requests >=400: {self.requests_gte_400}, "
-                    f"requests throttled: {self.requests_throttled}, "
-                    f"request time: {request_time}"
+                    f"REQUESTS: total {self.requests_total}, "
+                    f"accepted {self.requests_accepted}, "
+                    f"failed to connect {self.requests_failed_to_connect}, "
+                    f"failed to proxy {self.requests_failed_to_proxy}, "
+                    f"timed out {self.requests_timedout}, "
+                    f"errored {self.requests_errored}, "
+                    f"throttled {self.requests_throttled}, "
+                    f">=400 {self.requests_gte_400}, "
+                    f"request time {request_time}"
                 )
                 if self.delay_seconds:
                     log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
