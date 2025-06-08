@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 from django.conf import settings
 from lxml import html as lh
-from prometheus_client import Counter, Summary
+from prometheus_client import Counter, Histogram
 
 from web.metrics import (
     BANDSINTOWN_API_EXCEPTIONS,
@@ -47,11 +47,11 @@ class AsyncRetryingClient(httpx.AsyncClient):
         throttle_response_code: int | None = None,
         retries: int = 10,
         delay_seconds: float = 0.0,
-        response_time_metric: Summary | None = None,
+        response_time_metric: Histogram | None = None,
         responses_gte_400_counter_metric: Counter | None = None,
         exceptions_counter_metric: Counter | None = None,
         throttle_counter_metric: Counter | None = None,
-        delay_time_metric: Summary | None = None,
+        delay_time_metric: Histogram | None = None,
         log_request_details: bool = False,
         *args: Any,
         **kwargs: Any,

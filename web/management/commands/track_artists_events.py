@@ -45,7 +45,7 @@ class Command(BaseCommand):
         if not user_id:
             raise CommandError("You must provide a user ID")
 
-        if not SpotifyUser.objects.filter(spotify_id=user_id).exists():
+        if not SpotifyUser.objects.filter(pk=user_id).exists():
             raise CommandError(f"User with ID {user_id} does not exist")
 
         if not artist_id and not playlist_id:
