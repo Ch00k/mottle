@@ -210,6 +210,11 @@ class AsyncRetryingClient(httpx.AsyncClient):
             )
             retries -= 1
         else:
+            if self.exceptions_counter_metric is None:
+                logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
+            else:
+                self.exceptions_counter_metric.labels("retries_exceeded").inc()
+
             raise RetriesExhaustedException(
                 f"Failed to get a successful response from {request.url} after {self.retries} retries"
             )
@@ -261,61 +266,8 @@ async_bandsintown_client = AsyncRetryingClient(
 )
 
 
-def send_get_request(
-    client: httpx.Client,
-    url: str,
-    parse_json: bool = False,
-    xpath: str | None = None,
-    redirect_url: bool = False,
-    raise_for_lte_300: bool = True,
-    follow_redirects: bool = False,
-) -> Any:  # TODO
-    ret_json = None
-    ret_xpath = None
-    ret_redirect_url = None
-    ret_url = None
-
-    try:
-        response = client.get(url, follow_redirects=follow_redirects)
-
-        if raise_for_lte_300:
-            response.raise_for_status()
-        else:
-            if response.is_error:
-                response.raise_for_status()
-    except Exception as e:
-        raise HTTPClientException(f"Failed to send GET request to {url}: {e}")
-
-    if parse_json:
-        try:
-            ret_json = response.json()
-        except Exception as e:
-            raise HTTPClientException(f"Failed to parse JSON data from {url}: {e}")
-
-    if xpath:
-        try:
-            html = lh.fromstring(response.text)
-        except Exception as e:
-            raise HTTPClientException(f"Failed to parse HTML data from {url}: {e}")
-
-        try:
-            ret_xpath = html.xpath(xpath)
-        except Exception as e:
-            raise HTTPClientException(f"Failed to extract data from {url}: {e}")
-
-    if redirect_url:
-        if response.has_redirect_location:
-            ret_redirect_url = response.headers["Location"]
-        else:
-            ret_redirect_url = None
-
-    ret_url = response.url
-
-    return ret_json, ret_xpath, ret_redirect_url, ret_url
-
-
 async def asend_get_request(
-    client: httpx.AsyncClient,
+    client: AsyncRetryingClient,
     url: str,
     parse_json: bool = False,
     xpath: str | None = None,
@@ -336,6 +288,8 @@ async def asend_get_request(
         else:
             if response.is_error:
                 response.raise_for_status()
+    except RetriesExhaustedException as e:
+        raise HTTPClientException(f"Retries ({client.retries}) exhausted while sending GET request to {url}: {e}")
     except Exception as e:
         raise HTTPClientException(f"Failed to send GET request to {url}: {e}")
 

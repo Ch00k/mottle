@@ -167,8 +167,7 @@ class MusicBrainzArtist:
                     async_songkick_client, songkick_url, redirect_url=True, raise_for_lte_300=False
                 )
             except HTTPClientException as e:
-                logger.exception(f"Failed to get final Songkick URL: {e}")
-                capture_exception(e)
+                raise SongkickException(f"Failed to get final Songkick URL: {e}")
 
         if bandsintown_url:
             # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
@@ -176,7 +175,7 @@ class MusicBrainzArtist:
                 _, _, bandsintown_url, _ = await asend_get_request(
                     async_bandsintown_client, bandsintown_url, redirect_url=True, raise_for_lte_300=False
                 )
-            except Exception as e:
+            except HTTPClientException as e:
                 raise BandsintownException(f"Failed to get final Bandsintown URL: {e}")
 
         return MusicBrainzArtist(
@@ -283,7 +282,7 @@ class EventSourceArtist:
             _, _, artist_url, _ = await asend_get_request(
                 async_songkick_client, url_path, redirect_url=True, raise_for_lte_300=False
             )
-        except Exception as e:
+        except HTTPClientException as e:
             raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}")
 
         # In case there was no redirect (unlikely though)
@@ -502,8 +501,11 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
     result_urls = []
     for r in results:
-        if isinstance(r, BaseException):
+        if isinstance(r, HTTPClientException):
             logger.exception(f"Failed to fetch URL: {r}")
+            capture_exception(r)
+        elif isinstance(r, BaseException):
+            logger.exception(f"Unexpected error while fetching URL: {r}")
             capture_exception(r)
         else:
             if r[2] is not None:
@@ -637,7 +639,7 @@ async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str
         _, script_tag, __, __ = await asend_get_request(
             async_bandsintown_client, bandsintown_url, xpath=BANDSINTOWN_WINDOW_DATA_XPATH
         )
-    except Exception as e:
+    except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}")
 
     if not script_tag:

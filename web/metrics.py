@@ -58,7 +58,10 @@ MUSICBRAINZ_API_RESPONSES_GTE_400 = Counter(
 
 MUSICBRAINZ_API_EXCEPTIONS = Counter(
     name="musicbrainz_exceptions",
-    documentation="Exceptions raised while calling MusicBrainz API, by exception type (connect, proxy, timeout, other)",
+    documentation=(
+        "Exceptions raised while calling MusicBrainz API, "
+        "by exception type (connect, proxy, timeout, retries_exceeded, other)"
+    ),
     labelnames=["type"],
 )
 
@@ -85,7 +88,10 @@ SONGKICK_API_RESPONSES_GTE_400 = Counter(
 
 SONGKICK_API_EXCEPTIONS = Counter(
     name="songkick_exceptions",
-    documentation="Exceptions raised while calling Songkick API, by exception type (connect, proxy, timeout, other)",
+    documentation=(
+        "Exceptions raised while calling Songkick API, "
+        "by exception type (connect, proxy, timeout, retries_exceeded, other)"
+    ),
     labelnames=["type"],
 )
 
@@ -102,7 +108,10 @@ BANDSINTOWN_API_RESPONSES_GTE_400 = Counter(
 
 BANDSINTOWN_API_EXCEPTIONS = Counter(
     name="bandsintown_exceptions",
-    documentation="Exceptions raised while calling Bandsintown API, by exception type (connect, proxy, timeout, other)",
+    documentation=(
+        "Exceptions raised while calling Bandsintown API, "
+        "by exception type (connect, proxy, timeout, retries_exceeded, other)"
+    ),
     labelnames=["type"],
 )
 
