@@ -1,6 +1,6 @@
-from prometheus_client import Counter, Summary
+from prometheus_client import Counter, Histogram, Summary
 
-SPOTIFY_API_RESPONSE_TIME_SECONDS = Summary(
+SPOTIFY_API_RESPONSE_TIME_SECONDS = Histogram(
     name="spotify_api_response_time_seconds",
     documentation="Spotify API response time in seconds",
 )
@@ -11,7 +11,7 @@ SPOTIFY_API_RESPONSES = Counter(
     labelnames=["method", "url", "status_code"],
 )
 
-OPENAI_API_RESPONSE_TIME_SECONDS = Summary(
+OPENAI_API_RESPONSE_TIME_SECONDS = Histogram(
     name="openai_api_response_time_seconds",
     documentation="OpenAI API response time in seconds, by request type (chat_completion, image)",
     labelnames=["type"],
@@ -45,7 +45,7 @@ SPOTIFY_PLAYLIST_COVER_IMAGE_SIZE_BYTES = Summary(
     labelnames=["type"],
 )
 
-MUSICBRAINZ_API_RESPONSE_TIME_SECONDS = Summary(
+MUSICBRAINZ_API_RESPONSE_TIME_SECONDS = Histogram(
     name="musicbrainz_api_response_time_seconds",
     documentation="MusicBrainz API response time in seconds",
 )
@@ -67,12 +67,12 @@ MUSICBRAINZ_API_RESPONSES_THROTTLED = Counter(
     documentation="MusicBrainz API responses that indicate that client is being throttled",
 )
 
-MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS = Summary(
+MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS = Histogram(
     name="musicbrainz_api_request_delay_time_seconds",
     documentation="Time spent waiting to send the next MusicBrainz API request (to avoid being throttled) in seconds",
 )
 
-SONGKICK_API_RESPONSE_TIME_SECONDS = Summary(
+SONGKICK_API_RESPONSE_TIME_SECONDS = Histogram(
     name="songkick_api_response_time_seconds",
     documentation="Songkick API response time in seconds",
 )
@@ -89,7 +89,7 @@ SONGKICK_API_EXCEPTIONS = Counter(
     labelnames=["type"],
 )
 
-BANDSINTOWN_API_RESPONSE_TIME_SECONDS = Summary(
+BANDSINTOWN_API_RESPONSE_TIME_SECONDS = Histogram(
     name="bandsintown_api_response_time_seconds",
     documentation="Bandsintown API response time in seconds",
 )
