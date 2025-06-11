@@ -144,11 +144,6 @@ class MusicBrainzArtist:
         except Exception as e:
             raise HTTPClientException(f"Failed to parse JSON '{resp.text}': {e}")
 
-        # TODO: https://musicbrainz.org/doc/Style/Artist/Sort_Name
-        aliases = [data["name"]] + [a["name"] for a in data.get("aliases", []) if a["primary"]]
-        artist_names = [replace_unicode_characters(a) for a in aliases] + aliases
-        artist_names = list(dict.fromkeys([a for a in artist_names if a]))
-
         songkick_url = None
         bandsintown_url = None
 
@@ -177,6 +172,16 @@ class MusicBrainzArtist:
                 )
             except HTTPClientException as e:
                 raise BandsintownException(f"Failed to get final Bandsintown URL: {e}")
+
+        if all((songkick_url, bandsintown_url)):
+            artist_names = [data["name"]]
+        else:
+            # TODO: https://musicbrainz.org/doc/Style/Artist/Sort_Name
+            # TODO: Artist 563ace2c-6e94-4b64-b544-40099a96b86d has a legitimate alias that is not primary
+            # c463f1c4-d19f-420f-ac88-a7b5afabeeb9 has no primary alises at all
+            aliases = [data["name"]] + [a["name"] for a in data.get("aliases", []) if a["primary"]]
+            artist_names = [replace_unicode_characters(a) for a in aliases] + aliases
+            artist_names = list(dict.fromkeys([a for a in artist_names if a]))
 
         return MusicBrainzArtist(
             id=artist_id, names=artist_names, songkick_url=songkick_url, bandsintown_url=bandsintown_url
@@ -233,7 +238,16 @@ class EventSourceArtist:
 
         artist = EventSourceArtist(name=artist_name, alternative_names=alternative_names)
 
-        calls = [artist.find_in_songkick(use_advanced_heuristics), artist.find_in_bandsintown(use_advanced_heuristics)]
+        calls = []
+        if artist.songkick_url is None:
+            calls.append(artist.find_in_songkick(use_advanced_heuristics))
+        if artist.bandsintown_url is None:
+            calls.append(artist.find_in_bandsintown(use_advanced_heuristics))
+
+        if not calls:
+            logger.warning(f"EventSourceArtist {artist_name} already has both Songkick and Bandsintown URLs")
+            return artist
+
         results = await asyncio.gather(*calls, return_exceptions=True)
 
         songkick_result, bandsintown_result = results

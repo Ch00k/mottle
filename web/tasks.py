@@ -79,11 +79,13 @@ async def find_event_data_sources(
 ) -> tuple[MusicBrainzArtist | None, EventSourceArtist]:
     musicbrainz_artist, fetched_artist = await find_event_data_sources_at_musicbrainz(artist_spotify_id, artist_name)
 
-    if (
-        musicbrainz_artist is not None
-        and fetched_artist is not None
-        and fetched_artist.songkick_url is not None
-        and fetched_artist.bandsintown_url is not None
+    if all(
+        (
+            musicbrainz_artist,
+            fetched_artist,
+            fetched_artist.songkick_url,
+            fetched_artist.bandsintown_url,
+        )
     ):
         return musicbrainz_artist, fetched_artist
 
