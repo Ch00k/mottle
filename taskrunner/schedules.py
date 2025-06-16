@@ -13,6 +13,7 @@ def playlist_updates() -> None:
         send_notifications=True,
         schedule_type=Schedule.CRON,
         cron=FeatureFlag.playlist_updates_schedule(),
+        next_run=None,
         cluster="long_running",
     )
 
@@ -25,5 +26,6 @@ def event_updates() -> None:
         concurrency_limit=FeatureFlag.event_fetching_concurrency_limit(),
         schedule_type=Schedule.CRON,
         cron=FeatureFlag.event_updates_schedule(),
+        next_run=None,
         cluster="long_running",
     )
