@@ -28,7 +28,7 @@ def task_track_artists_events(
     artists_data: dict[str, str],
     spotify_user_id: str,
     force_reevaluate: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     async_task(
@@ -53,9 +53,9 @@ def get_playlist_updates(send_notifications: bool = False) -> None:
 def get_event_updates(
     artist_spotify_ids: list[str] | None = None,
     compile_notifications: bool = True,
-    send_notifications: bool = False,
+    send_notifications: bool = True,
     force_refetch: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     async_task(

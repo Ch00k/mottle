@@ -13,6 +13,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
+from featureflags.data import FeatureFlag
 from web.metrics import TASK_RUNTIME_SECONDS
 
 from .email import send_email
@@ -198,9 +199,9 @@ def check_playlists_for_updates(send_notifications: bool = False) -> None:
 async def acheck_artists_for_event_updates(
     artist_spotify_ids: list[str] | None = None,
     compile_notifications: bool = True,
-    send_notifications: bool = False,
+    send_notifications: bool = True,
     force_refetch: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     start_time = timeit.default_timer()
@@ -222,6 +223,9 @@ async def acheck_artists_for_event_updates(
 
     if concurrent_execution:
         calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
+
+        concurrency_limit = concurrency_limit or FeatureFlag.event_fetching_concurrency_limit()
+
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
         else:
@@ -329,9 +333,9 @@ async def acheck_artists_for_event_updates(
 def check_artists_for_event_updates(
     artist_spotify_ids: list[str] | None = None,
     compile_notifications: bool = True,
-    send_notifications: bool = False,
+    send_notifications: bool = True,
     force_refetch: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     with TASK_RUNTIME_SECONDS.labels("get_event_updates").time():
@@ -488,7 +492,7 @@ async def atrack_artists_events(
     artists_data: dict[str, str],
     spotify_user_id: str,
     force_reevaluate: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     start_time = timeit.default_timer()
@@ -508,6 +512,8 @@ async def atrack_artists_events(
             for artist_spotify_id, artist_name in artists_data.items()
             if artist_name
         ]
+
+        concurrency_limit = concurrency_limit or FeatureFlag.event_sources_fetching_concurrency_limit()
 
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
@@ -564,7 +570,7 @@ def track_artists_events(
     artists_data: dict[str, str],
     spotify_user_id: str,
     force_reevaluate: bool = False,
-    concurrent_execution: bool = False,
+    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     with TASK_RUNTIME_SECONDS.labels("track_artists_events").time():

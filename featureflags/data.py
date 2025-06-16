@@ -18,14 +18,6 @@ class FeatureFlag:
         return events_enabled_for_users is not None and user_id in events_enabled_for_users
 
     @staticmethod
-    async def concurrent_event_sources_fetching() -> bool:
-        return await models.FeatureFlag.objects.aget_value("concurrent_event_sources_fetching") is True  # pyright: ignore
-
-    @staticmethod
-    async def concurrent_events_fetching() -> bool:
-        return await models.FeatureFlag.objects.aget_value("concurrent_events_fetching") is True  # pyright: ignore
-
-    @staticmethod
     def event_sources_fetching_concurrency_limit() -> int | None:
         return models.FeatureFlag.objects.get_value("event_sources_fetching_concurrency_limit")  # pyright: ignore
 

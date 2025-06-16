@@ -32,25 +32,25 @@ class Command(BaseCommand):
             help="Force refetching events from event sources",
         )
         parser.add_argument(
-            "--concurrent-execution",
-            action="store_true",
-            default=False,
-            help="Process all artists concurrently (useful for large playlists)",
-        )
-        parser.add_argument(
             "--concurrency-limit",
             type=int,
             default=FeatureFlag.event_fetching_concurrency_limit(),
             help="Limit the number of concurrent executions for event fetching (how many artists to check at once)",
         )
+        parser.add_argument(
+            "--compile-notifications",
+            action="store_true",
+            default=False,
+            help="Compile notifications for event updates",
+        )
 
     def handle(self, *_: Any, **options: str) -> None:
         playlist_id: str | None = options.get("playlist_id")
         force_refetch: bool = cast(bool, options.get("force_refetch", False))
-        concurrent_execution: bool = cast(bool, options.get("concurrent_execution", False))
         concurrency_limit: int = cast(
             int, options.get("concurrency_limit", FeatureFlag.event_fetching_concurrency_limit())
         )
+        compile_notifications: bool = cast(bool, options.get("compile_notifications", False))
 
         if playlist_id:
             token = get_client_token()
@@ -72,8 +72,9 @@ class Command(BaseCommand):
 
         get_event_updates(
             artist_spotify_ids=artist_ids,
-            compile_notifications=False,
+            compile_notifications=compile_notifications,
+            send_notifications=False,
             force_refetch=force_refetch,
-            concurrent_execution=concurrent_execution,
+            concurrent_execution=True,
             concurrency_limit=concurrency_limit,
         )

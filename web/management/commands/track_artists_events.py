@@ -30,12 +30,6 @@ class Command(BaseCommand):
             help="Force reevaluation of artists from event sources",
         )
         parser.add_argument(
-            "--concurrent-execution",
-            action="store_true",
-            default=False,
-            help="Process all artists concurrently (useful for large playlists)",
-        )
-        parser.add_argument(
             "--concurrency-limit",
             type=int,
             default=FeatureFlag.event_sources_fetching_concurrency_limit(),
@@ -47,7 +41,6 @@ class Command(BaseCommand):
         artist_id: str | None = options.get("artist_id")  # pyright: ignore[reportAssignmentType]
         playlist_id: str | None = options.get("playlist_id")  # pyright: ignore[reportAssignmentType]
         force_reevaluate: bool = cast(bool, options.get("force_reevaluate", False))  # pyright: ignore[reportAssignmentType]
-        concurrent_execution: bool = cast(bool, options.get("concurrent_execution", False))  # pyright: ignore[reportAssignmentType]
         concurrency_limit: int = cast(
             int, options.get("concurrency_limit", FeatureFlag.event_fetching_concurrency_limit())
         )
@@ -94,6 +87,6 @@ class Command(BaseCommand):
             artists_data=artists,
             spotify_user_id=user_id,
             force_reevaluate=force_reevaluate,
-            concurrent_execution=concurrent_execution,
+            concurrent_execution=True,
             concurrency_limit=concurrency_limit,
         )

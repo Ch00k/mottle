@@ -48,15 +48,7 @@ def event_updates() -> None:
         name=EVENT_UPDATES_NAME,
         defaults={
             "func": EVENT_UPDATES_FUNC,
-            "kwargs": {
-                "artist_spotify_ids": None,
-                "compile_notifications": True,
-                "send_notifications": True,
-                "force_refetch": False,
-                "concurrent_execution": True,
-                # TODO: This will not be updates unltil a restart
-                "concurrency_limit": FeatureFlag.event_fetching_concurrency_limit(),
-            },
+            "kwargs": {"send_notifications": True},
             "schedule_type": Schedule.CRON,
             "cron": EVENT_UPDATES_SCHEDULE,
             "cluster": "long_running",
