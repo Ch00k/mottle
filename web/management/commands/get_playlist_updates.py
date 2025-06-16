@@ -5,9 +5,9 @@ from typing import Any
 from asgiref.sync import async_to_sync
 from django.core.management.base import BaseCommand, CommandError
 
-from web.jobs import check_playlist_for_updates, check_playlists_for_updates, check_user_playlists_for_updates
 from web.models import Playlist, SpotifyUser
 from web.spotify import get_client_token
+from web.tasks import acheck_playlists_for_updates, check_playlist_for_updates, check_user_playlists_for_updates
 from web.utils import MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -46,4 +46,4 @@ class Command(BaseCommand):
 
             async_to_sync(partial(check_playlist_for_updates, playlist, spotify_client))()
         else:
-            async_to_sync(partial(check_playlists_for_updates, send_notifications))()  # pyright: ignore
+            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()  # pyright: ignore

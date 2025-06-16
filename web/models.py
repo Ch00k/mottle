@@ -305,6 +305,28 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         return self
 
 
+# class ArtistNameMatchResult(BaseModel):
+#     event_artist = models.OneToOneField(EventArtist, on_delete=models.CASCADE, related_name="name_match_result")
+#     musicbrainz_found_by_spotify_url = models.BooleanField(default=False)
+#     musicbrainz_found_by_name = models.BooleanField(default=False)
+#     musicbrainz_search_results = models.JSONField(null=True)
+#     musicbrainz_match_details = models.CharField(max_length=200, null=True)  # transformed names that matched
+#     musicbrainz_url = models.UUIDField(null=True)
+#     musicbrainz_name = models.CharField(max_length=200, null=True)
+#     musicbrainz_aliases = models.JSONField(null=True)
+#     musicbrainz_name_alternatives = models.JSONField(null=True)
+#     musicbrainz_contains_songkick_url = models.BooleanField(default=False)
+#     musicbrainz_contains_bandsintown_url = models.BooleanField(default=False)
+#     songkick_search_results = models.JSONField(null=True)
+#     songkick_url = models.CharField(max_length=2000, null=True)
+#     songkick_name = models.CharField(max_length=200, null=True)
+#     songkick_match_details = models.CharField(max_length=200, null=True)  # transformed names that matched
+#     bandsintown_search_results = models.JSONField(null=True)
+#     bandsintown_url = models.CharField(max_length=2000, null=True)
+#     bandsintown_name = models.CharField(max_length=200, null=True)
+#     bandsintown_match_details = models.CharField(max_length=200, null=True)  # transformed names that matched
+
+
 class Event(DirtyFieldsMixin, BaseModel):
     artist = models.ForeignKey(EventArtist, on_delete=models.CASCADE, related_name="events")
     source = models.CharField(max_length=50, choices=[(e.name, e.value) for e in EventDataSource])

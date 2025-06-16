@@ -59,8 +59,8 @@ def find_best_artist_name_match_simple(
     artist_name: str, available_artists: list[tuple[str, str]]
 ) -> tuple[str, ArtistNameMatchAccuracy]:
     original_artist_name = artist_name
-    artist_name = artist_name.lower()
-    available_artists = [(_, name.lower()) for _, name in available_artists]
+    artist_name = artist_name.casefold()
+    available_artists = [(_, name.casefold()) for _, name in available_artists]
 
     if matches := [(_, name) for _, name in available_artists if name and artist_name == name]:
         id, _ = matches[0]
@@ -90,9 +90,17 @@ def find_best_artist_name_match_advanced(
     except HeuristicsException:
         pass
 
+    # TODO: This repeats what's already been done in find_best_artist_name_match_simple
     original_artist_name = artist_name
-    artist_name = artist_name.lower()
-    available_artists = [(_, name.lower()) for _, name in available_artists]
+    artist_name = artist_name.casefold()
+    available_artists = [(_, name.casefold()) for _, name in available_artists]
+
+    transliterated_artist_name = unidecode(artist_name)
+    transliterated = [(_, unidecode(name)) for _, name in available_artists]
+
+    if matches := [(_, name) for _, name in transliterated if transliterated_artist_name == name]:
+        id, _ = matches[0]
+        return id, ArtistNameMatchAccuracy.exact_ascii
 
     artist_name = artist_name.encode("ascii", errors="ignore").decode("ascii")
     if not artist_name:
@@ -128,7 +136,7 @@ def find_best_artist_name_match_advanced(
 
 
 def normalize_string(string: str) -> str:
-    string = string.casefold()
+    string = string.strip().casefold()
     string = replace_unicode_characters(string)
     return string
 
@@ -136,14 +144,11 @@ def normalize_string(string: str) -> str:
 def replace_unicode_characters(string: str) -> str:
     # https://www.unicode.org/reports/tr44/
     # https://www.compart.com/en/unicode/category
-    result = ""
-
-    for char in string:
-        if unicodedata.category(char).startswith(("M", "N", "P", "S")):
-            char = unidecode(char)
-        result += char
-
-    return result
+    # Mark, Number, Punctuation, Symbol
+    # https://www.unicode.org/reports/tr44/#General_Category_Values
+    return "".join(
+        [unidecode(char) if unicodedata.category(char).startswith(("M", "N", "P", "S")) else char for char in string]
+    )
 
 
 def should_fetch_event(event_url: str, event_source: EventDataSource, events: dict[str, "Event"]) -> bool:

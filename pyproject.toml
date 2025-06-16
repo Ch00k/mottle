@@ -7,7 +7,6 @@ readme = "README.md"
 packages = [
   { include = "mottle" },
   { include = "web" },
-  { include = "scheduler" },
   { include = "taskrunner" },
   { include = "featureflags" },
   { include = "urlshortener" },
@@ -25,7 +24,6 @@ whitenoise = "^6.6.0"
 sentry-sdk = { extras = ["django"], version = "^1.44.1" }
 django-prometheus = "^2.3.1"
 prometheus-client = "^0.20.0"
-apscheduler = "^3.10.4"
 openai = "^1.42.0"
 pillow = "^10.4.0"
 tiktoken = "^0.7.0"
@@ -77,7 +75,6 @@ show_column_numbers = true
 module = [
   "tekore.*",
   "django_q.*",
-  "apscheduler.*",
   "factory.*",
   "ruamel.*",
   "poetry.*",

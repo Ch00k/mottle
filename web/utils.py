@@ -2,7 +2,7 @@ import asyncio
 import itertools
 import logging
 from collections import Counter
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Awaitable, Callable, Generator, Iterable
 from contextlib import contextmanager
 from functools import partial
 from types import MethodType
@@ -428,3 +428,16 @@ def chunked_off(spotify_client: Spotify) -> Generator:
         yield
     finally:
         spotify_client.chunked_on = True
+
+
+# https://stackoverflow.com/a/61478547
+async def gather_with_concurrency(
+    concurrency: int, *coroutines: Awaitable[Any], return_exceptions: bool = False
+) -> list[Any]:
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def sem_coro(coro: Awaitable[Any]) -> Any:
+        async with semaphore:
+            return await coro
+
+    return await asyncio.gather(*(sem_coro(c) for c in coroutines), return_exceptions=return_exceptions)

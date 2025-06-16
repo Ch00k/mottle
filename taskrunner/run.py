@@ -2,12 +2,16 @@ import logging
 import signal
 import sys
 import time
+from collections.abc import Callable
 from threading import Thread
 from typing import Any
 from wsgiref.simple_server import WSGIServer
 
+from django.conf import settings
 from django_q.cluster import Cluster
 from prometheus_client import CollectorRegistry, multiprocess, start_http_server
+
+from taskrunner.schedules import event_updates, playlist_updates
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +19,7 @@ logger = logging.getLogger(__name__)
 class MottleCluster(Cluster):
     def __init__(self, *args: Any, **kwargs: dict) -> None:
         super().__init__(*args, **kwargs)
+        self.schedules: list = []
         self.prometheus_registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(self.prometheus_registry)
 
@@ -23,11 +28,22 @@ class MottleCluster(Cluster):
 
         signal.signal(signal.SIGHUP, self.sig_handler)
 
+    def add_schedules(self, *funcs: Callable[..., None]) -> None:
+        self.schedules = list(funcs)
+
     def start(self, metrics_server_host: str, metrics_server_port: int) -> None:
         self.metrics_server, self.metrics_server_thread = start_http_server(
             port=metrics_server_port, addr=metrics_server_host, registry=self.prometheus_registry
         )
         logger.info(f"Metrics server started at {metrics_server_host}:{metrics_server_port}")
+
+        if self.schedules:
+            for func in self.schedules:
+                logger.info(f"Adding schedule {func.__name__}")
+                func()
+
+            if not settings.SCHEDULER_ENABLED:
+                logger.warning("Scheduler is disabled. Schedules will not be executed")
 
         super().start()
 
@@ -52,6 +68,7 @@ def main() -> None:
     metrics_server_port = int(sys.argv[2])
 
     q = MottleCluster()
+    q.add_schedules(playlist_updates, event_updates)
     q.start(metrics_server_host, metrics_server_port)
 
 

@@ -76,6 +76,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.requests_accepted = 0
         self.requests_gte_400 = 0
         self.requests_throttled = 0
+        self.requests_retries_exhausted = 0
         self.next_request_allowed_at = time.time()
 
     def _merge_headers(self, headers: httpx._types.HeaderTypes | None = None) -> httpx._types.HeaderTypes | None:
@@ -110,7 +111,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
                     self.exceptions_counter_metric.labels("connect").inc()
 
                 self.requests_failed_to_connect += 1
-                logger.error(f"Failed to connect while requesting {request.url}: {e}. Retrying...")
+                logger.warning(f"Failed to connect while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
             except httpx.ProxyError as e:
@@ -120,7 +121,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
                     self.exceptions_counter_metric.labels("proxy").inc()
 
                 self.requests_failed_to_proxy += 1
-                logger.error(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
+                logger.warning(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
             except httpx.TimeoutException as e:
@@ -130,7 +131,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
                     self.exceptions_counter_metric.labels("timeout").inc()
 
                 self.requests_timedout += 1
-                logger.error(f"Timeout {self.timeout} reached while requesting {request.url}: {e}. Retrying...")
+                logger.warning(f"Timeout {self.timeout} reached while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
             except Exception as e:
@@ -145,25 +146,28 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 if str(e):
                     exc_msg += f"({e})"
 
-                logger.error(f"Unexpected error while requesting {request.url}: {exc_msg}. Retrying...")
+                logger.warning(f"Unexpected error while requesting {request.url}: {exc_msg}. Retrying...")
                 retries -= 1
                 continue
+
+            # else:
+            request_time = max(timeit.default_timer() - start, 0)
+
+            if self.response_time_metric is None:
+                logger.warning(f"response_time_metric for {self.name} is None. Skipping metric recording")
             else:
-                request_time = max(timeit.default_timer() - start, 0)
+                self.response_time_metric.observe(request_time)
 
-                if self.response_time_metric is None:
-                    logger.warning(f"response_time_metric for {self.name} is None. Skipping metric recording")
-                else:
-                    self.response_time_metric.observe(request_time)
+            if self.delay_seconds:
+                # Assuming the request time is the time for request to reach the server + the time for response
+                # to reach us, and that these times are equal. Hence dividing by 2.
+                delay_before_next_request = max(self.delay_seconds - request_time / 2, 0.0)
 
-                if self.delay_seconds:
-                    # Assuming the request time is the time for request to reach the server + the time for response
-                    # to reach us, and that these times are equal. Hence dividing by 2.
-                    delay_before_next_request = max(self.delay_seconds - request_time / 2, 0.0)
-
-                    now = time.time()
-                    self.next_request_allowed_at = now + delay_before_next_request
-                    next_request_allowed_in_seconds = self.next_request_allowed_at - now
+                now = time.time()
+                self.next_request_allowed_at = now + delay_before_next_request
+                next_request_allowed_in_seconds = self.next_request_allowed_at - now
+            else:
+                next_request_allowed_in_seconds = None
 
             if self.throttle_response_code is not None and response.status_code == self.throttle_response_code:
                 if self.throttle_counter_metric is None:
@@ -178,24 +182,6 @@ class AsyncRetryingClient(httpx.AsyncClient):
             if response.status_code >= 400:
                 self.requests_gte_400 += 1
 
-            if self.log_request_details:
-                log_msg = (
-                    f"{self.__class__.__name__}({self.name}): "
-                    f"REQUESTS: total {self.requests_total}, "
-                    f"accepted {self.requests_accepted}, "
-                    f"failed to connect {self.requests_failed_to_connect}, "
-                    f"failed to proxy {self.requests_failed_to_proxy}, "
-                    f"timed out {self.requests_timedout}, "
-                    f"errored {self.requests_errored}, "
-                    f"throttled {self.requests_throttled}, "
-                    f">=400 {self.requests_gte_400}, "
-                    f"request time {request_time}"
-                )
-                if self.delay_seconds:
-                    log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
-
-                logger.debug(log_msg)
-
             if response.status_code >= 400:
                 if self.responses_gte_400_counter_metric is None:
                     logger.warning(
@@ -204,23 +190,53 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 else:
                     self.responses_gte_400_counter_metric.labels(response.status_code).inc()
 
+            if self.log_request_details:
+                self.log(request_time=request_time, next_request_allowed_in_seconds=next_request_allowed_in_seconds)
+
             if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
                 return response
 
-            logger.error(
+            logger.warning(
                 f"Received {response.status_code} response ({response.text}) "
                 f"while requesting {request.url}. Retrying..."
             )
             retries -= 1
         else:
+            self.requests_retries_exhausted += 1
+
             if self.exceptions_counter_metric is None:
                 logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
             else:
                 self.exceptions_counter_metric.labels("retries_exceeded").inc()
 
+            logger.error(f"Retries exhausted while requesting {request.url}")
+            self.log()
+
             raise RetriesExhaustedException(
                 f"Failed to get a successful response from {request.url} after {self.retries} retries"
             )
+
+    def log(self, request_time: float | None = None, next_request_allowed_in_seconds: float | None = None) -> None:
+        log_msg = (
+            f"{self.__class__.__name__}({self.name}): "
+            f"REQUESTS: total {self.requests_total}, "
+            f"accepted {self.requests_accepted}, "
+            f"failed to connect {self.requests_failed_to_connect}, "
+            f"failed to proxy {self.requests_failed_to_proxy}, "
+            f"timed out {self.requests_timedout}, "
+            f"errored {self.requests_errored}, "
+            f"throttled {self.requests_throttled}, "
+            f">=400 {self.requests_gte_400}, "
+            f"retries exhausted {self.requests_retries_exhausted}"
+        )
+
+        if request_time is not None:
+            log_msg += f", request time {request_time}"
+
+        if self.delay_seconds and next_request_allowed_in_seconds is not None:
+            log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
+
+        logger.debug(log_msg)
 
 
 async_musicbrainz_client = AsyncRetryingClient(
@@ -231,7 +247,7 @@ async_musicbrainz_client = AsyncRetryingClient(
     exceptions_counter_metric=MUSICBRAINZ_API_EXCEPTIONS,
     throttle_counter_metric=MUSICBRAINZ_API_RESPONSES_THROTTLED,
     delay_time_metric=MUSICBRAINZ_API_REQUEST_DELAY_TIME_SECONDS,
-    log_request_details=True,
+    # log_request_details=True,
     timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
@@ -246,7 +262,7 @@ async_songkick_client = AsyncRetryingClient(
     response_time_metric=SONGKICK_API_RESPONSE_TIME_SECONDS,
     responses_gte_400_counter_metric=SONGKICK_API_RESPONSES_GTE_400,
     exceptions_counter_metric=SONGKICK_API_EXCEPTIONS,
-    log_request_details=True,
+    # log_request_details=True,
     base_url=SONGKICK_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
     proxy=get_proxy_url(),
@@ -261,7 +277,7 @@ async_bandsintown_client = AsyncRetryingClient(
     responses_gte_400_counter_metric=BANDSINTOWN_API_RESPONSES_GTE_400,
     exceptions_counter_metric=BANDSINTOWN_API_EXCEPTIONS,
     throttle_counter_metric=BANDSINTOWN_API_RESPONSES_THROTTLED,
-    log_request_details=True,
+    # log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
     proxy=get_proxy_url(),
@@ -272,6 +288,7 @@ async_bandsintown_client = AsyncRetryingClient(
 async def asend_get_request(
     client: AsyncRetryingClient,
     url: str,
+    params: dict[str, Any] | None = None,
     parse_json: bool = False,
     xpath: str | None = None,
     redirect_url: bool = False,
@@ -284,7 +301,7 @@ async def asend_get_request(
     ret_url = None
 
     try:
-        response = await client.get(url, follow_redirects=follow_redirects)
+        response = await client.get(url, params=params, follow_redirects=follow_redirects)
 
         if raise_for_lte_300:
             response.raise_for_status()

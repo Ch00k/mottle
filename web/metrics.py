@@ -119,3 +119,9 @@ BANDSINTOWN_API_RESPONSES_THROTTLED = Counter(
     name="bandsintown_api_responses_throttled",
     documentation="Bandsintown API responses that indicate that client is being throttled",
 )
+
+TASK_RUNTIME_SECONDS = Histogram(
+    name="task_runtime_seconds",
+    documentation="Time spent running a task in seconds, by task",
+    labelnames=["task"],
+)

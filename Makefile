@@ -6,28 +6,22 @@ build_dev:
 	docker build . -t mottle:latest --build-arg POETRY_GROUPS=main,debug,dev
 
 up:
-	@# TODO: This is awful
-	@if [ "$(PROFILE)" == "T" ]; then \
-		docker compose --profile default --profile taskrunner up --remove-orphans --detach; \
-	elif [ "$(PROFILE)" == "S" ]; then \
-		docker compose --profile default --profile scheduler up --remove-orphans --detach; \
-	elif [ "$(PROFILE)" == "TS" ]; then \
-		docker compose --profile default --profile taskrunner --profile scheduler up --remove-orphans --detach; \
-	else \
-		docker compose --profile default up --remove-orphans --detach; \
-	fi
+	docker compose --profile default --profile taskrunner up --remove-orphans --detach; \
 
 down:
-	docker compose --profile default --profile taskrunner --profile scheduler down --remove-orphans
+	docker compose --profile default --profile taskrunner down --remove-orphans
 
 logs:
-	docker compose --profile default --profile taskrunner --profile scheduler logs -f
+	docker compose --profile default --profile taskrunner logs -f
 
 ssh:
 	docker-compose --profile default run --rm web bash
 
 shell:
 	docker compose exec web ./manage.py shell
+
+makemigrations:
+	docker compose exec web ./manage.py makemigrations
 
 test:
 	poetry run pytest web/tests

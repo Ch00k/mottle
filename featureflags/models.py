@@ -14,7 +14,15 @@ class BaseModel(models.Model):
 
 
 class FeatureFlagManager(models.Manager["FeatureFlag"]):
-    async def get_value(self, name: str) -> Any | None:
+    def get_value(self, name: str) -> Any | None:
+        try:
+            f = self.get(name=name)
+        except FeatureFlag.DoesNotExist:
+            return None
+        else:
+            return f.value
+
+    async def aget_value(self, name: str) -> Any | None:
         try:
             f = await self.aget(name=name)
         except FeatureFlag.DoesNotExist:

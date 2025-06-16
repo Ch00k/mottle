@@ -25,7 +25,6 @@ from featureflags.data import FeatureFlag
 from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
 
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
-from .jobs import check_playlist_for_updates
 from .middleware import MottleHttpRequest, get_token_scope_changes
 from .models import (
     Event,
@@ -37,7 +36,7 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
-from .tasks import track_artist_events
+from .tasks import check_playlist_for_updates, track_artist_events
 from .utils import MottleException, MottleSpotifyClient, list_has
 from .views_utils import (
     AlbumMetadata,

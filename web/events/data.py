@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from sentry_sdk import capture_exception, capture_message
 
+from featureflags.data import FeatureFlag
 from urlshortener.models import ShortURL
 
 from .constants import (
@@ -63,7 +64,9 @@ class MusicBrainzArtist:
     @staticmethod
     async def find_by_spotify_url(url: str) -> Optional["MusicBrainzArtist"]:
         try:
-            resp = await async_musicbrainz_client.get("url", params={"resource": url, "inc": "artist-rels"})
+            resp = await asend_get_request(
+                async_musicbrainz_client, "url", params={"resource": url, "inc": "artist-rels"}
+            )
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by Spotify URL '{url}': {e}")
 
@@ -97,7 +100,9 @@ class MusicBrainzArtist:
         logger.info(f"Searching for artist '{artist_name}' in MusicBrainz")
 
         try:
-            resp = await async_musicbrainz_client.get("artist", params={"query": artist_name, "limit": 100})
+            resp = await asend_get_request(
+                async_musicbrainz_client, "artist", params={"query": artist_name, "limit": 100}
+            )
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by name '{artist_name}': {e}")
 
@@ -135,7 +140,9 @@ class MusicBrainzArtist:
     @staticmethod
     async def from_artist_id(artist_id: str) -> "MusicBrainzArtist":
         try:
-            resp = await async_musicbrainz_client.get(f"artist/{artist_id}", params={"inc": "aliases+url-rels"})
+            resp = await asend_get_request(
+                async_musicbrainz_client, f"artist/{artist_id}", params={"inc": "aliases+url-rels"}
+            )
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by ID '{artist_id}': {e}")
 
@@ -509,21 +516,25 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
     _, urls, __, __ = await asend_get_request(async_songkick_client, event_url, xpath=xpath)
 
-    urls = [u for u in urls]
-    calls = [asend_get_request(async_songkick_client, u, redirect_url=True, raise_for_lte_300=False) for u in urls]
-    results = await asyncio.gather(*calls, return_exceptions=True)
+    urls = [u.split("?")[0] for u in urls]
 
-    result_urls = []
-    for r in results:
-        if isinstance(r, HTTPClientException):
-            logger.exception(f"Failed to fetch URL: {r}")
-            capture_exception(r)
-        elif isinstance(r, BaseException):
-            logger.exception(f"Unexpected error while fetching URL: {r}")
-            capture_exception(r)
-        else:
-            if r[2] is not None:
-                result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
+    if await FeatureFlag.resolve_songkick_urls():
+        calls = [asend_get_request(async_songkick_client, u, redirect_url=True, raise_for_lte_300=False) for u in urls]
+        results = await asyncio.gather(*calls, return_exceptions=True)
+
+        result_urls = []
+        for r in results:
+            if isinstance(r, HTTPClientException):
+                logger.exception(f"Failed to fetch URL: {r}")
+                capture_exception(r)
+            elif isinstance(r, BaseException):
+                logger.exception(f"Unexpected error while fetching URL: {r}")
+                capture_exception(r)
+            else:
+                if r[2] is not None:
+                    result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
+    else:
+        result_urls = urls
 
     if event_type == EventType.live_stream:
         stream_urls = result_urls

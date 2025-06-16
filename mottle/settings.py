@@ -132,6 +132,8 @@ sentry_sdk.init(
     ],
 )
 
+SCHEDULER_ENABLED = env.bool("SCHEDULER_ENABLED", False)
+
 Q_CLUSTER = {
     "name": "default",
     "orm": "tasks",
@@ -141,7 +143,7 @@ Q_CLUSTER = {
     "max_attempts": 1,
     "ack_failures": True,
     "save_limit": 0,
-    "scheduler": False,
+    "scheduler": SCHEDULER_ENABLED,
     "log_level": "DEBUG",
     "ALT_CLUSTERS": {
         "long_running": {
