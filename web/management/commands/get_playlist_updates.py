@@ -19,7 +19,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser: Any) -> None:
         parser.add_argument("--user-id", type=str, help="The ID of the user to check playlists for")
         parser.add_argument("--playlist-id", type=str, help="The ID of the plylist to check")
-        parser.add_argument("--send-notifications", action="store_true", help="Send notifications for updates")
+        parser.add_argument(
+            "--send-notifications", action="store_true", default=False, help="Send notifications for updates"
+        )
 
     def handle(self, *_: tuple, **options: dict) -> None:
         user_id = options.get("user_id")

@@ -31,7 +31,6 @@ def playlist_updates() -> None:
         name=PLAYLIST_UPDATES_NAME,
         defaults={
             "func": PLAYLIST_UPDATES_FUNC,
-            "kwargs": {"send_notifications": True},
             "schedule_type": Schedule.CRON,
             "cron": PLAYLIST_UPDATES_SCHEDULE,
             "cluster": "long_running",
@@ -48,7 +47,6 @@ def event_updates() -> None:
         name=EVENT_UPDATES_NAME,
         defaults={
             "func": EVENT_UPDATES_FUNC,
-            "kwargs": {"send_notifications": True},
             "schedule_type": Schedule.CRON,
             "cron": EVENT_UPDATES_SCHEDULE,
             "cluster": "long_running",

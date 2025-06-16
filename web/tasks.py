@@ -191,7 +191,7 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
         await check_user_playlists_for_updates(user, send_notifications)
 
 
-def check_playlists_for_updates(send_notifications: bool = False) -> None:
+def check_playlists_for_updates(send_notifications: bool = True) -> None:
     with TASK_RUNTIME_SECONDS.labels("get_playlist_updates").time():
         asyncio.run(acheck_playlists_for_updates(send_notifications=send_notifications))
 
