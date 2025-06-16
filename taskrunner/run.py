@@ -37,13 +37,13 @@ class MottleCluster(Cluster):
         )
         logger.info(f"Metrics server started at {metrics_server_host}:{metrics_server_port}")
 
-        if self.schedules:
-            for func in self.schedules:
-                logger.info(f"Adding schedule {func.__name__}")
-                func()
-
-            if not settings.SCHEDULER_ENABLED:
-                logger.warning("Scheduler is disabled. Schedules will not be executed")
+        if settings.SCHEDULER_ENABLED:
+            if self.schedules:
+                for func in self.schedules:
+                    logger.info(f"Adding schedule {func.__name__}")
+                    func()
+        else:
+            logger.warning("Scheduler is disabled. Skipping schedule setup")
 
         super().start()
 
