@@ -39,6 +39,7 @@ json-log-formatter = "^1.1"
 daphne = "^4.1.2"
 django-hosts = "^6.0"
 tekore = "^6.0.0"
+croniter = "^6.0.0"                                       # django-q2 dependency for cron scheduling
 
 [tool.poetry.group.dev.dependencies]
 mypy = "~1.15"
@@ -72,13 +73,7 @@ warn_unreachable = true
 show_column_numbers = true
 
 [[tool.mypy.overrides]]
-module = [
-  "tekore.*",
-  "django_q.*",
-  "factory.*",
-  "ruamel.*",
-  "poetry.*",
-]
+module = ["tekore.*", "django_q.*", "factory.*", "ruamel.*", "poetry.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]

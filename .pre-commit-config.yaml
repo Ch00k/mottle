@@ -63,3 +63,4 @@ repos:
           - daphne (>=4.1.2,<5.0.0)
           - django-hosts (>=6.0,<7.0)
           - tekore (>=6.0.0,<7.0.0)
+          - croniter (>=6.0.0,<7.0.0)

@@ -63,7 +63,7 @@ deploy_pre:
 	cp ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3 ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3.pre_$(APP_VERSION)
 	cp ${DEPLOYMENT_DIR_PRE}/database/tasks.sqlite3 ${DEPLOYMENT_DIR_PRE}/database/tasks.sqlite3.pre_$(APP_VERSION)
 	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR_PRE}/compose.yml
-	docker compose -f ${DEPLOYMENT_DIR_PRE}/compose.yml up -d
+	docker compose -f ${DEPLOYMENT_DIR_PRE}/compose.yml up --remove-orphans --detach
 
 deploy:
 	@$(eval APP_VERSION=$(shell poetry version --short))
@@ -71,7 +71,7 @@ deploy:
 	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(APP_VERSION)
 	cp ${DEPLOYMENT_DIR}/database/tasks.sqlite3 ${DEPLOYMENT_DIR}/database/tasks.sqlite3.pre_$(APP_VERSION)
 	sed -i 's/image: ghcr.io\/ch00k\/mottle:.*/image: ghcr.io\/ch00k\/mottle:$(APP_VERSION)/' ${DEPLOYMENT_DIR}/compose.yml
-	docker compose -f ${DEPLOYMENT_DIR}/compose.yml up -d
+	docker compose -f ${DEPLOYMENT_DIR}/compose.yml up --remove-orphans --detach
 
 pre_release: check tag build deploy_pre
 release: check tag build deploy
