@@ -73,7 +73,14 @@ warn_unreachable = true
 show_column_numbers = true
 
 [[tool.mypy.overrides]]
-module = ["tekore.*", "django_q.*", "factory.*", "ruamel.*", "poetry.*"]
+module = [
+  "tekore.*",
+  "django_q.*",
+  "factory.*",
+  "ruamel.*",
+  "poetry.*",
+  "croniter.*",
+]
 ignore_missing_imports = true
 
 [tool.django-stubs]
