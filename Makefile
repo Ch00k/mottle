@@ -24,7 +24,7 @@ makemigrations:
 	docker compose exec web ./manage.py makemigrations
 
 test:
-	poetry run pytest web/tests
+	uv run pytest web/tests
 
 debug:
 	docker compose attach web
@@ -35,7 +35,7 @@ check:
 
 tag: check
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
-	@$(eval APP_VERSION=$(shell poetry version $(VERSION) --short))
+	@$(eval APP_VERSION=$(shell uv version $(VERSION) --short))
 	@echo Releasing version: $(APP_VERSION)
 	git add pyproject.toml
 	git commit -m "Release $(APP_VERSION)"
@@ -47,7 +47,7 @@ build: tag
 	@$(eval TAG_NAME=$(shell git name-rev --name-only --tags --no-undefined HEAD 2>/dev/null | sed -n 's/^\([^^~]\{1,\}\)\(\^0\)\{0,1\}$$/\1/p'))
 	@echo Git tag: $(TAG_NAME)
 	@if [ -z "$(TAG_NAME)" ]; then echo "Not on a tag" && exit 1; fi
-	@$(eval APP_VERSION=$(shell poetry version --short))
+	@$(eval APP_VERSION=$(shell uv version --short))
 	@echo App version: $(APP_VERSION)
 	@if [ "$(TAG_NAME)" != "$(APP_VERSION)" ]; then echo "Tag name $(TAG_NAME) does not match app version $(APP_VERSION)" && exit 1; fi
 	@echo Building image from tag $(TAG_NAME), app version: $(APP_VERSION)
@@ -58,7 +58,7 @@ build: tag
 	docker push ghcr.io/ch00k/mottle:latest
 
 deploy_pre:
-	@$(eval APP_VERSION=$(shell poetry version --short))
+	@$(eval APP_VERSION=$(shell uv version --short))
 	@echo Deploying version: $(APP_VERSION)
 	cp ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3 ${DEPLOYMENT_DIR_PRE}/database/db.sqlite3.pre_$(APP_VERSION)
 	cp ${DEPLOYMENT_DIR_PRE}/database/tasks.sqlite3 ${DEPLOYMENT_DIR_PRE}/database/tasks.sqlite3.pre_$(APP_VERSION)
@@ -66,7 +66,7 @@ deploy_pre:
 	docker compose -f ${DEPLOYMENT_DIR_PRE}/compose.yml up --remove-orphans --detach
 
 deploy:
-	@$(eval APP_VERSION=$(shell poetry version --short))
+	@$(eval APP_VERSION=$(shell uv version --short))
 	@echo Deploying version: $(APP_VERSION)
 	cp ${DEPLOYMENT_DIR}/database/db.sqlite3 ${DEPLOYMENT_DIR}/database/db.sqlite3.pre_$(APP_VERSION)
 	cp ${DEPLOYMENT_DIR}/database/tasks.sqlite3 ${DEPLOYMENT_DIR}/database/tasks.sqlite3.pre_$(APP_VERSION)
