@@ -143,6 +143,8 @@ class TrackData(SpotifyEntityData):
         album: AlbumData | None = None,
         added_at: date | None = None,
     ) -> "TrackData":
+        album_data: AlbumData | None
+
         if isinstance(track, (FullTrack, FullPlaylistTrack)):
             album_data = AlbumData(
                 id=track.album.id,
@@ -152,10 +154,7 @@ class TrackData(SpotifyEntityData):
                 image_url_large=get_largest_image(track.album.images),
             )
         else:
-            if album is not None:
-                album_data = album
-            else:
-                album_data = None
+            album_data = album
 
         return TrackData(
             id=track.id,

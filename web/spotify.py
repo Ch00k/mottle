@@ -50,13 +50,13 @@ logger = logging.getLogger(__name__)
 #         str
 #             snapshot ID for the playlist
 #         """
-#         return self._generic_playlist_remove(playlist_id, {"tracks": refs}, snapshot_id)  # pyright: ignore
+#         return self._generic_playlist_remove(playlist_id, {"tracks": refs}, snapshot_id)
 
 
 class MottleRetryingSender(RetryingSender):
     def send(  # type: ignore [return]
         self, request: Request
-    ) -> Response | Coroutine[None, None, Response]:  # pyright: ignore
+    ) -> Response | Coroutine[None, None, Response]:  # pyright: ignore[reportReturnType]
         """Delegate request to underlying sender and retry if failed."""
         if self.is_async:
             return self._async_send(request)
@@ -64,26 +64,26 @@ class MottleRetryingSender(RetryingSender):
         tries = self.retries + 1
         delay_seconds = 1
 
-        while tries > 0:
+        while tries > 0:  # noqa: RET503
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
                 r = self.sender.send(request)
 
-            if r.status_code >= 400:  # pyright: ignore
+            if r.status_code >= 400:  # pyright: ignore[reportAttributeAccessIssue]
                 metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
-                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()  # pyright: ignore
+                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()  # pyright: ignore[reportAttributeAccessIssue]
 
-            if r.status_code == 401 and tries > 1:  # pyright: ignore
+            if r.status_code == 401 and tries > 1:  # pyright: ignore[reportAttributeAccessIssue]
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
                 tries -= 1
                 time.sleep(delay_seconds)
                 delay_seconds *= 2
-            elif r.status_code == 429:  # pyright: ignore
+            elif r.status_code == 429:  # pyright: ignore[reportAttributeAccessIssue]
                 logger.warning(f"Retrying request {request.method} {request.url} due to 429")
-                seconds = r.headers.get("Retry-After", 1)  # pyright: ignore
+                seconds = r.headers.get("Retry-After", 1)  # pyright: ignore[reportAttributeAccessIssue]
                 time.sleep(int(seconds) + 1)
-            elif r.status_code >= 500 and tries > 1:  # pyright: ignore
+            elif r.status_code >= 500 and tries > 1:  # pyright: ignore[reportAttributeAccessIssue]
                 logger.warning(
-                    f"Retrying request {request.method} {request.url} due to {r.status_code}"  # pyright: ignore
+                    f"Retrying request {request.method} {request.url} due to {r.status_code}"  # pyright: ignore[reportAttributeAccessIssue]
                 )
                 tries -= 1
                 time.sleep(delay_seconds)
@@ -91,13 +91,13 @@ class MottleRetryingSender(RetryingSender):
             else:
                 return r
 
-    async def _async_send(self, request: Request) -> Response:  # pyright: ignore
+    async def _async_send(self, request: Request) -> Response:  # pyright: ignore[reportReturnType]
         tries = self.retries + 1
         delay_seconds = 1
 
-        while tries > 0:
+        while tries > 0:  # noqa: RET503
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
-                r = await self.sender.send(request)  # pyright: ignore
+                r = await self.sender.send(request)  # pyright: ignore[reportGeneralTypeIssues]
 
             if r.status_code >= 400:
                 metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
@@ -121,7 +121,7 @@ class MottleRetryingSender(RetryingSender):
                 return r
 
 
-def get_auth(credentials: Credentials, scope: str, state: str | None = None) -> UserAuth:
+def get_auth(credentials: Credentials, scope: list[str], state: str | None = None) -> UserAuth:
     auth = UserAuth(cred=credentials, scope=scope)
 
     if state is not None:
@@ -149,15 +149,13 @@ def get_client(
         tekore_sender_class = SyncSender
 
     httpx_client = httpx_client_class(timeout=Timeout(http_timeout))
-    sender = CachingSender(
-        sender=MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client))  # pyright: ignore
-    )
+    sender = CachingSender(sender=MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client)))  # pyright: ignore[reportArgumentType]
     return Spotify(token=access_token, sender=sender, max_limits_on=max_limits_on, chunked_on=chunked_on)
 
 
 def authenticate(code: str, state: str) -> Token:
     auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE, state=state)
-    return auth.request_token(code, state)  # pyright: ignore
+    return auth.request_token(code, state)  # pyright: ignore[reportReturnType]
 
 
 def get_client_token() -> Token:

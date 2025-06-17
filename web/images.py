@@ -90,8 +90,7 @@ def generate_image(prompt: str) -> bytes:
     if not data:
         raise ValueError("Failed to generate image")
 
-    png_data = b64decode(data)
-    return png_data
+    return b64decode(data)
 
 
 def resize_image(image_data: bytes, size: tuple[int, int]) -> bytes:
@@ -104,7 +103,7 @@ def resize_image(image_data: bytes, size: tuple[int, int]) -> bytes:
     return new_image_fp.getvalue()
 
 
-def round_to_nearest_multiple_of_four(n: float | int) -> int:
+def round_to_nearest_multiple_of_four(n: float) -> int:
     return 4 * math.ceil(n / 4)
 
 
@@ -139,7 +138,7 @@ def dump_image_to_disk(image_data: bytes, file_name: str, trace: str) -> None:
     file_path = settings.OPENAI_IMAGES_DUMP_DIR / f"{trace}_{file_name}"
 
     logger.debug(f"Dumping image data to disk: {file_path}")
-    with open(file_path, "wb") as f:
+    with open(file_path, "wb") as f:  # noqa: PTH123
         f.write(image_data)
 
 

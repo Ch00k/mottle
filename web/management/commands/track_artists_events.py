@@ -40,9 +40,9 @@ class Command(BaseCommand):
         user_id: str | None = options.get("user_id")  # pyright: ignore[reportAssignmentType]
         artist_id: str | None = options.get("artist_id")  # pyright: ignore[reportAssignmentType]
         playlist_id: str | None = options.get("playlist_id")  # pyright: ignore[reportAssignmentType]
-        force_reevaluate: bool = cast(bool, options.get("force_reevaluate", False))  # pyright: ignore[reportAssignmentType]
+        force_reevaluate: bool = cast("bool", options.get("force_reevaluate", False))  # pyright: ignore[reportAssignmentType]
         concurrency_limit: int = cast(
-            int, options.get("concurrency_limit", FeatureFlag.event_fetching_concurrency_limit())
+            "int", options.get("concurrency_limit", FeatureFlag.event_fetching_concurrency_limit())
         )
 
         if not user_id:
@@ -64,14 +64,14 @@ class Command(BaseCommand):
             try:
                 artist = async_to_sync(partial(spotify_client.get_artist, artist_id))()
             except MottleException as e:
-                raise CommandError(f"Failed to fetch artist with ID {artist_id}: {e}")
+                raise CommandError(f"Failed to fetch artist with ID {artist_id}: {e}") from e
             else:
                 artists = {artist.id: artist.name}
         elif playlist_id:
             try:
                 playlist_tracks = async_to_sync(partial(spotify_client.get_playlist_tracks, playlist_id))()
             except MottleException as e:
-                raise CommandError(f"Failed to fetch playlist with ID {playlist_id}: {e}")
+                raise CommandError(f"Failed to fetch playlist with ID {playlist_id}: {e}") from e
             else:
                 tracks = [
                     TrackData.from_tekore_model(track.track, added_at=track.added_at.date())

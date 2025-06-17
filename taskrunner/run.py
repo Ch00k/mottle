@@ -3,15 +3,18 @@ import signal
 import sys
 import time
 from collections.abc import Callable
-from threading import Thread
-from typing import Any
-from wsgiref.simple_server import WSGIServer
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django_q.cluster import Cluster
 from prometheus_client import CollectorRegistry, multiprocess, start_http_server
 
 from taskrunner.schedules import event_updates, playlist_updates
+
+if TYPE_CHECKING:
+    from threading import Thread
+    from wsgiref.simple_server import WSGIServer
+
 
 logger = logging.getLogger(__name__)
 

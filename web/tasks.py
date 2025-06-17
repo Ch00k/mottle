@@ -40,7 +40,7 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
         logger.error(f"Failed to get tracks for playlist {playlist}: {e}")
         return updates
 
-    watch_configs = playlist.configs_as_watching.all()  # pyright: ignore
+    watch_configs = playlist.configs_as_watching.all()  # pyright: ignore[reportAttributeAccessIssue]
     logger.info(f"Watched playlists or artists: {await watch_configs.acount()}")
 
     async for config in watch_configs:
@@ -117,7 +117,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
     logger.info(f"Processing user {user}")
     updates: dict[str, list[dict[str, Any]]] = {}
 
-    spotify_auth = await sync_to_async(lambda: user.spotify_auth)()  # pyright: ignore
+    spotify_auth = await sync_to_async(lambda: user.spotify_auth)()  # pyright: ignore[reportAttributeAccessIssue]
 
     # TODO: This needs to happen for every update, not just once
     try:
@@ -128,7 +128,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
 
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
-    async for playlist in user.playlists.filter(~Q(configs_as_watching=None)):  # pyright: ignore
+    async for playlist in user.playlists.filter(~Q(configs_as_watching=None)):  # pyright: ignore[reportAttributeAccessIssue]
         playlist_updates = await check_playlist_for_updates(playlist, spotify_client)
 
         if playlist_updates:
@@ -163,7 +163,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
         logger.warning("Email notifications disabled")
         return
 
-    user_config = await sync_to_async(lambda: user.user)()  # pyright: ignore
+    user_config = await sync_to_async(lambda: user.user)()  # pyright: ignore[reportAttributeAccessIssue]
     if not user_config.playlist_notifications:
         logger.warning("Playlist notifications disabled for user {user}")
         return
@@ -180,7 +180,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
     else:
         # TODO: This will update all PlaylistUpdates, not just the ones that were sent
         await PlaylistUpdate.objects.filter(
-            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))  # pyright: ignore
+            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))  # pyright: ignore[reportAttributeAccessIssue]
         ).aupdate(is_notified_of=True)
 
 
@@ -238,8 +238,8 @@ async def acheck_artists_for_event_updates(
             elif isinstance(result, EventArtist):
                 logger.debug(f"Processed artist: {result}")
                 success_count += 1
-                num_events += await result.events.acount()  # pyright: ignore
-                async for event in result.events.all():  # pyright: ignore
+                num_events += await result.events.acount()  # pyright: ignore[reportAttributeAccessIssue]
+                async for event in result.events.all():  # pyright: ignore[reportAttributeAccessIssue]
                     num_urls += len(event.stream_urls or []) + len(event.tickets_urls or [])
     else:
         async for artist in artists:
@@ -266,15 +266,16 @@ async def acheck_artists_for_event_updates(
             user__event_distance_threshold__isnull=False,
         ):
             artists_with_events = defaultdict(list)
-            user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
+            user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
 
-            async for event_artist in spotify_user.watched_event_artists.all():  # pyright: ignore
+            async for event_artist in spotify_user.watched_event_artists.all():  # pyright: ignore[reportAttributeAccessIssue]
                 # Two cases:
                 # 1. Streaming event
-                # 2. Non-streaming event with geolocation defined, and its geolocation is within 100 km of user's location
+                # 2. Non-streaming event with geolocation defined, and its geolocation is within the configured number
+                #    of km of user's location
                 # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
                 events_query = event_artist.events.filter(
-                    Q(date__gte=datetime.date.today())
+                    Q(date__gte=datetime.datetime.now(tz=datetime.UTC).date())
                     & (
                         Q(type=EventType.live_stream)
                         | (
@@ -463,7 +464,7 @@ async def track_artist_events(
         logger.debug(f"Artist already existed: {artist}")
 
     try:
-        event_artist = await sync_to_async(lambda: artist.event_artist)()  # pyright: ignore
+        event_artist = await sync_to_async(lambda: artist.event_artist)()  # pyright: ignore[reportAttributeAccessIssue]
     except ObjectDoesNotExist:
         logger.debug(f"Artist {artist} does not have an EventArtist. Trying to fetch")
 
@@ -475,9 +476,9 @@ async def track_artist_events(
         )
         logger.debug(f"Created EventArtist: {event_artist}")
     else:
-        logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")  # pyright: ignore
+        logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")  # pyright: ignore[reportAttributeAccessIssue]
         # https://github.com/typeddjango/django-stubs/issues/997
-        await event_artist.watching_users.aadd(spotify_user_id)  # type: ignore  # pyright: ignore
+        await event_artist.watching_users.aadd(spotify_user_id)  # type: ignore[arg-type]
 
         if force_reevaluate:
             logger.debug(f"Force reevaluating EventArtist {event_artist}")
@@ -485,7 +486,7 @@ async def track_artist_events(
             musicbrainz_id = None if musicbrainz_artist is None else musicbrainz_artist.id
             await event_artist.update_from_fetched_artist(musicbrainz_id, fetched_artist)
 
-    return event_artist  # pyright: ignore
+    return event_artist
 
 
 async def atrack_artists_events(

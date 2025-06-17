@@ -18,7 +18,7 @@ DEBUG = env.bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
 ALLOWED_HOSTS.append(gethostbyname(gethostname()))  # Needed for Prometheus scraping to work
 
-CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # ["https://mottle.it", "https://www.mottle.it"]
+CSRF_TRUSTED_ORIGINS: list[str] = env.list("CSRF_TRUSTED_ORIGINS")  # ["https://mottle.it", "https://www.mottle.it"]
 SESSION_COOKIE_DOMAIN = env.str("SESSION_COOKIE_DOMAIN", None)
 # SESSION_COOKIE_AGE = 3_153_600_000  # 100 years
 SESSION_SAVE_EVERY_REQUEST = True
@@ -275,7 +275,7 @@ SPOTIFY_CREDEINTIALS = Credentials(
     redirect_uri=SPOTIFY_REDIRECT_URI,
 )
 
-SPOTIFY_TOKEN_ENCRYPTION_KEYS = env.list("SPOTIFY_TOKEN_ENCRYPTION_KEYS")
+SPOTIFY_TOKEN_ENCRYPTION_KEYS: list[str] = env.list("SPOTIFY_TOKEN_ENCRYPTION_KEYS")
 SPOTIFY_TOKEN_CRYPTER = MultiFernet([Fernet(k) for k in SPOTIFY_TOKEN_ENCRYPTION_KEYS])
 
 PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)

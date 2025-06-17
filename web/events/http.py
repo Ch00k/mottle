@@ -81,8 +81,8 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
     def _merge_headers(self, headers: httpx._types.HeaderTypes | None = None) -> httpx._types.HeaderTypes | None:
         headers = super()._merge_headers(headers)
-        random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
-        headers["User-Agent"] = headers["User-Agent"] + "-" + random_str  # type: ignore
+        random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))  # noqa: S311
+        headers["User-Agent"] = headers["User-Agent"] + "-" + random_str  # type: ignore[index,operator,call-overload]
         return headers
 
     async def send(self, request: httpx.Request, *args: Any, **kwargs: Any) -> httpx.Response:
@@ -201,20 +201,20 @@ class AsyncRetryingClient(httpx.AsyncClient):
                 f"while requesting {request.url}. Retrying..."
             )
             retries -= 1
+
+        self.requests_retries_exhausted += 1
+
+        if self.exceptions_counter_metric is None:
+            logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
         else:
-            self.requests_retries_exhausted += 1
+            self.exceptions_counter_metric.labels("retries_exceeded").inc()
 
-            if self.exceptions_counter_metric is None:
-                logger.warning(f"exceptions_counter_metric for {self.name} is None. Skipping metric recording")
-            else:
-                self.exceptions_counter_metric.labels("retries_exceeded").inc()
+        logger.error(f"Retries exhausted while requesting {request.url}")
+        self.log()
 
-            logger.error(f"Retries exhausted while requesting {request.url}")
-            self.log()
-
-            raise RetriesExhaustedException(
-                f"Failed to get a successful response from {request.url} after {self.retries} retries"
-            )
+        raise RetriesExhaustedException(
+            f"Failed to get a successful response from {request.url} after {self.retries} retries"
+        )
 
     def log(self, request_time: float | None = None, next_request_allowed_in_seconds: float | None = None) -> None:
         log_msg = (
@@ -305,30 +305,32 @@ async def asend_get_request(
 
         if raise_for_lte_300:
             response.raise_for_status()
-        else:
+        else:  # noqa: PLR5501
             if response.is_error:
                 response.raise_for_status()
     except RetriesExhaustedException as e:
-        raise HTTPClientException(f"Retries ({client.retries}) exhausted while sending GET request to {url}: {e}")
+        raise HTTPClientException(
+            f"Retries ({client.retries}) exhausted while sending GET request to {url}: {e}"
+        ) from e
     except Exception as e:
-        raise HTTPClientException(f"Failed to send GET request to {url}: {e}")
+        raise HTTPClientException(f"Failed to send GET request to {url}: {e}") from e
 
     if parse_json:
         try:
             ret_json = response.json()
         except Exception as e:
-            raise HTTPClientException(f"Failed to parse JSON data from {url}: {e}")
+            raise HTTPClientException(f"Failed to parse JSON data from {url}: {e}") from e
 
     if xpath:
         try:
             html = lh.fromstring(response.text)
         except Exception as e:
-            raise HTTPClientException(f"Failed to parse HTML data from {url}: {e}")
+            raise HTTPClientException(f"Failed to parse HTML data from {url}: {e}") from e
 
         try:
             ret_xpath = html.xpath(xpath)
         except Exception as e:
-            raise HTTPClientException(f"Failed to extract data from {url}: {e}")
+            raise HTTPClientException(f"Failed to extract data from {url}: {e}") from e
 
     if redirect_url and response.has_redirect_location:
         ret_redirect_url = response.headers["Location"]

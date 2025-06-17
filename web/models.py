@@ -39,7 +39,7 @@ class EventUpdateChangesJSONEncoder(DjangoJSONEncoder):
 
 class EventUpdateChangesJSONDecoder(json.JSONDecoder):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(object_hook=self.object_hook, *args, **kwargs)
+        super().__init__(*args, object_hook=self.object_hook, **kwargs)
 
     def object_hook(self, obj: Any) -> Any:
         if (geolocation := obj.get("geolocation")) is not None:
@@ -103,17 +103,19 @@ class User(BaseModel):
         artists_with_events = defaultdict(list)
 
         if self.location is None:
-            async for event_artist in self.spotify_user.watched_event_artists.all():  # pyright: ignore
-                async for event in event_artist.events.filter(date__gte=datetime.date.today()).all():
+            async for event_artist in self.spotify_user.watched_event_artists.all():
+                async for event in event_artist.events.filter(
+                    date__gte=datetime.datetime.now(tz=datetime.UTC).date()
+                ).all():
                     artists_with_events[event_artist].append(event)
         else:
-            async for event_artist in self.spotify_user.watched_event_artists.all():  # pyright: ignore
+            async for event_artist in self.spotify_user.watched_event_artists.all():
                 # Two cases:
                 # 1. Streaming event
                 # 2. Non-streaming event with geolocation defined, and its geolocation is within X km of user's location
                 # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
                 events_query = event_artist.events.filter(
-                    models.Q(date__gte=datetime.date.today())
+                    models.Q(date__gte=datetime.datetime.now(tz=datetime.UTC).date())
                     & (
                         models.Q(type=EventType.live_stream)
                         | (
@@ -149,8 +151,8 @@ class SpotifyUser(SpotifyEntityModel):
         return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
 
     async def get_spotipy_client(self) -> MottleSpotifyClient:
-        await self.spotify_auth.maybe_refresh()  # pyright: ignore
-        return MottleSpotifyClient(self.spotify_auth.access_token)  # pyright: ignore
+        await self.spotify_auth.maybe_refresh()  # pyright: ignore[reportAttributeAccessIssue]
+        return MottleSpotifyClient(self.spotify_auth.access_token)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class SpotifyAuthRequest(BaseModel):
@@ -195,11 +197,12 @@ class SpotifyAuth(BaseModel):
         if self.expires_in <= 0:
             logger.info(f"{self} has expired")
             return True
-        elif self.expires_in < TOKEN_EXPIRATION_THRESHOLD:
+
+        if self.expires_in < TOKEN_EXPIRATION_THRESHOLD:
             logger.info(f"{self} is expiring in {self.expires_in} seconds")
             return True
-        else:
-            return False
+
+        return False
 
     @property
     def as_tekore_token(self) -> Token:
@@ -257,11 +260,8 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         return f"<EventArtist {self.id}>"
 
     async def as_fetched_artist(self, with_events: bool = True) -> EventSourceArtist:
-        if with_events:
-            # TODO: This is inefficient
-            events = [e.as_fetched_event() async for e in self.events.all()]  # pyright: ignore
-        else:
-            events = []
+        # TODO: This is inefficient
+        events = [e.as_fetched_event() async for e in self.events.all()] if with_events else []  # pyright: ignore[reportAttributeAccessIssue]
 
         return EventSourceArtist(
             name="dummy", songkick_url=self.songkick_url, bandsintown_url=self.bandsintown_url, events=events
@@ -283,7 +283,7 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
             bandsintown_name_match_accuracy=fetched_artist.bandsintown_match_accuracy,
         )
         # https://github.com/typeddjango/django-stubs/issues/997
-        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore  # pyright: ignore
+        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore[arg-type]
         return event_artist
 
     async def update_from_fetched_artist(self, musicbrainz_id: str | None, fetched_artist: EventSourceArtist) -> None:
@@ -431,8 +431,8 @@ class Playlist(SpotifyEntityModel):
         return f"<Playlist {self.id} spotify_id={self.spotify_id}>"
 
     async def unfollow(self) -> None:
-        await self.updates.all().adelete()  # pyright: ignore
-        await self.configs_as_watching.all().adelete()  # pyright: ignore
+        await self.updates.all().adelete()  # pyright: ignore[reportAttributeAccessIssue]
+        await self.configs_as_watching.all().adelete()  # pyright: ignore[reportAttributeAccessIssue]
         self.spotify_user = None
         await self.asave()
         # TODO: Delete the playlist itself
@@ -521,8 +521,8 @@ class Playlist(SpotifyEntityModel):
         )
 
     async def unwatch(self, playlist: "Playlist") -> None:
-        await self.updates.filter(source_playlist=playlist).adelete()  # pyright: ignore
-        await self.configs_as_watching.filter(watched_playlist=playlist).adelete()  # pyright: ignore
+        await self.updates.filter(source_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
+        await self.configs_as_watching.filter(watched_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
 
     async def get_tracks(self, spotify_client: MottleSpotifyClient) -> list[PlaylistTrack]:
         return await spotify_client.get_playlist_tracks(self.spotify_id)
@@ -536,7 +536,7 @@ class Playlist(SpotifyEntityModel):
 
     @property
     def pending_updates(self) -> models.QuerySet["PlaylistUpdate"]:
-        return self.updates.filter(is_overridden_by=None, is_accepted=None)  # pyright: ignore
+        return self.updates.filter(is_overridden_by=None, is_accepted=None)  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class PlaylistWatchConfig(BaseModel):
@@ -741,7 +741,7 @@ def generate_playlist_update_hash(
     tracks_removed: list[str] | None = None,
 ) -> str:
     ids = (
-        ["+album"]
+        ["+album"]  # noqa: RUF005
         + sorted(albums_added or [])
         + ["-album"]
         + sorted(albums_removed or [])

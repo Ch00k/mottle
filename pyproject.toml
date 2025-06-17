@@ -38,6 +38,7 @@ dependencies = [
 dev = [
   "mypy==1.16.1",
   "django-stubs==5.2.0",
+  "lxml-stubs==0.5.1",
   "factory-boy==3.3.3",
   "pytest==8.4.0",
   "pytest-asyncio==1.0.0",
@@ -52,6 +53,34 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["ALL"]
+ignore = [
+  "D",   # pydocstyle
+  "FIX", # flake8-fixme
+  "TD",  # flake8-todo
+  "TRY", # tryceratops
+  "SLF", # flake8-self
+
+  "ANN401",  # Allow Any type
+  "B023",    # Loop variable
+  "BLE001",  # Bare Exception
+  "C901",    # Complexity
+  "COM812",  # Trailing comma
+  "DJ001",   # Django-specific rule
+  "EM101",   # Exception uses string literal
+  "EM102",   # Exception uses f-string
+  "ERA001",  # Commented out code
+  "FBT001",  # Boolean argument
+  "FBT002",  # Boolean argument
+  "G004",    # Logging statement uses f-string
+  "N818",    # Exception class name
+  "PLR0911", # Too many return statements
+  "PLR0912", # Too many branches
+  "PLR0913", # Too many arguments
+  "PLR2004", # Magic values
+  "PLR0915", # Too many statements
+  "RUF012",  # Mutable class attributes
+  "S101",    # Use of assert
+]
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -68,7 +97,18 @@ warn_unreachable = true
 show_column_numbers = true
 
 [[tool.mypy.overrides]]
-module = ["tekore.*", "django_q.*", "factory.*", "ruamel.*", "croniter.*"]
+module = [
+  "tekore.*",
+  "django_q.*",
+  "django_hosts.*",
+  "dirtyfields.*",
+  "json_log_formatter.*",
+  "thefuzz.*",
+  "country_converter.*",
+  "factory.*",
+  "ruamel.*",
+  "croniter.*",
+]
 ignore_missing_imports = true
 
 [tool.django-stubs]

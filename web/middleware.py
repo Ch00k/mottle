@@ -5,6 +5,7 @@ from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_asy
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse
+from django_hosts import host
 from django_htmx.middleware import HtmxDetails
 
 from .models import SpotifyAuth
@@ -21,6 +22,7 @@ async def get_token_scope_changes(spotify_auth: SpotifyAuth) -> tuple[list, list
 
 
 class MottleHttpRequest(HttpRequest):
+    host: host
     spotify_client: MottleSpotifyClient
     htmx: HtmxDetails
 
@@ -35,8 +37,8 @@ class SpotifyAuthMiddleware:
             markcoroutinefunction(self)
 
     async def __call__(self, request: MottleHttpRequest) -> HttpResponse:
-        if request.host.name == "urlshortener":  # type: ignore
-            logger.debug(f"Request host: {request.host.name}. Skipping {self.__class__.__name__} middleware")  # type: ignore
+        if request.host.name == "urlshortener":
+            logger.debug(f"Request host: {request.host.name}. Skipping {self.__class__.__name__} middleware")
             return await self.get_response(request)
 
         if request.path_info != "/metrics":
@@ -82,5 +84,4 @@ class SpotifyAuthMiddleware:
             return redirect_to_login(request.get_full_path())
 
         request.spotify_client = MottleSpotifyClient(spotify_auth.access_token)
-        response = await self.get_response(request)
-        return response
+        return await self.get_response(request)

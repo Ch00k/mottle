@@ -6,6 +6,6 @@ from urlshortener.models import ShortURL
 
 
 @require_GET
-async def get_url(_: HttpRequest, hash: str) -> HttpResponse:
+async def get_url(_: HttpRequest, hash: str) -> HttpResponse:  # noqa: A002
     short_url = await aget_object_or_404(ShortURL, hash=hash)
     return redirect(short_url.url)

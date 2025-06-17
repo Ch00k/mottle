@@ -1,4 +1,5 @@
-# type: ignore
+# ruff: noqa: ARG002,ANN001,ANN003,ANN201
+# type: ignore  # noqa: PGH003
 
 
 class DefaultRouter:
@@ -35,6 +36,4 @@ class TasksRouter:
         return None
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
-        if app_label == "django_q" and db == "tasks":
-            return True
-        return False
+        return app_label == "django_q" and db == "tasks"

@@ -1,6 +1,6 @@
 import logging
 from functools import partial
-from typing import Any
+from typing import Any, cast
 
 from asgiref.sync import async_to_sync
 from django.core.management.base import BaseCommand, CommandError
@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *_: tuple, **options: dict) -> None:
         user_id = options.get("user_id")
-        playlist_id = options.get("playlist_id")
+        playlist_id = cast("str", options.get("playlist_id"))
         send_notifications = bool(options.get("send_notifications", False))
 
         token = get_client_token()
@@ -34,18 +34,18 @@ class Command(BaseCommand):
         if user_id:
             try:
                 user = SpotifyUser.objects.get(spotify_id=user_id)
-            except SpotifyUser.DoesNotExist:
-                raise CommandError("User does not exist")
-            if user.playlists is None:  # pyright: ignore
+            except SpotifyUser.DoesNotExist as e:
+                raise CommandError("User does not exist") from e
+            if user.playlists is None:  # pyright: ignore[reportAttributeAccessIssue]
                 raise CommandError("User has no playlists")
 
-            async_to_sync(partial(check_user_playlists_for_updates, user, send_notifications))()  # pyright: ignore
+            async_to_sync(partial(check_user_playlists_for_updates, user, send_notifications))()
         elif playlist_id:
             try:
-                playlist = Playlist.objects.get(id=playlist_id)  # type: ignore
-            except Playlist.DoesNotExist:
-                raise CommandError("Playlist does not exist")
+                playlist = Playlist.objects.get(id=playlist_id)
+            except Playlist.DoesNotExist as e:
+                raise CommandError("Playlist does not exist") from e
 
             async_to_sync(partial(check_playlist_for_updates, playlist, spotify_client))()
         else:
-            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()  # pyright: ignore
+            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()  # pyright: ignore[reportUnknownMemberType]

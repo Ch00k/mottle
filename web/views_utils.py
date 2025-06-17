@@ -25,7 +25,7 @@ UNDEFINED = "UNDEFINED"
 
 
 class SpotifyEntityMetadata:
-    def __init__(self, request: MottleHttpRequest, entity_id: str):
+    def __init__(self, request: MottleHttpRequest, entity_id: str) -> None:
         self._id = entity_id
         self._spotify_client = request.spotify_client
         self._entity_name = camel_to_snake(self.__class__.__name__).replace("_metadata", "")
@@ -73,8 +73,8 @@ class SpotifyEntityMetadata:
         if not self._is_data_fetched:
             try:
                 spotify_client_method = getattr(self._spotify_client, f"get_{self._entity_name}")
-            except AttributeError:
-                raise MottleException(f"Method get_{self._entity_name} not found in Spotify client")
+            except AttributeError as e:
+                raise MottleException(f"Method get_{self._entity_name} not found in Spotify client") from e
 
             entity = await spotify_client_method(self._id)
 
@@ -101,7 +101,7 @@ class SpotifyEntityMetadata:
 
 
 class PlaylistMetadata(SpotifyEntityMetadata):
-    def __init__(self, request: MottleHttpRequest, playlist_id: str):
+    def __init__(self, request: MottleHttpRequest, playlist_id: str) -> None:
         super().__init__(request, playlist_id)
 
         self._owner_id = self._get_attr_from_header("Ownerid")
@@ -158,7 +158,7 @@ class ArtistMetadata(SpotifyEntityMetadata):
 
 
 class AlbumMetadata(SpotifyEntityMetadata):
-    def __init__(self, request: MottleHttpRequest, album_id: str):
+    def __init__(self, request: MottleHttpRequest, album_id: str) -> None:
         super().__init__(request, album_id)
 
         self._track_image_url: str | None = self._get_attr_from_header("Trackimageurl")
@@ -181,11 +181,10 @@ def get_duplicates_message(items: Collection) -> str:
         message = "No duplicates found"
     elif num_duplicates == 1:
         message = "1 track has duplicates"
+    elif num_duplicates % 10 == 1:
+        message = f"{len(items)} track has duplicates"
     else:
-        if num_duplicates % 10 == 1:
-            message = f"{len(items)} track has duplicates"
-        else:
-            message = f"{len(items)} tracks have duplicates"
+        message = f"{len(items)} tracks have duplicates"
 
     return message
 
@@ -251,24 +250,22 @@ async def compile_event_updates_email(
                     else:
                         message += "Tickets are not available yet"
                     message += "\n"
-            else:
-                if event.type == EventType.live_stream:
-                    if "stream_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
-                        stream_urls = "\n".join(update.changes["stream_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
-                        message += f"Stream URLs for {event_type} on {event.date} have changed\n"
-                        message += "Stream available at:\n"
-                        message += stream_urls
-                        message += "\n"
-                else:
-                    if "tickets_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
-                        tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
-                        message += (
-                            f"Tickets URLs for {event_type} on {event.date} at {event.venue} "
-                            f"({event.city}, {event.country}) have changed\n"
-                        )
-                        message += "Tickets available at:\n"
-                        message += tickets_urls
-                        message += "\n"
+            elif event.type == EventType.live_stream:
+                if "stream_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
+                    stream_urls = "\n".join(update.changes["stream_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
+                    message += f"Stream URLs for {event_type} on {event.date} have changed\n"
+                    message += "Stream available at:\n"
+                    message += stream_urls
+                    message += "\n"
+            elif "tickets_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
+                tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
+                message += (
+                    f"Tickets URLs for {event_type} on {event.date} at {event.venue} "
+                    f"({event.city}, {event.country}) have changed\n"
+                )
+                message += "Tickets available at:\n"
+                message += tickets_urls
+                message += "\n"
             message += "\n"
         # message += "\n"
 
@@ -376,5 +373,4 @@ def catch_errors(view_func: Callable) -> Callable:
 
     if inspect.iscoroutinefunction(view_func):
         return ainner
-    else:
-        return inner
+    return inner

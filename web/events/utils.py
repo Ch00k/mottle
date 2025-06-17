@@ -32,6 +32,9 @@ def get_proxy_url(
     username = settings.BRIGHTDATA_PROXY_USERNAME
     password = settings.BRIGHTDATA_PROXY_PASSWORD
 
+    if address is None or username is None or password is None:
+        raise RuntimeError("Proxy settings are not configured")
+
     if country:
         username += f"-country-{country}"
 
@@ -51,7 +54,7 @@ def get_normalized_country_name(country_name: str | None) -> str | None:
     if country_name is None:
         return None
 
-    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)  # pyright: ignore
+    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)  # pyright: ignore[reportArgumentType,reportAssignmentType]
     return normalized_name
 
 
@@ -63,7 +66,7 @@ def find_best_artist_name_match_simple(
     available_artists = [(_, name.casefold()) for _, name in available_artists]
 
     if matches := [(_, name) for _, name in available_artists if name and artist_name == name]:
-        id, _ = matches[0]
+        id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.exact
 
     artist_name = artist_name.translate(ALNUM_TABLE)
@@ -76,7 +79,7 @@ def find_best_artist_name_match_simple(
         raise HeuristicsException(f"Artist '{original_artist_name}' not found")
 
     if matches := [(_, name) for _, name in transformed if artist_name == name]:
-        id, _ = matches[0]
+        id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.exact_alnum
 
     raise HeuristicsException(f"Artist '{original_artist_name}' not found")
@@ -99,7 +102,7 @@ def find_best_artist_name_match_advanced(
     transliterated = [(_, unidecode(name)) for _, name in available_artists]
 
     if matches := [(_, name) for _, name in transliterated if transliterated_artist_name == name]:
-        id, _ = matches[0]
+        id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.exact_ascii
 
     artist_name = artist_name.encode("ascii", errors="ignore").decode("ascii")
@@ -112,7 +115,7 @@ def find_best_artist_name_match_advanced(
         raise HeuristicsException(f"Artist '{original_artist_name}' not found")
 
     if matches := [(_, name) for _, name in transformed if artist_name == name]:
-        id, _ = matches[0]
+        id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.exact_ascii
 
     if matches := [
@@ -120,7 +123,7 @@ def find_best_artist_name_match_advanced(
         for _, name in available_artists
         if fuzz.ratio(artist_name, name) >= settings.EVENT_ARTIST_NAME_MATCH_THRESHOLD
     ]:
-        id, _ = matches[0]
+        id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.fuzzy
 
     raise HeuristicsException(f"Artist '{original_artist_name}' not found")
@@ -136,9 +139,7 @@ def find_best_artist_name_match_advanced(
 
 
 def normalize_string(string: str) -> str:
-    string = string.strip().casefold()
-    string = replace_unicode_characters(string)
-    return string
+    return replace_unicode_characters(string.strip().casefold())
 
 
 def replace_unicode_characters(string: str) -> str:
@@ -161,7 +162,4 @@ def should_fetch_event(event_url: str, event_source: EventDataSource, events: di
         logger.error("WTF!?")  # TODO: Eh?
         return True
 
-    if not existing_event.tickets_urls and not existing_event.stream_urls:
-        return True
-
-    return False
+    return not existing_event.tickets_urls and not existing_event.stream_urls

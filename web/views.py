@@ -67,55 +67,55 @@ async def login(request: MottleHttpRequest) -> HttpResponse:
 
         if spotify_user_id is None:
             return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-        else:
-            # TODO: This duplicates what already exists in `SpotifyAuthMiddleware.__call__`
-            try:
-                spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
-            except SpotifyAuth.DoesNotExist:
-                logger.debug(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
-                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-            logger.debug(spotify_auth)
+        # TODO: This duplicates what already exists in `SpotifyAuthMiddleware.__call__`
+        try:
+            spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
+        except SpotifyAuth.DoesNotExist:
+            logger.debug(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-            if spotify_auth.access_token is None:
-                logger.debug(f"{spotify_auth} access_token is None")
-                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+        logger.debug(spotify_auth)
 
-            if spotify_auth.refresh_token is None:
-                logger.debug(f"{spotify_auth} refresh_token is None")
-                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+        if spotify_auth.access_token is None:
+            logger.debug(f"{spotify_auth} access_token is None")
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-            (
-                token_permissions_added,
-                token_permissions_removed,
-            ) = await get_token_scope_changes(spotify_auth)
-            if token_permissions_added or token_permissions_removed:
-                logger.debug(
-                    f"{spotify_auth} token scope is outdated: "
-                    f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
-                )
-                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+        if spotify_auth.refresh_token is None:
+            logger.debug(f"{spotify_auth} refresh_token is None")
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-            try:
-                await spotify_auth.maybe_refresh()
-            except MottleException as e:
-                logger.error(e)
-                return render(request, "web/login.html", {"redirect_uri": redirect_uri})
+        (
+            token_permissions_added,
+            token_permissions_removed,
+        ) = await get_token_scope_changes(spotify_auth)
+        if token_permissions_added or token_permissions_removed:
+            logger.debug(
+                f"{spotify_auth} token scope is outdated: "
+                f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
+            )
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-            return redirect("index")
-    else:
-        redirect_uri = request.POST.get("redirect_uri")
+        try:
+            await spotify_auth.maybe_refresh()
+        except MottleException as e:
+            logger.error(e)
+            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
-        # Convert it back from an empty string to None
-        if not redirect_uri:
-            redirect_uri = None
+        return redirect("index")
 
-        auth = get_auth(
-            credentials=settings.SPOTIFY_CREDEINTIALS,
-            scope=settings.SPOTIFY_TOKEN_SCOPE,
-        )
-        await SpotifyAuthRequest.objects.acreate(redirect_uri=redirect_uri, state=auth.state)
-        return redirect(auth.url)
+    redirect_uri = request.POST.get("redirect_uri")
+
+    # Convert it back from an empty string to None
+    if not redirect_uri:
+        redirect_uri = None
+
+    auth = get_auth(
+        credentials=settings.SPOTIFY_CREDEINTIALS,
+        scope=settings.SPOTIFY_TOKEN_SCOPE,
+    )
+    await SpotifyAuthRequest.objects.acreate(redirect_uri=redirect_uri, state=auth.state)
+    return redirect(auth.url)
 
 
 @catch_errors
@@ -147,7 +147,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     spotify_client = MottleSpotifyClient(access_token=token.access_token)
 
     try:
-        user = await spotify_client.get_current_user()  # pyright: ignore
+        user = await spotify_client.get_current_user()  # pyright: ignore[reportAttributeAccessIssue]
     except MottleException as e:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
@@ -232,12 +232,12 @@ async def search_artists(request: MottleHttpRequest) -> HttpResponse:
             ),
             "?query=" + unquote(query),
         )
-    else:
-        return render(
-            request,
-            "web/search_artists.html",
-            context={"artists": artists, "query": query},
-        )
+
+    return render(
+        request,
+        "web/search_artists.html",
+        context={"artists": artists, "query": query},
+    )
 
 
 @catch_errors
@@ -274,17 +274,17 @@ async def search_playlists(request: MottleHttpRequest) -> HttpResponse:
             ),
             "?query=" + unquote(query),
         )
-    else:
-        return render(
-            request,
-            "web/search_playlists.html",
-            context={
-                "playlists": playlists,
-                "user_playlist_ids": user_playlist_ids,
-                "query": query,
-                "source": "playlists_search",
-            },
-        )
+
+    return render(
+        request,
+        "web/search_playlists.html",
+        context={
+            "playlists": playlists,
+            "user_playlist_ids": user_playlist_ids,
+            "query": query,
+            "source": "playlists_search",
+        },
+    )
 
 
 @catch_errors
@@ -319,58 +319,58 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 "events_enabled": await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]),
             },
         )
-    else:
-        requested_album_ids = request.POST.getlist("album")
-        if not requested_album_ids:
-            error_message = "No albums selected"
-            return trigger_client_event(
-                HttpResponseBadRequest(error_message), "HXToast", {"type": "error", "body": error_message}
-            )
 
-        name = request.POST.get("name", f"{artist.name} discography")
-        is_public = bool(request.POST.get("is-public", False))
-
-        tracks = await request.spotify_client.get_tracks_in_albums(requested_album_ids)
-
-        playlist = await request.spotify_client.create_playlist_with_tracks(
-            request.session["spotify_user_spotify_id"],
-            name=name,
-            track_uris=[track.uri for track in tracks],
-            is_public=is_public,
+    requested_album_ids = request.POST.getlist("album")
+    if not requested_album_ids:
+        error_message = "No albums selected"
+        return trigger_client_event(
+            HttpResponseBadRequest(error_message), "HXToast", {"type": "error", "body": error_message}
         )
 
-        if bool(request.POST.get("auto-update", False)):
-            albums_ignored = list(set(album_ids) - set(requested_album_ids))
+    name = request.POST.get("name", f"{artist.name} discography")
+    is_public = bool(request.POST.get("is-public", False))
 
-            auto_accept = bool(request.POST.get("auto-accept", False))
-            if auto_accept:
-                logger.info(f"Setting up automatic accept for playlist {playlist.id} from artist {artist_id}")
+    tracks = await request.spotify_client.get_tracks_in_albums(requested_album_ids)
 
-            await Playlist.watch_artist(
-                request.spotify_client,
-                playlist.id,
-                artist_id,
-                albums_ignored=albums_ignored,
-                auto_accept_updates=auto_accept,
-            )
+    playlist = await request.spotify_client.create_playlist_with_tracks(
+        request.session["spotify_user_spotify_id"],
+        name=name,
+        track_uris=[track.uri for track in tracks],
+        is_public=is_public,
+    )
 
-        if bool(request.POST.get("generate-cover", False)):
-            await sync_to_async(task_upload_cover_image)(
-                playlist_title=name,
-                playlist_spotify_id=playlist.id,
-                spotify_user_id=request.session["spotify_user_id"],
-                dump_to_disk=True,
-            )
+    if bool(request.POST.get("auto-update", False)):
+        albums_ignored = list(set(album_ids) - set(requested_album_ids))
 
-        if await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]) and bool(
-            request.POST.get("track-events", False)
-        ):
-            await sync_to_async(task_track_artists_events)(
-                artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
-            )
+        auto_accept = bool(request.POST.get("auto-accept", False))
+        if auto_accept:
+            logger.info(f"Setting up automatic accept for playlist {playlist.id} from artist {artist_id}")
 
-        # TODO: Toast
-        return redirect("playlist", playlist_id=playlist.id)
+        await Playlist.watch_artist(
+            request.spotify_client,
+            playlist.id,
+            artist_id,
+            albums_ignored=albums_ignored,
+            auto_accept_updates=auto_accept,
+        )
+
+    if bool(request.POST.get("generate-cover", False)):
+        await sync_to_async(task_upload_cover_image)(
+            playlist_title=name,
+            playlist_spotify_id=playlist.id,
+            spotify_user_id=request.session["spotify_user_id"],
+            dump_to_disk=True,
+        )
+
+    if await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"]) and bool(
+        request.POST.get("track-events", False)
+    ):
+        await sync_to_async(task_track_artists_events)(
+            artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
+        )
+
+    # TODO: Toast
+    return redirect("playlist", playlist_id=playlist.id)
 
 
 @catch_errors
@@ -462,15 +462,15 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
                 "updates": updates,
             },
         )
-    else:
-        return render(
-            request,
-            "web/playlist_updates.html",
-            {
-                "playlist": playlist,
-                "updates": updates,
-            },
-        )
+
+    return render(
+        request,
+        "web/playlist_updates.html",
+        {
+            "playlist": playlist,
+            "updates": updates,
+        },
+    )
 
 
 @catch_errors
@@ -530,7 +530,6 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         await sync_to_async(task_track_artists_events)(
             artists_data=artists,
             spotify_user_id=request.session["spotify_user_id"],
-            concurrent_execution=await FeatureFlag.concurrent_event_sources_fetching(),
         )
 
     context = {
@@ -577,7 +576,6 @@ async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> Htt
         db_playlist = await Playlist.objects.aget(spotify_id=playlist_id)
     except Playlist.DoesNotExist:
         logger.info(f"Playlist {playlist_id} not found in database. Skipping")
-        pass
     else:
         await db_playlist.unfollow()
 
@@ -587,38 +585,35 @@ async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> Htt
             "web/parts/playlist_follow.html",
             {"playlist": playlist, "source": "playlists_search"},
         )
-    elif request.headers.get("M-Source") == "playlists_my":
+    if request.headers.get("M-Source") == "playlists_my":
         if playlist.owner_id == request.session["spotify_user_spotify_id"]:
             return trigger_client_event(
                 HttpResponse(),
                 "HXToast",
                 {"type": "success", "body": "Successfully unfollowed playlist"},
             )
-        else:
-            return trigger_client_event(
-                render(
-                    request,
-                    "web/parts/playlist_follow.html",
-                    {"playlist": playlist, "source": "playlists_my"},
-                ),
-                "HXToast",
-                {"type": "success", "body": "Successfully unfollowed playlist"},
-            )
-    elif request.headers.get("M-Source") == "playlist":
+        return trigger_client_event(
+            render(
+                request,
+                "web/parts/playlist_follow.html",
+                {"playlist": playlist, "source": "playlists_my"},
+            ),
+            "HXToast",
+            {"type": "success", "body": "Successfully unfollowed playlist"},
+        )
+    if request.headers.get("M-Source") == "playlist":
         if playlist.owner_id == request.session["spotify_user_spotify_id"]:
             return HttpResponseClientRedirect("/playlists")
-        else:
-            return trigger_client_event(
-                render(
-                    request,
-                    "web/parts/playlist_follow.html",
-                    {"playlist": playlist, "source": "playlist"},
-                ),
-                "HXToast",
-                {"type": "success", "body": "Successfully unfollowed playlist"},
-            )
-    else:
-        return HttpResponseServerError("Failed to unfollow playlist")
+        return trigger_client_event(
+            render(
+                request,
+                "web/parts/playlist_follow.html",
+                {"playlist": playlist, "source": "playlist"},
+            ),
+            "HXToast",
+            {"type": "success", "body": "Successfully unfollowed playlist"},
+        )
+    return HttpResponseServerError("Failed to unfollow playlist")
 
 
 @catch_errors
@@ -655,20 +650,19 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
 
         return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
 
-    else:
-        duplicates = await request.spotify_client.find_duplicate_tracks_in_playlist(playlist_id)
-        duplicates = [(TrackData.from_tekore_model(track), _) for track, _ in duplicates]
+    duplicates = await request.spotify_client.find_duplicate_tracks_in_playlist(playlist_id)
+    duplicates = [(TrackData.from_tekore_model(track), _) for track, _ in duplicates]
 
-        # TODO: Toast
-        return render(
-            request,
-            "web/deduplicate.html",
-            context={
-                "playlist": playlist,
-                "duplicates": duplicates,
-                "message": get_duplicates_message(duplicates),
-            },
-        )
+    # TODO: Toast
+    return render(
+        request,
+        "web/deduplicate.html",
+        context={
+            "playlist": playlist,
+            "duplicates": duplicates,
+            "message": get_duplicates_message(duplicates),
+        },
+    )
 
 
 @catch_errors
@@ -703,7 +697,7 @@ async def playlist_audio_features(request: MottleHttpRequest, playlist_id: str) 
     track_ids = [track.id for track in tracks]
     tracks_features = await request.spotify_client.get_playlist_tracks_audio_features(track_ids)
 
-    tracks_with_features = list(zip(tracks, tracks_features))
+    tracks_with_features = list(zip(tracks, tracks_features, strict=False))
 
     return render(
         request,
@@ -768,63 +762,63 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 
     if request.method == "GET":
         return await get_playlist_modal_response(request, playlist_id, "web/modals/playlist_merge.html")
-    else:
-        target_playlist_id = request.POST.get("merge-target")
-        target_playlist_name_new = request.POST.get("new-playlist-name")
 
-        if target_playlist_id:
-            if target_playlist_id == "--- Create new ---":
-                if target_playlist_name_new:
-                    target_playlist = await request.spotify_client.create_playlist(
-                        request.session["spotify_user_spotify_id"],
-                        target_playlist_name_new,
-                        is_public=True,
-                    )
-                    target_playlist_id = target_playlist.id
-                else:
-                    return trigger_client_event(
-                        HttpResponseBadRequest("No new playlist name provided"),
-                        "HXToast",
-                        {"type": "error", "body": "No new playlist name provided"},
-                    )
-        else:
-            return trigger_client_event(
-                HttpResponseBadRequest("No merge target provided"),
-                "HXToast",
-                {"type": "error", "body": "No merge target provided"},
-            )
+    target_playlist_id = request.POST.get("merge-target")
+    target_playlist_name_new = request.POST.get("new-playlist-name")
 
-        source_playlist_items = await request.spotify_client.get_playlist_tracks(source_playlist_id)
-
-        await request.spotify_client.add_tracks_to_playlist(
-            target_playlist_id,  # type: ignore [arg-type]  # TODO: WTF!?
-            [item.track.uri for item in source_playlist_items if isinstance(item.track, FullPlaylistTrack)],
-        )
-
-        auto_update = bool(request.POST.get("auto-update", False))
-        if auto_update:
-            logger.info(
-                f"Setting up update notifications for playlist {target_playlist_id} from playlist {source_playlist_id}"
-            )
-
-            auto_accept = bool(request.POST.get("auto-accept", False))
-            if auto_accept:
-                logger.info(
-                    f"Setting up automatic accept for playlist {target_playlist_id} from playlist {source_playlist_id}"
+    if target_playlist_id:
+        if target_playlist_id == "--- Create new ---":
+            if target_playlist_name_new:
+                target_playlist = await request.spotify_client.create_playlist(
+                    request.session["spotify_user_spotify_id"],
+                    target_playlist_name_new,
+                    is_public=True,
                 )
+                target_playlist_id = target_playlist.id
+            else:
+                return trigger_client_event(
+                    HttpResponseBadRequest("No new playlist name provided"),
+                    "HXToast",
+                    {"type": "error", "body": "No new playlist name provided"},
+                )
+    else:
+        return trigger_client_event(
+            HttpResponseBadRequest("No merge target provided"),
+            "HXToast",
+            {"type": "error", "body": "No merge target provided"},
+        )
 
-            await Playlist.watch_playlist(
-                request.spotify_client,
-                target_playlist_id,  # type: ignore [arg-type]  # TODO: WTF!?
-                source_playlist_id,
-                auto_accept_updates=auto_accept,
+    source_playlist_items = await request.spotify_client.get_playlist_tracks(source_playlist_id)
+
+    await request.spotify_client.add_tracks_to_playlist(
+        target_playlist_id,  # TODO: WTF!?
+        [item.track.uri for item in source_playlist_items if isinstance(item.track, FullPlaylistTrack)],
+    )
+
+    auto_update = bool(request.POST.get("auto-update", False))
+    if auto_update:
+        logger.info(
+            f"Setting up update notifications for playlist {target_playlist_id} from playlist {source_playlist_id}"
+        )
+
+        auto_accept = bool(request.POST.get("auto-accept", False))
+        if auto_accept:
+            logger.info(
+                f"Setting up automatic accept for playlist {target_playlist_id} from playlist {source_playlist_id}"
             )
 
-        return trigger_client_event(
-            HttpResponse(),
-            "HXToast",
-            {"type": "success", "body": "Successfully merged playlists"},
+        await Playlist.watch_playlist(
+            request.spotify_client,
+            target_playlist_id,  # TODO: WTF!?
+            source_playlist_id,
+            auto_accept_updates=auto_accept,
         )
+
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Successfully merged playlists"},
+    )
 
 
 @catch_errors
@@ -887,7 +881,8 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
 
     if request.method == "GET":
         return render(request, "web/parts/playlist_rename.html", context={"playlist": playlist})
-    elif request.method == "POST":
+
+    if request.method == "POST":
         name = request.POST.get("name")
         if not name:
             return trigger_client_event(
@@ -901,9 +896,9 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
         playlist.name = name
         # TODO: Toast
         return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
-    else:
-        # TODO: Toast
-        return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
+
+    # TODO: Toast
+    return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
 
 
 @catch_errors
@@ -930,55 +925,55 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
 async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     if request.method == "GET":
         return await get_playlist_modal_response(request, playlist_id, "web/modals/playlist_watch.html")
+
+    watching_playlist_id = request.POST.get("watching-playlist-id")
+    watching_playlist_name_new = request.POST.get("new-playlist-name")
+
+    if watching_playlist_id:
+        if watching_playlist_id == "--- Create new ---":
+            if watching_playlist_name_new:
+                watching_playlist = await request.spotify_client.create_playlist(
+                    request.session["spotify_user_spotify_id"],
+                    watching_playlist_name_new,
+                    is_public=True,
+                )
+                watching_playlist_id = watching_playlist.id
+            else:
+                return trigger_client_event(
+                    HttpResponseBadRequest("No watching playlist name provided"),
+                    "HXToast",
+                    {"type": "error", "body": "No watching playlist name provided"},
+                )
     else:
-        watching_playlist_id = request.POST.get("watching-playlist-id")
-        watching_playlist_name_new = request.POST.get("new-playlist-name")
-
-        if watching_playlist_id:
-            if watching_playlist_id == "--- Create new ---":
-                if watching_playlist_name_new:
-                    watching_playlist = await request.spotify_client.create_playlist(
-                        request.session["spotify_user_spotify_id"],
-                        watching_playlist_name_new,
-                        is_public=True,
-                    )
-                    watching_playlist_id = watching_playlist.id
-                else:
-                    return trigger_client_event(
-                        HttpResponseBadRequest("No watching playlist name provided"),
-                        "HXToast",
-                        {"type": "error", "body": "No watching playlist name provided"},
-                    )
-        else:
-            return trigger_client_event(
-                HttpResponseBadRequest("No watching playlist provided"),
-                "HXToast",
-                {"type": "error", "body": "No watching playlist provided"},
-            )
-
-        if not watching_playlist_id:
-            return trigger_client_event(
-                HttpResponseBadRequest("No watching playlist ID provided"),
-                "HXToast",
-                {"type": "error", "body": "No watching playlist ID provided"},
-            )
-
-        auto_accept = bool(request.POST.get("auto-accept", False))
-        if auto_accept:
-            logger.info(f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {playlist_id}")
-
-        await Playlist.watch_playlist(
-            request.spotify_client,
-            watching_playlist_id,
-            playlist_id,
-            auto_accept_updates=auto_accept,
-        )
-
         return trigger_client_event(
-            HttpResponse(),
+            HttpResponseBadRequest("No watching playlist provided"),
             "HXToast",
-            {"type": "success", "body": "Successfully started watching playlist"},
+            {"type": "error", "body": "No watching playlist provided"},
         )
+
+    if not watching_playlist_id:
+        return trigger_client_event(
+            HttpResponseBadRequest("No watching playlist ID provided"),
+            "HXToast",
+            {"type": "error", "body": "No watching playlist ID provided"},
+        )
+
+    auto_accept = bool(request.POST.get("auto-accept", False))
+    if auto_accept:
+        logger.info(f"Setting up automatic accept for playlist {watching_playlist_id} from playlist {playlist_id}")
+
+    await Playlist.watch_playlist(
+        request.spotify_client,
+        watching_playlist_id,
+        playlist_id,
+        auto_accept_updates=auto_accept,
+    )
+
+    return trigger_client_event(
+        HttpResponse(),
+        "HXToast",
+        {"type": "success", "body": "Successfully started watching playlist"},
+    )
 
 
 @catch_errors
@@ -986,7 +981,7 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     # https://stackoverflow.com/a/22294734
     # TODO: This is probably not needed anymore since we are using POST. A leftover from an appempt to use DELETE?
-    body = QueryDict(request.body)  # pyright: ignore
+    body = QueryDict(request.body)  # pyright: ignore[reportCallIssue]
     watching_playlist_id = body.get("watching-playlist-id")
 
     if not watching_playlist_id:
@@ -1063,7 +1058,7 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
     event_artist = await track_artist_events(artist_id, artist.name, request.session["spotify_user_id"])
     await event_artist.update_events()
 
-    events = [e async for e in event_artist.events.filter(date__gte=datetime.today()).order_by("date")]  # pyright: ignore
+    events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]  # pyright: ignore[reportAttributeAccessIssue]
     return render(request, "web/events.html", context={"artist": artist, "events": events})
 
 
@@ -1072,7 +1067,7 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
 async def user_settings(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
     events_enabled = await FeatureFlag.events_enabled_for_user(request.session["spotify_user_spotify_id"])
-    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
+    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
 
     if request.method == "GET":
         if user.location:
@@ -1094,60 +1089,49 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
                 "events_enabled": events_enabled,
             },
         )
-    else:
-        playlist_notifications = bool(request.POST.get("playlist-notifications", False))
-        release_notifications = bool(request.POST.get("release-notifications", False))
-        event_notifications = bool(request.POST.get("event-notifications", False))
 
-        if lat := request.POST.get("latitude"):
-            latitude = float(lat)
+    playlist_notifications = bool(request.POST.get("playlist-notifications", False))
+    release_notifications = bool(request.POST.get("release-notifications", False))
+    event_notifications = bool(request.POST.get("event-notifications", False))
+
+    latitude = float(lat) if (lat := request.POST.get("latitude")) else None
+    longitude = float(lon) if (lon := request.POST.get("longitude")) else None
+    radius = float(rad) if (rad := request.POST.get("radius")) else None
+
+    user.playlist_notifications = playlist_notifications
+    user.release_notifications = release_notifications
+    user.event_notifications = event_notifications
+
+    if event_notifications:
+        if all((latitude, longitude, radius)):
+            user.location = Point(longitude, latitude, srid=settings.GEODJANGO_SRID)
+            user.event_distance_threshold = radius
         else:
-            latitude = None
+            return trigger_client_event(
+                HttpResponseBadRequest("Location and radius must be provided for event notifications"),
+                "HXToast",
+                {"type": "error", "body": "Location and radius must be provided for event notifications"},
+            )
 
-        if lon := request.POST.get("longitude"):
-            longitude = float(lon)
-        else:
-            longitude = None
+    await user.asave()
 
-        if rad := request.POST.get("radius"):
-            radius = float(rad)
-        else:
-            radius = None
-
-        user.playlist_notifications = playlist_notifications
-        user.release_notifications = release_notifications
-        user.event_notifications = event_notifications
-
-        if event_notifications:
-            if all((latitude, longitude, radius)):
-                user.location = Point(longitude, latitude, srid=settings.GEODJANGO_SRID)
-                user.event_distance_threshold = radius
-            else:
-                return trigger_client_event(
-                    HttpResponseBadRequest("Location and radius must be provided for event notifications"),
-                    "HXToast",
-                    {"type": "error", "body": "Location and radius must be provided for event notifications"},
-                )
-
-        await user.asave()
-
-        return trigger_client_event(
-            render(
-                request,
-                "web/parts/settings.html",
-                context={
-                    "playlist_notifications": user.playlist_notifications,
-                    "release_notifications": user.release_notifications,
-                    "event_notifications": user.event_notifications,
-                    "latitude": latitude,
-                    "longitude": longitude,
-                    "radius": radius,
-                    "events_enabled": events_enabled,
-                },
-            ),
-            "HXToast",
-            {"type": "success", "body": "Settings updated successfully"},
-        )
+    return trigger_client_event(
+        render(
+            request,
+            "web/parts/settings.html",
+            context={
+                "playlist_notifications": user.playlist_notifications,
+                "release_notifications": user.release_notifications,
+                "event_notifications": user.event_notifications,
+                "latitude": latitude,
+                "longitude": longitude,
+                "radius": radius,
+                "events_enabled": events_enabled,
+            },
+        ),
+        "HXToast",
+        {"type": "success", "body": "Settings updated successfully"},
+    )
 
 
 @catch_errors
@@ -1163,15 +1147,15 @@ async def user_events(request: MottleHttpRequest) -> HttpResponse:
             {"type": "error", "body": "Events are not available yet. Please check back later"},
         )
 
-    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore
+    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
 
-    events = await user.upcoming_events()  # pyright: ignore
+    events = await user.upcoming_events()  # pyright: ignore[reportAttributeAccessIssue]
 
-    artist_ids = [(await sync_to_async(lambda: a.artist)()).spotify_id for a in events.keys()]
+    artist_ids = [(await sync_to_async(lambda: a.artist)()).spotify_id for a in events]
     artists = await request.spotify_client.get_artists(artist_ids)
     artists = [ArtistData.from_tekore_model(a) for a in artists]
 
-    events_data = dict(zip(artists, events.values()))
+    events_data = dict(zip(artists, events.values(), strict=True))
     return render(request, "web/user_events.html", context={"upcoming_events": dict(sorted(events_data.items()))})
 
 

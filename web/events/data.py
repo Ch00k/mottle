@@ -68,12 +68,12 @@ class MusicBrainzArtist:
                 async_musicbrainz_client, "url", params={"resource": url, "inc": "artist-rels"}
             )
         except HTTPClientException as e:
-            raise MusicBrainzException(f"Failed to fetch artist by Spotify URL '{url}': {e}")
+            raise MusicBrainzException(f"Failed to fetch artist by Spotify URL '{url}': {e}") from e
 
         try:
             data = resp.json()
         except Exception as e:
-            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}")
+            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         relations = data.get("relations", [])
         if not relations:
@@ -88,7 +88,7 @@ class MusicBrainzArtist:
         try:
             artist = await MusicBrainzArtist.from_artist_id(artist_id)
         except Exception as e:
-            raise MusicBrainzException(f"Failed to get artist info for {artist_id}: {e}")
+            raise MusicBrainzException(f"Failed to get artist info for {artist_id}: {e}") from e
         else:
             return artist
 
@@ -104,12 +104,12 @@ class MusicBrainzArtist:
                 async_musicbrainz_client, "artist", params={"query": artist_name, "limit": 100}
             )
         except HTTPClientException as e:
-            raise MusicBrainzException(f"Failed to fetch artist by name '{artist_name}': {e}")
+            raise MusicBrainzException(f"Failed to fetch artist by name '{artist_name}': {e}") from e
 
         try:
             data = resp.json()
         except Exception as e:
-            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}")
+            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         artists = data.get("artists", [])
 
@@ -129,13 +129,13 @@ class MusicBrainzArtist:
                 try:
                     artist = await MusicBrainzArtist.from_artist_id(artist_data["id"])
                 except Exception as e:
-                    raise MusicBrainzException(f"Failed to get artist info for '{artist_name}': {e}")
+                    raise MusicBrainzException(f"Failed to get artist info for '{artist_name}': {e}") from e
                 else:
                     logger.info(f"Found MusicBrainzArtist {artist_data['id']} for '{artist_name}'")
                     return artist
-        else:
-            logger.warning(f"No artists found in MusicBrainz for query '{artist_name}'")
-            return None
+
+        logger.warning(f"No artists found in MusicBrainz for query '{artist_name}'")
+        return None
 
     @staticmethod
     async def from_artist_id(artist_id: str) -> "MusicBrainzArtist":
@@ -144,12 +144,12 @@ class MusicBrainzArtist:
                 async_musicbrainz_client, f"artist/{artist_id}", params={"inc": "aliases+url-rels"}
             )
         except HTTPClientException as e:
-            raise MusicBrainzException(f"Failed to fetch artist by ID '{artist_id}': {e}")
+            raise MusicBrainzException(f"Failed to fetch artist by ID '{artist_id}': {e}") from e
 
         try:
             data = resp.json()
         except Exception as e:
-            raise HTTPClientException(f"Failed to parse JSON '{resp.text}': {e}")
+            raise HTTPClientException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         songkick_url = None
         bandsintown_url = None
@@ -169,7 +169,7 @@ class MusicBrainzArtist:
                     async_songkick_client, songkick_url, redirect_url=True, raise_for_lte_300=False
                 )
             except HTTPClientException as e:
-                raise SongkickException(f"Failed to get final Songkick URL: {e}")
+                raise SongkickException(f"Failed to get final Songkick URL: {e}") from e
 
         if bandsintown_url:
             # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
@@ -178,7 +178,7 @@ class MusicBrainzArtist:
                     async_bandsintown_client, bandsintown_url, redirect_url=True, raise_for_lte_300=False
                 )
             except HTTPClientException as e:
-                raise BandsintownException(f"Failed to get final Bandsintown URL: {e}")
+                raise BandsintownException(f"Failed to get final Bandsintown URL: {e}") from e
 
         if all((songkick_url, bandsintown_url)):
             artist_names = [data["name"]]
@@ -238,7 +238,7 @@ class EventSourceArtist:
         if artist_name in alternative_names:
             alternative_names.remove(artist_name)
 
-        alt_names_str = ", ".join([n for n in alternative_names]) if alternative_names else "none"
+        alt_names_str = ", ".join(alternative_names) if alternative_names else "none"
         logger.info(
             f"Searching for artist '{artist_name}' (alternative names: {alt_names_str}) in Songkick and Bandsintown"
         )
@@ -282,7 +282,7 @@ class EventSourceArtist:
             logger.warning("Songkick URL already exists")
             return
 
-        for name in [self.name] + self.alternative_names:
+        for name in [self.name, *self.alternative_names]:
             logger.info(f"Searching for artist in Songkick by one of the names: '{name}'")
 
             try:
@@ -304,7 +304,7 @@ class EventSourceArtist:
                 async_songkick_client, url_path, redirect_url=True, raise_for_lte_300=False
             )
         except HTTPClientException as e:
-            raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}")
+            raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}") from e
 
         # In case there was no redirect (unlikely though)
         artist_url = artist_url or f"{SONGKICK_BASE_URL}/{url_path}"
@@ -319,7 +319,7 @@ class EventSourceArtist:
             logger.warning("Bandsintown URL already exists")
             return
 
-        for name in [self.name] + self.alternative_names:
+        for name in [self.name, *self.alternative_names]:
             logger.info(f"Searching for artist in Bandsintown by one of the names: '{name}'")
 
             try:
@@ -350,7 +350,7 @@ class EventSourceArtist:
                     async_songkick_client, self.songkick_url, xpath=SONGKICK_EVENTS_XPATH
                 )
             except HTTPClientException as exc:
-                raise SongkickException(f"Failed to fetch events from Songkick: {exc}")
+                raise SongkickException(f"Failed to fetch events from Songkick: {exc}") from exc
 
             event_jsons = [json.loads(event) for event in events_xpath]
 
@@ -383,7 +383,7 @@ class EventSourceArtist:
             try:
                 events_data = await extract_bandsintown_events_data(self.bandsintown_url)
             except HTTPClientException as exc:
-                raise BandsintownException(f"Failed to fetch events from Bandsintown: {exc}")
+                raise BandsintownException(f"Failed to fetch events from Bandsintown: {exc}") from exc
 
             # This assumes that there are no duplicate dates in the following `for` loop
             existing_event_dates = [e.date for e in events.values()]
@@ -487,7 +487,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
     if event_type == EventType.live_stream:
         venue = None
-    else:
+    else:  # noqa: PLR5501
         if venue_name is None:
             logger.warning(f"Venue data is incomplete: {location}. Setting Venue to None")
             venue = None
@@ -509,10 +509,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
     stream_urls = []
     tickets_urls = []
 
-    if event_type == EventType.live_stream:
-        xpath = SONGKICK_LIVE_STREAM_XPATH
-    else:
-        xpath = SONGKICK_TICKETS_XPATH
+    xpath = SONGKICK_LIVE_STREAM_XPATH if event_type == EventType.live_stream else SONGKICK_TICKETS_XPATH
 
     _, urls, __, __ = await asend_get_request(async_songkick_client, event_url, xpath=xpath)
 
@@ -530,7 +527,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
             elif isinstance(r, BaseException):
                 logger.exception(f"Unexpected error while fetching URL: {r}")
                 capture_exception(r)
-            else:
+            else:  # noqa: PLR5501
                 if r[2] is not None:
                     result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
     else:
@@ -563,7 +560,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
             async_bandsintown_client, event_url, xpath=BANDSINTOWN_WINDOW_DATA_XPATH
         )
     except HTTPClientException as e:
-        raise BandsintownException(f"Failed to fetch data for event {event_url}: {e}")
+        raise BandsintownException(f"Failed to fetch data for event {event_url}: {e}") from e
     else:
         if not script_tag:
             raise BandsintownException(f"'window.__data' element not found on {event_url}")
@@ -574,12 +571,12 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
         try:
             window_data = script_tag[0].split("window.__data=")[1]
         except Exception as e:
-            raise BandsintownException(f"Failed to extract 'window.__data' from {event_url}: {e}")
+            raise BandsintownException(f"Failed to extract 'window.__data' from {event_url}: {e}") from e
 
         try:
             data = json.loads(window_data)
         except Exception as e:
-            raise BandsintownException(f"Failed to parse 'window.__data' from {event_url}: {e}")
+            raise BandsintownException(f"Failed to parse 'window.__data' from {event_url}: {e}") from e
 
     tickets_urls = []
     stream_urls = []
@@ -597,7 +594,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
         capture_message(msg)
 
     if is_streaming_event:
-        type = EventType.live_stream
+        type = EventType.live_stream  # noqa: A001
         venue = None
 
         event_details = event_view_body.get("hybridEventDetails", {})
@@ -613,7 +610,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
             )
 
     else:
-        type = EventType.concert
+        type = EventType.concert  # noqa: A001
         venue_name = location.get("name")
 
         if venue_name is None:
@@ -665,7 +662,7 @@ async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str
             async_bandsintown_client, bandsintown_url, xpath=BANDSINTOWN_WINDOW_DATA_XPATH
         )
     except HTTPClientException as e:
-        raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}")
+        raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}") from e
 
     if not script_tag:
         raise BandsintownException(f"'{bandsintown_url}' page has no 'window.__data=' element")
@@ -676,12 +673,12 @@ async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str
     try:
         window_data = script_tag[0].split("window.__data=")[1]
     except Exception as e:
-        raise BandsintownException(f"Failed to extract 'window.__data' from {bandsintown_url}: {e}")
+        raise BandsintownException(f"Failed to extract 'window.__data' from {bandsintown_url}: {e}") from e
 
     try:
         data = json.loads(window_data)
     except Exception as e:
-        raise BandsintownException(f"Failed to parse 'window.__data' on {bandsintown_url}: {e}")
+        raise BandsintownException(f"Failed to parse 'window.__data' on {bandsintown_url}: {e}") from e
 
     events_data: list[dict[str, Any]] = data["jsonLdContainer"]["eventsJsonLd"]
 

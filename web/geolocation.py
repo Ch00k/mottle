@@ -14,12 +14,12 @@ async def get_ip_location(ip: str) -> Point:
     try:
         response.raise_for_status()
     except Exception as e:
-        raise GeolocationError(f"Failed to get location for IP {ip}: {e}")
+        raise GeolocationError(f"Failed to get location for IP {ip}: {e}") from e
 
     try:
         data = response.json()
     except Exception as e:
-        raise GeolocationError(f"Failed to parse location data for IP {ip}: {e}")
+        raise GeolocationError(f"Failed to parse location data for IP {ip}: {e}") from e
 
     if data["status"] != "success":
         raise GeolocationError(f"Failed to get location for IP {ip}: {data['message']}")
