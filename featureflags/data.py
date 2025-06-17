@@ -22,8 +22,16 @@ class FeatureFlag:
         return models.FeatureFlag.objects.get_value("event_sources_fetching_concurrency_limit")  # pyright: ignore
 
     @staticmethod
+    async def aevent_sources_fetching_concurrency_limit() -> int | None:
+        return await models.FeatureFlag.objects.aget_value("event_sources_fetching_concurrency_limit")  # pyright: ignore
+
+    @staticmethod
     def event_fetching_concurrency_limit() -> int | None:
         return models.FeatureFlag.objects.get_value("event_fetching_concurrency_limit")  # pyright: ignore
+
+    @staticmethod
+    async def aevent_fetching_concurrency_limit() -> int | None:
+        return await models.FeatureFlag.objects.aget_value("event_fetching_concurrency_limit")  # pyright: ignore
 
     @staticmethod
     async def resolve_songkick_urls() -> bool:

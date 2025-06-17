@@ -224,7 +224,7 @@ async def acheck_artists_for_event_updates(
     if concurrent_execution:
         calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
 
-        concurrency_limit = concurrency_limit or FeatureFlag.event_fetching_concurrency_limit()
+        concurrency_limit = concurrency_limit or await FeatureFlag.aevent_fetching_concurrency_limit()
 
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
@@ -513,7 +513,7 @@ async def atrack_artists_events(
             if artist_name
         ]
 
-        concurrency_limit = concurrency_limit or FeatureFlag.event_sources_fetching_concurrency_limit()
+        concurrency_limit = concurrency_limit or await FeatureFlag.aevent_sources_fetching_concurrency_limit()
 
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
