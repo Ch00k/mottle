@@ -1,6 +1,6 @@
 [project]
 name = "mottle"
-version = "0.26.9"
+version = "0.26.10"
 description = "Some quality of life improvements for Spotify"
 authors = [{ name = "Andrii Yurchuk", email = "ay@mntw.re" }]
 license = { file = "LICENSE" }
