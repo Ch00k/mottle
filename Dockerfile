@@ -18,13 +18,6 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.source=https://github.com/ch00k/mottle
 
-ARG APP_VERSION=dev
-
-ENV APP_VERSION=${APP_VERSION} \
-    PATH=/app/.venv/bin:${PATH} \
-    PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1
-
 RUN apt-get update && apt-get install \
     --no-install-recommends --no-install-suggests -y \
     libsqlite3-mod-spatialite \
@@ -40,5 +33,11 @@ USER app
 WORKDIR /app
 
 RUN mkdir -p /tmp/prometheus_multiproc_dir
+
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION} \
+    PATH=/app/.venv/bin:${PATH} \
+    PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1
 
 ENTRYPOINT ["/app/run.sh"]
