@@ -37,7 +37,7 @@ tag: check
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
 	@$(eval APP_VERSION=$(shell uv version --bump $(VERSION) --short))
 	@echo Releasing version: $(APP_VERSION)
-	git add pyproject.toml
+	git add pyproject.toml uv.lock
 	git commit -m "Release $(APP_VERSION)"
 	git push
 	git tag -a $(APP_VERSION) -m $(APP_VERSION)
