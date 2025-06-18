@@ -1,7 +1,7 @@
 import inspect
 import logging
 import re
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import unquote
 
@@ -174,19 +174,19 @@ class AlbumMetadata(SpotifyEntityMetadata):
         self._track_image_url = get_smallest_image(album.images)
 
 
-def get_duplicates_message(items: Collection) -> str:
-    num_duplicates = len(items)
+# def get_duplicates_message(items: Collection) -> str:
+#     num_duplicates = len(items)
 
-    if not num_duplicates:
-        message = "No duplicates found"
-    elif num_duplicates == 1:
-        message = "1 track has duplicates"
-    elif num_duplicates % 10 == 1:
-        message = f"{len(items)} track has duplicates"
-    else:
-        message = f"{len(items)} tracks have duplicates"
+#     if not num_duplicates:
+#         message = "No duplicates found"
+#     elif num_duplicates == 1:
+#         message = "1 track has duplicates"
+#     elif num_duplicates % 10 == 1:
+#         message = f"{len(items)} track has duplicates"
+#     else:
+#         message = f"{len(items)} tracks have duplicates"
 
-    return message
+#     return message
 
 
 async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: str, template_path: str) -> HttpResponse:
@@ -212,6 +212,7 @@ async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: s
             "playlists": playlists,
             "playlist_id": playlist_id,
             "playlist_name": playlist_name,
+            "playlist_image_url": await playlist_metadata.image_url_small,
         },
     )
 

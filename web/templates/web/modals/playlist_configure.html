@@ -1,114 +1,145 @@
 {% load static %}
-<div id="modal" _="on closeModal remove me">
-    <div class="modal-underlay" _="on click trigger closeModal"></div>
-    <div class="modal-content">
-        <label>
-            Cover image &nbsp;
-            <a href=""
-               hx-post="{% url 'playlist_cover_image' playlist.id %}"
-               hx-confirm="Are you sure you want to generate new cover image?"
-               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                {% include "web/icons/regenerate.html" with title="Generate new" %}
-            </a>
-        </label>
-        <img class="medium" src="{{ playlist.image_url_large }}">
-        <br>
-        <br>
-        <label>
-            Name &nbsp;
-            <a href=""
-               hx-get="{% url 'rename_playlist' playlist.id %}"
-               hx-target="next div"
-               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                {% include "web/icons/edit.html" with title="Rename" %}
-            </a>
-        </label>
-        {% include "web/parts/playlist_name.html" %}
-        <br>
-        <label>Playlists watched for new tracks</label>
-        {% if watched_playlists %}
-            <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
-            <table class="modal">
-                {% for watched_playlist, auto_accept_updates in watched_playlists %}
-                    <tr>
-                        <td>
-                            <a href="{{ watched_playlist.url }}">{{ watched_playlist.name }}</a>
-                        </td>
-                        <td>
-                            <a href="{{ watched_playlist.owner_url }}">{{ watched_playlist.owner_name }}</a>
-                        </td>
-                        <td>
-                            <input type="hidden"
-                                   name="watched-playlist-id"
-                                   value="{{ watched_playlist.id }}">
-                            <a href=""
-                               hx-post="{% url 'auto_accept_playlist_updates' playlist.id %}"
-                               hx-target="this"
-                               hx-include="previous input"
-                               hx-indicator="#spinner">
-                                {% include "web/icons/accept.html" with enabled=auto_accept_updates title="Auto accept updates" %}
-                            </a>
-                            <a href=""
-                               hx-post="{% url 'unwatch_playlist' watched_playlist.id %}"
-                               hx-include="[name='watching-playlist-id']"
-                               hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
-                               hx-target="closest tr"
-                               hx-swap="outerHTML"
-                               hx-indicator="#spinner">
-                                {% include "web/icons/unfollow.html" with title="Stop watching" %}
-                            </a>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>No playlists watched</p>
-        {% endif %}
-        <br>
-        <label>Artists watched for new releases</label>
-        {% if watched_artists %}
-            <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
-            <table class="modal">
-                {% for watched_artist, auto_accept_updates in watched_artists %}
-                    <tr>
-                        <td>
-                            <a href="{{ watched_artist.url }}">{{ watched_artist.name }}</a>
-                        </td>
-                        <td>
-                            <input type="hidden"
-                                   name="watched-artist-id"
-                                   value="{{ watched_artist.id }}">
-                            <a href=""
-                               hx-post="{% url 'auto_accept_playlist_updates' playlist.id %}"
-                               hx-target="this"
-                               hx-include="previous input"
-                               hx-indicator="#spinner">
-                                {% include "web/icons/accept.html" with enabled=auto_accept_updates title="Auto accept updates" %}
-                            </a>
-                        </td>
-                    </tr>
-                {% endfor %}
-            </table>
-        {% else %}
-            <p>No artists watched</p>
-        {% endif %}
-        <br>
-        <label>
-            Actions &nbsp;
-            <a href="{% url 'deduplicate_playlist' playlist.id %}"
-               hx-boost="true"
-               hx-indicator="#spinner"
-               hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                {% include "web/icons/find_duplicates.html" %}
-            </a>
-            {% if watched_playlists or watched_artists %}
-                <a href="{% url 'playlist_updates' playlist.id %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"
-                   hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                    {% include "web/icons/update.html" with title="Check for updates" %}
-                </a>
-            {% endif %}
-        </label>
+<div id="modal"
+     _="on closeModal remove me"
+     class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+             _="on click trigger closeModal"></div>
+        <!-- Modal panel -->
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-900">Playlist Configuration</h3>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
+                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                </div>
+            </div>
+            <!-- Content -->
+            <div class="bg-white px-6 py-4 space-y-4">
+                <!-- Playlist Overview Section -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Overview</h4>
+                    <div class="flex items-center space-x-4">
+                        <!-- Cover Image with Regenerate Action -->
+                        <div class="flex-shrink-0 relative group">
+                            <img class="w-20 h-20 rounded-lg shadow-lg object-cover"
+                                 src="{{ playlist.image_url_large }}"
+                                 alt="{{ playlist.name }} cover">
+                            <!-- Regenerate Overlay -->
+                            <button class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 rounded-lg transition-all duration-200 flex items-center justify-center group"
+                                    hx-post="{% url 'playlist_cover_image' playlist.id %}"
+                                    hx-confirm="Are you sure you want to generate new cover image?"
+                                    hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
+                                    title="Click to regenerate cover image">
+                                <div class="opacity-0 group-hover:opacity-100 transition-opacity text-white text-center">
+                                    {% include 'web/icons/tw_refresh.html' with class="w-5 h-5 mx-auto mb-1" %}
+                                    <div class="text-xs font-medium">Regenerate</div>
+                                </div>
+                            </button>
+                        </div>
+                        <!-- Playlist Info -->
+                        <div class="flex-1 min-w-0 flex items-center">
+                            <div class="flex items-center justify-between w-full">
+                                <div id="playlist-name-container">{% include "web/parts/playlist_name.html" %}</div>
+                                <button class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                        hx-get="{% url 'rename_playlist' playlist.id %}"
+                                        hx-target="#playlist-name-container"
+                                        hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                                    {% include 'web/icons/tw_edit.html' with class="w-3 h-3" %}
+                                    <span class="ml-1">Rename</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Watched Playlists Section -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Watched Playlists</h4>
+                    {% if watched_playlists %}
+                        <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="divide-y divide-gray-200">
+                                {% for watched_playlist, auto_accept_updates in watched_playlists %}
+                                    <div class="px-3 py-2 hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-1 min-w-0">
+                                                <h5 class="text-sm font-medium text-gray-900 truncate">
+                                                    <a href="{{ watched_playlist.url }}"
+                                                       class="hover:text-blue-600 transition-colors"
+                                                       target="_blank">{{ watched_playlist.name }}</a>
+                                                </h5>
+                                                <p class="text-sm text-gray-600 truncate">
+                                                    by <a href="{{ watched_playlist.owner_url }}"
+    class="hover:text-blue-600 transition-colors"
+    target="_blank">{{ watched_playlist.owner_name }}</a>
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center space-x-2 ml-4">
+                                                <input type="hidden"
+                                                       name="watched-playlist-id"
+                                                       value="{{ watched_playlist.id }}">
+                                                {% include "web/parts/accept.html" with playlist_id=playlist.id enabled=auto_accept_updates %}
+                                                <button class="p-2 text-red-600"
+                                                        hx-post="{% url 'unwatch_playlist' watched_playlist.id %}"
+                                                        hx-include="[name='watching-playlist-id']"
+                                                        hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
+                                                        hx-target="closest div"
+                                                        hx-swap="outerHTML"
+                                                        hx-indicator="#spinner"
+                                                        title="Stop watching">
+                                                    {% include 'web/icons/tw_trash.html' with class="w-4 h-4" %}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 bg-gray-50 rounded-lg">
+                            {% include 'web/icons/tw_empty_playlists.html' with class="mx-auto h-6 w-6 text-gray-400" %}
+                            <p class="text-xs text-gray-500 mt-2">No playlists watched</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <!-- Watched Artists Section -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-900 mb-3">Watched Artists</h4>
+                    {% if watched_artists %}
+                        <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
+                        <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                            <div class="divide-y divide-gray-200">
+                                {% for watched_artist, auto_accept_updates in watched_artists %}
+                                    <div class="p-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-1 min-w-0">
+                                                <h5 class="text-sm font-medium text-gray-900 truncate">
+                                                    <a href="{{ watched_artist.url }}"
+                                                       class="hover:text-blue-600 transition-colors"
+                                                       target="_blank">{{ watched_artist.name }}</a>
+                                                </h5>
+                                            </div>
+                                            <div class="flex items-center space-x-2 ml-4">
+                                                <input type="hidden"
+                                                       name="watched-artist-id"
+                                                       value="{{ watched_artist.id }}">
+                                                {% include "web/parts/accept.html" with playlist_id=playlist.id enabled=auto_accept_updates %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 bg-gray-50 rounded-lg">
+                            {% include 'web/icons/tw_user.html' with class="mx-auto h-6 w-6 text-gray-400" %}
+                            <p class="text-xs text-gray-500 mt-2">No artists watched</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>

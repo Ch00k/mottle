@@ -1,16 +1,46 @@
-<tr>
-    <td>{{ event.date }}</td>
-    <td>{{ event.venue | default_if_none:'' }}</td>
-    <td>{{ event.city | default_if_none:'' }}</td>
-    <td>{{ event.country | default_if_none:'' }}</td>
-    <td>
-        <a href=""
-           hx-get="{% url 'event_details' event.id %}"
-           hx-target="body"
-           hx-swap="beforeend"
-           hx-indicator="#spinner"
-           hx-headers='{"M-Artist-Name": "{{ artist.name | urlencode }}"}'>
-            {% include "web/icons/info.html" with title="Info and tickets" %}
-        </a>
-    </td>
-</tr>
+<div class="bg-white rounded-lg shadow-lg border border-gray-300 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden">
+    <!-- Event Date Header -->
+    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+            <div class="text-lg font-medium text-gray-900">{{ event.date }}</div>
+            <div class="text-sm text-gray-500">
+                {% include "web/icons/tw_calendar.html" with class="w-4 h-4 inline mr-1" %}
+                Event
+            </div>
+        </div>
+    </div>
+    <!-- Event Details -->
+    <div class="p-4">
+        <!-- Venue -->
+        {% if event.venue %}
+            <div class="mb-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-1">{{ event.venue }}</h3>
+            </div>
+        {% endif %}
+        <!-- Location -->
+        <div class="space-y-1 text-sm text-gray-600 mb-4">
+            {% if event.city or event.country %}
+                <div class="flex items-center">
+                    <span>
+                        {% if event.city %}{{ event.city }}{% endif %}
+                        {% if event.city and event.country %},{% endif %}
+                        {% if event.country %}{{ event.country }}{% endif %}
+                    </span>
+                </div>
+            {% endif %}
+        </div>
+        <!-- Actions -->
+        <div class="pt-3 border-t border-gray-100">
+            <a href=""
+               hx-get="{% url 'event_details' event.id %}"
+               hx-target="body"
+               hx-swap="beforeend"
+               hx-indicator="#spinner"
+               hx-headers='{"M-Artist-Name": "{{ artist.name | urlencode }}"}'
+               class="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors">
+                {% include "web/icons/tw_arrow_right.html" %}
+                Info & Tickets
+            </a>
+        </div>
+    </div>
+</div>

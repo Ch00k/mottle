@@ -27,7 +27,7 @@ test:
 	uv run pytest web/tests
 
 debug:
-	docker compose attach web
+	docker compose attach web  # exit with Ctrl+PQ
 
 check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi

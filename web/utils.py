@@ -26,6 +26,7 @@ from tekore.model import (
     SavedTrack,
     SimpleAlbum,
     SimplePlaylist,
+    SimplePlaylistPaging,
     SimpleTrack,
 )
 
@@ -81,6 +82,17 @@ class MottleSpotifyClient:
     async def find_playlists(self, query: str) -> list[SimplePlaylist]:
         func = partial(self.spotify_client.search, query, types=("playlist",))
         return await get_all_offset_paging_items(func)  # pyright: ignore[reportReturnType]
+
+    async def find_artists_and_playlists(self, query: str) -> tuple[list[FullArtist], list[SimplePlaylist]]:
+        try:
+            results: tuple[FullArtistOffsetPaging, SimplePlaylistPaging] = await self.spotify_client.search(
+                query, types=("artist", "playlist")
+            )  # pyright: ignore[reportGeneralTypeIssues]
+        except Exception as e:
+            raise MottleException("Failed to search for artists and playlists with query {query}") from e
+        else:
+            ret: tuple[list[FullArtist], list[SimplePlaylist]] = (results[0].items, results[1].items)  # pyright: ignore[reportAssignmentType]
+            return ret
 
     async def get_artists(self, artist_ids: list[str]) -> list[FullArtist]:
         try:

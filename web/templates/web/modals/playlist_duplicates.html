@@ -1,0 +1,155 @@
+{% load static %}
+<div id="modal"
+     _="on closeModal remove me"
+     class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+             _="on click trigger closeModal"></div>
+        <!-- Modal panel -->
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-900">Duplicate Tracks</h3>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
+                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                </div>
+            </div>
+            <!-- Content -->
+            <div class="bg-white max-h-[80vh] overflow-y-auto">
+                <!-- Summary Header -->
+                {% if duplicates %}
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-end">
+                            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+                                <button hx-post="{% url 'deduplicate_playlist' playlist.id %}"
+                                        hx-include="input"
+                                        hx-target="body"
+                                        hx-indicator="#spinner"
+                                        hx-confirm="Are you sure you want to remove all duplicate tracks?"
+                                        _="on htmx:afterRequest trigger closeModal"
+                                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center">
+                                    {% include 'web/icons/tw_trash.html' with class="h-4 w-4 mr-2" %}
+                                    Remove All
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+                {% if duplicates %}
+                    <div class="bg-white border-b border-gray-200">
+                        <!-- Collapsible Header -->
+                        <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                             onclick="toggleDuplicates('duplicates-content')">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 flex items-center justify-center">
+                                        {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform duplicates-chevron" %}
+                                    </div>
+                                    <div>
+                                        <h2 class="text-lg font-semibold text-gray-900">
+                                            {{ duplicates|length }} track{{ duplicates|length|pluralize }} with duplicates
+                                        </h2>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <!-- Track Preview -->
+                                    <div class="flex -space-x-1">
+                                        {% for track, count in duplicates|slice:":3" %}
+                                            <img class="w-8 h-8 rounded border-2 border-white object-cover"
+                                                 src="{{ track.album.image_url_small }}"
+                                                 alt="{{ track.album.name }}"
+                                                 title="{{ track.name }}">
+                                        {% endfor %}
+                                        {% if duplicates|length > 3 %}
+                                            <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                <span class="text-xs font-medium text-gray-600">+{{ duplicates|length|add:"-3" }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Collapsible Content -->
+                        <div id="duplicates-content" class="duplicates-content hidden">
+                            <!-- Track List -->
+                            <div class="divide-y divide-gray-200 border-t border-gray-200">
+                                {% for track, count in duplicates %}
+                                    <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+                                        <div class="flex items-center space-x-4">
+                                            <!-- Album Art -->
+                                            <div class="flex-shrink-0">
+                                                <img class="w-12 h-12 rounded-md shadow-sm object-cover"
+                                                     src="{{ track.album.image_url_small }}"
+                                                     alt="{{ track.album.name }} cover" />
+                                            </div>
+                                            <!-- Track Info -->
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                                    <div class="flex-1 min-w-0">
+                                                        <!-- Track Name -->
+                                                        <h3 class="text-sm font-medium text-gray-900 truncate">
+                                                            <a href="{{ track.url }}"
+                                                               class="hover:text-blue-600 transition-colors"
+                                                               target="_blank">{{ track.name }}</a>
+                                                        </h3>
+                                                        <!-- Artists -->
+                                                        <p class="text-sm text-gray-600 truncate">
+                                                            {% for artist in track.artists %}
+                                                                <a href="{{ artist.url }}"
+                                                                   class="hover:text-blue-600 transition-colors"
+                                                                   target="_blank">{{ artist.name }}</a>
+                                                                {% if not forloop.last %},{% endif %}
+                                                            {% endfor %}
+                                                        </p>
+                                                        <!-- Album -->
+                                                        <p class="text-xs text-gray-500 truncate mt-1">
+                                                            <a href="{{ track.album.url }}"
+                                                               class="hover:text-blue-600 transition-colors">{{ track.album.name }}</a>
+                                                        </p>
+                                                    </div>
+                                                    <!-- Track Meta -->
+                                                    <div class="mt-2 md:mt-0 md:ml-4 flex items-center space-x-4 text-sm text-gray-500">
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            {{ count }} duplicate{{ count|pluralize }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- Hidden input for form submission -->
+                                            <input type="hidden" name="track-ids" value="{{ track.id }}">
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="px-6 py-12 text-center">
+                        {% include 'web/icons/tw_duplicate.html' with class="mx-auto h-12 w-12 text-gray-400" %}
+                        <h3 class="mt-4 text-lg font-medium text-gray-900">No duplicates found</h3>
+                        <p class="mt-2 text-gray-500">This playlist doesn't contain any duplicate tracks.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function toggleDuplicates(contentId) {
+        const content = document.getElementById(contentId);
+        const chevron = content.previousElementSibling.querySelector('.duplicates-chevron');
+
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            chevron.style.transform = 'rotate(0deg)';
+        }
+
+        // Update toggle button text based on current state
+        updateToggleButton();
+    }
+</script>

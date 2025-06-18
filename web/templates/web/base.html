@@ -1,27 +1,37 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-    {% comment %}
-        mvp 1.17.1
-
-        htmx 2.0.4
-        hyperscript 0.19.4
-        leaflet 1.9.4
-        leaflet-control-geocoder 3.1.0
-        htmx-toaster 0.0.20
-    {% endcomment %}
     <head>
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
-        <link rel="stylesheet" href="{% static 'web/mvp.css' %}">
-        <link rel="stylesheet" href="{% static 'web/style.css' %}">
-        <link rel="stylesheet" href="{% static 'web/leaflet.css' %}">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4"
+                integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+                crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
         <link rel="stylesheet"
-              href="{% static 'web/leaflet-control-geocoder.css' %}">
-        <script src="{% static 'web/htmx.min.js' %}"></script>
-        <script src="{% static 'web/hyperscript.min.js' %}"></script>
-        <script src="{% static 'web/leaflet.min.js' %}"></script>
-        <script src="{% static 'web/leaflet-control-geocoder.min.js' %}"></script>
-        <script src="{% static 'web/htmx-toaster.min.js' %}"></script>
+              href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+              crossorigin="" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                crossorigin=""></script>
+        <link rel="stylesheet"
+              href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+        <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+        <script defer src="https://unpkg.com/htmx-toaster/dist/htmx-toaster.min.js"></script>
+        <script>
+            document.addEventListener('htmx:beforeRequest', function() {
+                const spinner = document.getElementById('spinner');
+                spinner.style.opacity = '1';
+                spinner.style.pointerEvents = 'auto';
+            });
+
+            document.addEventListener('htmx:afterRequest', function() {
+                const spinner = document.getElementById('spinner');
+                spinner.style.opacity = '0';
+                spinner.style.pointerEvents = 'none';
+            });
+        </script>
         <meta charset="utf-8">
         <meta name="description" content="My description">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -40,14 +50,22 @@
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
         <header>
             {% include "web/parts/nav.html" %}
-            <h1>
-                {% block page_title %}
-                {% endblock page_title %}
-            </h1>
+            <div class="bg-gradient-to-r from-blue-800 to-blue-500 text-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <h1 class="text-3xl md:text-4xl font-bold">
+                        {% block page_title %}
+                        {% endblock page_title %}
+                    </h1>
+                </div>
+            </div>
         </header>
-        <main {% if use_max_width %}class="max-width"{% endif %}>
-            <div id="spinner" class="htmx-indicator">
-                <img class="spinner" src="{% static 'web/spinner.svg' %}" />
+        <main class="min-h-screen bg-gray-100">
+            <div id="spinner"
+                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm z-[9999] flex items-center justify-center transition-opacity duration-200">
+                <div class="relative">
+                    <div class="w-16 h-16 border-4 border-white border-opacity-20 rounded-full"></div>
+                    <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin absolute top-0"></div>
+                </div>
             </div>
             <div id="content">
                 {% block content %}

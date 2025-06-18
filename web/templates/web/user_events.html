@@ -6,19 +6,36 @@
     Upcoming events
 {% endblock page_title %}
 {% block content %}
-    {% for artist, events in upcoming_events.items %}
-        <h2>
-            <div class="centered">
-                <img class="small" src="{{ artist.image_url_small }}">
-                <a href="{{ artist.url }}">{{ artist.name }}</a>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% for artist, events in upcoming_events.items %}
+            <div class="mb-12">
+                <!-- Artist Header -->
+                <div class="flex items-center gap-4 mb-6">
+                    <img class="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                         src="{{ artist.image_url_small }}"
+                         alt="{{ artist.name }}">
+                    <div>
+                        <h2 class="text-2xl font-semibold text-gray-900">
+                            <a href="{{ artist.url }}" class="hover:text-blue-600 transition-colors">{{ artist.name }}</a>
+                        </h2>
+                        <p class="text-sm text-gray-600">{{ events|length }} upcoming event{{ events|length|pluralize }}</p>
+                    </div>
+                </div>
+                <!-- Events Grid -->
+                {% if events %}
+                    {% include "web/parts/events.html" %}
+                {% else %}
+                    <div class="text-center py-8">
+                        <p class="text-gray-500 italic">No events found for {{ artist.name }}</p>
+                    </div>
+                {% endif %}
             </div>
-        </h2>
-        {% if events %}
-            {% include "web/parts/events.html" %}
-        {% else %}
-            <p>No events found</p>
-        {% endif %}
-        <br>
-        <br>
-    {% endfor %}
+        {% empty %}
+            <div class="text-center py-12">
+                {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No upcoming events</h3>
+                <p class="mt-2 text-gray-500">We couldn't find any upcoming events for your tracked artists.</p>
+            </div>
+        {% endfor %}
+    </div>
 {% endblock content %}

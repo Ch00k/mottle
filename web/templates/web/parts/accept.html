@@ -1,0 +1,12 @@
+<button class="px-3 py-1 text-xs font-medium rounded-full transition-colors {% if enabled %}bg-green-100 text-green-800 hover:bg-green-200{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}"
+        hx-post="{% url 'auto_accept_playlist_updates' playlist_id %}"
+        hx-target="closest button"
+        hx-swap="outerHTML"
+        hx-include="previous input"
+        hx-indicator="#spinner">
+    {% if enabled %}
+        Auto-accept updates: ON
+    {% else %}
+        Auto-accept updates: OFF
+    {% endif %}
+</button>

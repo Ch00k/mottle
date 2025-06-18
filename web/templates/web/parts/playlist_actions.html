@@ -1,27 +1,59 @@
-<div>
-    <a href=""
-       hx-get="{% url 'merge_playlist' playlist.id %}"
-       hx-target="body"
-       hx-swap="beforeend"
-       hx-indicator="#spinner"
-       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{% include "web/icons/merge.html" %}</a>
-    {% if source == "playlists_my" and playlist.owner_id == request.session.spotify_user_spotify_id %}
-        <a href=""
-           hx-get="{% url 'configure_playlist' playlist.id %}"
-           hx-target="body"
-           hx-swap="beforeend"
-           hx-indicator="#spinner"
-           hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-            {% include "web/icons/settings.html" %}
-        </a>
+<div class="flex flex-wrap items-center gap-1">
+    <!-- Merge button -->
+    <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 rounded transition-colors group"
+            hx-get="{% url 'merge_playlist' playlist.id %}"
+            hx-target="body"
+            hx-swap="beforeend"
+            hx-indicator="#spinner"
+            hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+        {% include "web/icons/tw_copy.html" with class="w-3 h-3 mr-1" %}
+        Merge
+    </button>
+    <!-- Manage button (only for owned playlists) -->
+    {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+        <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 bg-gray-50 rounded transition-colors group"
+                hx-get="{% url 'configure_playlist' playlist.id %}"
+                hx-target="body"
+                hx-swap="beforeend"
+                hx-indicator="#spinner"
+                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+            {% include "web/icons/tw_cog.html" with class="w-3 h-3 mr-1" %}
+            Manage
+        </button>
+        <!-- Updates button -->
+        {% if playlist.id in watching_playlists %}
+            <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-600 hover:text-green-800 bg-green-50 rounded transition-colors group"
+                    hx-get="{% url 'playlist_updates' playlist.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend"
+                    hx-indicator="#spinner"
+                    hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                {% include "web/icons/tw_refresh.html" with class="w-3 h-3 mr-1" %}
+                Updates
+            </button>
+        {% endif %}
+        <!-- Duplicates button -->
+        <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-800 bg-orange-50 rounded transition-colors group"
+                hx-get="{% url 'deduplicate_playlist' playlist.id %}"
+                hx-target="body"
+                hx-swap="beforeend"
+                hx-indicator="#spinner"
+                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+            {% include "web/icons/tw_duplicate.html" with class="w-3 h-3 mr-1" %}
+            Duplicates
+        </button>
     {% endif %}
+    <!-- Follow/Unfollow button -->
     {% if source == "playlists_my" %}
-        {% include "web/parts/playlist_unfollow.html" %}
+        <!-- Remove/Unfollow button -->
+        {% include "web/parts/playlist_unfollow.html" with playlist=playlist source=source %}
     {% else %}
         {% if playlist.id in user_playlist_ids %}
-            {% include "web/parts/playlist_unfollow.html" %}
+            <!-- Unfollow button -->
+            {% include "web/parts/playlist_unfollow.html" with playlist=playlist source=source %}
         {% else %}
-            {% include "web/parts/playlist_follow.html" %}
+            <!-- Follow button -->
+            {% include "web/parts/playlist_follow.html" with playlist=playlist source=source %}
         {% endif %}
     {% endif %}
 </div>
