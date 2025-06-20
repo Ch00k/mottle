@@ -97,7 +97,7 @@
                 </a>
                 <div class="space-y-1">
                     <div class="px-3 py-2 text-gray-500 text-sm font-semibold uppercase tracking-wider flex items-center">
-                        <img src="https://picsum.photos/24/24"
+                        <img src="{{ request.session.spotify_user_image_url }}"
                              alt="User avatar"
                              class="w-6 h-6 rounded-full mr-2 border-2 border-gray-300">
                         {{ request.session.spotify_user_display_name }}
