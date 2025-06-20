@@ -3,48 +3,119 @@
     Home
 {% endblock title %}
 {% block page_title %}
-    A few useful tools for managing your Spotify music library
+    Supercharge Your Spotify Experience
 {% endblock page_title %}
 {% block content %}
-    <section>
-        <aside>
-            <h3>Create discographies</h3>
-            <p>Combine all artist's albums into a single playlist, and get artist's new releases into it automatically</p>
-            <p>
-                <a href="{% url 'search_artists' %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"><b>Try it!</b></a>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="text-center mb-12">
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">
+                Mottle unlocks advanced playlist management features missing from Spotify. Whether you're a music enthusiast, collector, or casual listener, Mottle transforms how you organize and discover music.
             </p>
-        </aside>
-        <aside>
-            <h3>Generate cover images</h3>
-            <p>Generate cover images for your playlists with AI</p>
-            <p>
-                <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner"><b>Try it!</b></a>
-            </p>
-        </aside>
-        <aside>
-            <h3>Merge playlists</h3>
-            <p>Merge multiple playlists into a new one, and get new tracks from those playlists into yours automatically</p>
-            <p>
-                <a href="{% url 'search_playlists' %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"><b>Try it!</b></a>
-            </p>
-        </aside>
-        <aside>
-            <h3>Deduplicate playlists</h3>
-            <p>Find and remove duplicate tracks from a playlist</p>
-            <p>
-                <a href="{% url 'playlists' %}" hx-boost="true" hx-indicator="#spinner"><b>Try it!</b></a>
-            </p>
-        </aside>
-        <aside>
-            <h3>Follow all</h3>
-            <p>Follow artists of all tracks in a playlist</p>
-            <p>
-                <a href="#"><i>Coming soon!</i></a>
-            </p>
-        </aside>
-    </section>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+            <!-- Complete Artist Discographies -->
+            <div class="bg-white min-h-48 rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0">{% include 'web/icons/tw_music_notes_8.html' %}</div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Complete Artist Discographies</h3>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Transform any artist's entire catalog into a perfectly organized playlist with one click
+                        </p>
+                    </div>
+                </div>
+                <div class="flex justify-start ml-11">
+                    <a href="{% url 'search' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       class="inline-flex items-center justify-center w-48 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md transition-colors">
+                        Create Discography
+                        {% include 'web/icons/tw_arrow_right_sm.html' %}
+                    </a>
+                </div>
+            </div>
+            <!-- Smart Playlist Merging -->
+            <div class="bg-white min-h-48 rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0">{% include 'web/icons/tw_duplicate_8.html' %}</div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Smart Playlist Merging</h3>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Found multiple great playlists for your favorite genre? Don't choose - combine them all!
+                        </p>
+                    </div>
+                </div>
+                <div class="flex justify-start ml-11">
+                    <a href="{% url 'search' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       class="inline-flex items-center justify-center w-48 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">
+                        Merge Playlists
+                        {% include 'web/icons/tw_arrow_right_sm.html' %}
+                    </a>
+                </div>
+            </div>
+            <!-- Intelligent Updates & Notifications -->
+            <div class="bg-white min-h-48 rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0">{% include 'web/icons/tw_refresh_8.html' %}</div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Intelligent Updates & Notifications</h3>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Never miss new music again. Keep your playlists fresh with new releases and tracks.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex justify-start ml-11">
+                    <a href="{% url 'user_settings' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       class="inline-flex items-center justify-center w-48 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-md transition-colors">
+                        Manage Updates
+                        {% include 'web/icons/tw_arrow_right_sm.html' %}
+                    </a>
+                </div>
+            </div>
+            <!-- Smart Duplicate Removal -->
+            <div class="bg-white min-h-48 rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0">{% include 'web/icons/tw_trash_8.html' %}</div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">Smart Duplicate Removal</h3>
+                        <p class="text-gray-600 text-sm mb-4">
+                            Intelligent duplicate detection for clean, streamlined playlists without the hassle of manual cleanup.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex justify-start ml-11">
+                    <a href="{% url 'playlists' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       class="inline-flex items-center justify-center w-48 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-md transition-colors">
+                        Clean Playlists
+                        {% include 'web/icons/tw_arrow_right_sm.html' %}
+                    </a>
+                </div>
+            </div>
+            <!-- AI-Powered Cover Art -->
+            <div class="bg-white min-h-48 rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow flex flex-col">
+                <div class="flex items-start space-x-3 flex-1">
+                    <div class="flex-shrink-0">{% include 'web/icons/tw_image.html' %}</div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">AI-Powered Cover Art</h3>
+                        <p class="text-gray-600 text-sm mb-4">Make your playlists stand out with custom cover art generated by AI.</p>
+                    </div>
+                </div>
+                <div class="flex justify-start ml-11">
+                    <a href="{% url 'playlists' %}"
+                       hx-boost="true"
+                       hx-indicator="#spinner"
+                       class="inline-flex items-center justify-center w-48 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md transition-colors">
+                        Generate Cover Art
+                        {% include 'web/icons/tw_arrow_right_sm.html' %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock content %}

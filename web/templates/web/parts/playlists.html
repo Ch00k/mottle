@@ -1,30 +1,27 @@
 {% if playlists %}
-    <table>
-        <thead>
-            <tr>
-                <th>Artwork</th>
-                <th class="sortable" onClick="sortTable(this)">Title</th>
-                <th class="sortable" onClick="sortTable(this)">Tracks</th>
-                <th class="sortable" onClick="sortTable(this)">Owner</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="space-y-4">
+        <!-- Playlists grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+             id="playlists-grid">
             {% for playlist in playlists %}
                 {% include "web/parts/playlist_row.html" %}
             {% empty %}
-                <article>
-                    <aside>
-                        <h3>You have no playlists</h3>
-                    </aside>
-                </article>
+                <div class="col-span-full">
+                    <div class="text-center py-12">
+                        {% include "web/icons/tw_music_notes_empty.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                        <h3 class="mt-4 text-lg font-medium text-gray-900">You have no playlists</h3>
+                        <p class="mt-2 text-gray-500">Get started by creating your first playlist on Spotify.</p>
+                    </div>
+                </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
 {% else %}
-    <article>
-        <aside>
-            <h3>No playlists found</h3>
-        </aside>
-    </article>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="text-center py-12">
+            {% include "web/icons/tw_music_notes_empty.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+            <h3 class="mt-4 text-lg font-medium text-gray-900">No playlists found</h3>
+            <p class="mt-2 text-gray-500">We couldn't find any playlists to display.</p>
+        </div>
+    </div>
 {% endif %}

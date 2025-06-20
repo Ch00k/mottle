@@ -6,9 +6,15 @@
     Events
 {% endblock page_title %}
 {% block content %}
-    {% if events %}
-        {% include "web/parts/events.html" %}
-    {% else %}
-        {{ artist.name }} has no events
-    {% endif %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if events %}
+            {% include "web/parts/events.html" %}
+        {% else %}
+            <div class="text-center py-12">
+                {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No events found</h3>
+                <p class="mt-2 text-gray-500">{{ artist.name }} has no upcoming events.</p>
+            </div>
+        {% endif %}
+    </div>
 {% endblock content %}

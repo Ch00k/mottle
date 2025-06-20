@@ -1,0 +1,52 @@
+<div class="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden album-card"
+     data-title="{{ album.name|lower }}"
+     data-year="{{ album.release_year }}"
+     data-tracks="{{ album.num_tracks }}"
+     data-type="{{ album.type }}">
+    <!-- Album Cover -->
+    <div class="aspect-square bg-gray-100 relative overflow-hidden">
+        <img src="{{ album.image_url_large }}"
+             alt="{{ album.name }} cover art"
+             class="w-full h-full object-cover min-h-[70px] min-w-[70px]">
+        <!-- Selection Checkbox -->
+        <div class="absolute top-3 left-3">
+            <label class="inline-flex items-center">
+                <input type="checkbox"
+                       name="album"
+                       form="albums-form"
+                       class="toggling {{ album.type }} h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                       value="{{ album.id }}"
+                       onchange="toggleSubmitButton()"
+                       {% if album.type in 'album,single' %}checked{% endif %}>
+            </label>
+        </div>
+        <!-- Hover overlay -->
+        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200"></div>
+    </div>
+    <!-- Content -->
+    <div class="p-4">
+        <!-- Album Name -->
+        <div class="mb-2">
+            <a href="{% url 'album' album.id %}"
+               hx-boost="true"
+               hx-indicator="#spinner"
+               hx-headers='{% include "web/parts/album_metadata_headers.html" %}'
+               class="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2">
+                {{ album.name }}
+            </a>
+        </div>
+        <!-- Album Details -->
+        <div class="space-y-1 text-sm text-gray-600 mb-3">
+            <div class="flex items-center justify-between">
+                <span>{{ album.release_year }}</span>
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {% if album.type == 'album' %}bg-blue-100 text-blue-700 {% elif album.type == 'single' %}bg-green-100 text-green-700 {% else %}bg-gray-100 text-gray-700{% endif %}">
+                    {{ album.type|title }}
+                </span>
+            </div>
+            <div class="flex items-center">
+                {% include "web/icons/tw_music_notes.html" with class="w-4 h-4 mr-1" %}
+                <span>{{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</span>
+            </div>
+        </div>
+    </div>
+</div>

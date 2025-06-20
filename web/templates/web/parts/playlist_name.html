@@ -1,6 +1,2 @@
-<div class="stretched">
-    <a href="{% url 'playlist' playlist.id %}"
-       hx-boost="true"
-       hx-indicator="#spinner"
-       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>{{ playlist.name }}</a>
-</div>
+<h5 class="text-lg font-medium text-gray-900 truncate"
+    title="{{ playlist.name }}">{{ playlist.name }}</h5>

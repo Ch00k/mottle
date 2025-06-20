@@ -1,20 +1,23 @@
-<div class="stretched">
-    <input style="margin-bottom: unset"
-           type="text"
-           name="name"
-           value="{{ playlist.name }}"
-           required>
-    <a href=""
-       hx-post="{% url 'rename_playlist' playlist.id %}"
-       hx-target="closest div"
-       hx-include="previous input"
-       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-        {% include "web/icons/accept.html" with enabled="true" %}
-    </a>
-    <a href=""
-       hx-delete="{% url 'rename_playlist' playlist.id %}"
-       hx-target="closest div"
-       hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-        {% include "web/icons/reject.html" with enabled="true" %}
-    </a>
+<div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+    <div class="flex-1 min-w-0 mr-3">
+        <input type="text"
+               name="name"
+               value="{{ playlist.name }}"
+               required
+               class="w-full text-lg font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+               placeholder="Enter playlist name">
+    </div>
+    <div class="flex items-center space-x-2">
+        <button class="inline-flex items-center p-2 text-gray-400 hover:text-green-600 transition-colors"
+                hx-post="{% url 'rename_playlist' playlist.id %}"
+                hx-target="#playlist-name-container"
+                hx-include="previous input"
+                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
+                title="Save changes">{% include "web/icons/tw_checkmark.html" with class="w-5 h-5" %}</button>
+        <button class="inline-flex items-center p-2 text-gray-400 hover:text-red-600 transition-colors"
+                hx-delete="{% url 'rename_playlist' playlist.id %}"
+                hx-target="#playlist-name-container"
+                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
+                title="Cancel">{% include "web/icons/tw_close.html" with class="w-5 h-5" %}</button>
+    </div>
 </div>

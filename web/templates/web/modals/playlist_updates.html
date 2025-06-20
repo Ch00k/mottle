@@ -1,0 +1,217 @@
+{% load static %}
+<div id="modal"
+     _="on closeModal remove me"
+     class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+             _="on click trigger closeModal"></div>
+        <!-- Modal panel -->
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+            <!-- Header -->
+            <div class="bg-white px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-900">Playlist Updates</h3>
+                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
+                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                </div>
+            </div>
+            <!-- Content -->
+            <div class="bg-white max-h-[80vh] overflow-y-auto">
+                <!-- Summary Header -->
+                {% if updates %}
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <a href="javascript:void(0)"
+                                   onclick="toggleAll()"
+                                   class="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center">
+                                    <span id="toggleAllIcon" class="transform transition-transform mr-1">
+                                        {% include 'web/icons/tw_chevron_down.html' with class="h-3 w-3" %}
+                                    </span>
+                                    <span id="toggleAllText">Expand all</span>
+                                </a>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <button hx-post="{% url 'accept_playlist_updates' playlist.id %}"
+                                        hx-confirm="Are you sure you want to accept all playlist updates?"
+                                        hx-target="body"
+                                        hx-indicator="#spinner"
+                                        _="on htmx:afterRequest trigger closeModal"
+                                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center">
+                                    {% include 'web/icons/tw_checkmark.html' with class="h-4 w-4 mr-2" %}
+                                    Accept All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if updates %}
+                    {% for update_id, watched_entity, tracks in updates %}
+                        <div class="bg-white border-b border-gray-200 last:border-b-0">
+                            <!-- Collapsible Header -->
+                            <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                                 onclick="toggleUpdate('update-{{ forloop.counter }}')">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-6 h-6 flex items-center justify-center">
+                                            {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform update-chevron" %}
+                                        </div>
+                                        <div>
+                                            <h2 class="text-lg font-semibold text-gray-900">
+                                                <a href="{{ watched_entity.url }}"
+                                                   class="hover:text-blue-600 transition-colors"
+                                                   target="_blank"
+                                                   onclick="event.stopPropagation()">{{ watched_entity.name }}</a>
+                                            </h2>
+                                            <p class="text-sm text-gray-600">{{ tracks|length }} new track{{ tracks|length|pluralize }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-4">
+                                        <!-- Track Preview -->
+                                        <div class="flex -space-x-1">
+                                            {% for track in tracks|slice:":3" %}
+                                                <img class="w-8 h-8 rounded border-2 border-white object-cover"
+                                                     src="{{ track.album.image_url_small }}"
+                                                     alt="{{ track.album.name }}"
+                                                     title="{{ track.name }}">
+                                            {% endfor %}
+                                            {% if tracks|length > 3 %}
+                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                    <span class="text-xs font-medium text-gray-600">+{{ tracks|length|add:"-3" }}</span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <!-- Accept Button -->
+                                        <button hx-post="{% url 'accept_playlist_update' playlist.id update_id %}"
+                                                hx-confirm="Accept {{ tracks|length }} new track{{ tracks|length|pluralize }}?"
+                                                hx-target="body"
+                                                hx-indicator="#spinner"
+                                                onclick="event.stopPropagation()"
+                                                _="on htmx:afterRequest trigger closeModal"
+                                                class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full text-green-700 bg-green-100 hover:bg-green-200 transition-colors w-20 justify-center">
+                                            {% include 'web/icons/tw_checkmark.html' with class="h-4 w-4 mr-1 text-green-700" %}
+                                            Accept
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Collapsible Content -->
+                            <div id="update-{{ forloop.counter }}" class="update-content hidden">
+                                <!-- Track List -->
+                                <div class="divide-y divide-gray-200 border-t border-gray-200">
+                                    {% for track in tracks %}
+                                        <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+                                            <div class="flex items-center space-x-4">
+                                                <!-- Album Art -->
+                                                <div class="flex-shrink-0">
+                                                    <img class="w-12 h-12 rounded-md shadow-sm object-cover"
+                                                         src="{{ track.album.image_url_small }}"
+                                                         alt="{{ track.album.name }} cover" />
+                                                </div>
+                                                <!-- Track Info -->
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                                        <div class="flex-1 min-w-0">
+                                                            <!-- Track Name -->
+                                                            <h3 class="text-sm font-medium text-gray-900 truncate">
+                                                                <a href="{{ track.url }}"
+                                                                   class="hover:text-blue-600 transition-colors"
+                                                                   target="_blank">{{ track.name }}</a>
+                                                            </h3>
+                                                            <!-- Artists -->
+                                                            <p class="text-sm text-gray-600 truncate">
+                                                                {% for artist in track.artists %}
+                                                                    <a href="{{ artist.url }}"
+                                                                       class="hover:text-blue-600 transition-colors"
+                                                                       target="_blank">{{ artist.name }}</a>
+                                                                    {% if not forloop.last %},{% endif %}
+                                                                {% endfor %}
+                                                            </p>
+                                                            <!-- Album -->
+                                                            <p class="text-xs text-gray-500 truncate mt-1">
+                                                                <a href="{{ track.album.url }}"
+                                                                   class="hover:text-blue-600 transition-colors"
+                                                                   target="_blank">{{ track.album.name }}</a>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="px-6 py-12 text-center">
+                        {% include 'web/icons/tw_music_notes_empty.html' with class="mx-auto h-12 w-12 text-gray-400" %}
+                        <h3 class="mt-4 text-lg font-medium text-gray-900">No updates found</h3>
+                        <p class="mt-2 text-gray-500">There are no new tracks to add to your playlist.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function toggleUpdate(updateId) {
+        const content = document.getElementById(updateId);
+        const chevron = content.previousElementSibling.querySelector('.update-chevron');
+
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            content.classList.add('hidden');
+            chevron.style.transform = 'rotate(0deg)';
+        }
+
+        // Update toggle button text based on current state
+        updateToggleButton();
+    }
+
+    function toggleAll() {
+        const allContent = document.querySelectorAll('.update-content');
+        const allChevrons = document.querySelectorAll('.update-chevron');
+        const toggleText = document.getElementById('toggleAllText');
+        const toggleIcon = document.getElementById('toggleAllIcon');
+
+        // Check if any are expanded
+        const anyExpanded = Array.from(allContent).some(content => !content.classList.contains('hidden'));
+
+        if (anyExpanded) {
+            // Collapse all
+            allContent.forEach(content => content.classList.add('hidden'));
+            allChevrons.forEach(chevron => chevron.style.transform = 'rotate(0deg)');
+            toggleText.textContent = 'Expand all';
+            toggleIcon.style.transform = 'rotate(0deg)';
+        } else {
+            // Expand all
+            allContent.forEach(content => content.classList.remove('hidden'));
+            allChevrons.forEach(chevron => chevron.style.transform = 'rotate(180deg)');
+            toggleText.textContent = 'Collapse all';
+            toggleIcon.style.transform = 'rotate(180deg)';
+        }
+    }
+
+    function updateToggleButton() {
+        const allContent = document.querySelectorAll('.update-content');
+        const toggleText = document.getElementById('toggleAllText');
+        const toggleIcon = document.getElementById('toggleAllIcon');
+
+        if (allContent.length === 0) return;
+
+        // Check if all are expanded
+        const allExpanded = Array.from(allContent).every(content => !content.classList.contains('hidden'));
+
+        if (allExpanded) {
+            toggleText.textContent = 'Collapse all';
+            toggleIcon.style.transform = 'rotate(180deg)';
+        } else {
+            toggleText.textContent = 'Expand all';
+            toggleIcon.style.transform = 'rotate(0deg)';
+        }
+    }
+</script>

@@ -1,11 +1,38 @@
-<tr>
-    <td>
-        <img class="small" src="{{ playlist.image_url_small }}">
-    </td>
-    <td class="name">{% include "web/parts/playlist_name.html" %}</td>
-    <td>{{ playlist.num_tracks }}</td>
-    <td>
-        <a href="{{ playlist.owner_url }}">{{ playlist.owner_name }}</a>
-    </td>
-    <td>{% include "web/parts/playlist_actions.html" %}</td>
-</tr>
+<div id="playlist-card"
+     class="bg-white rounded-lg shadow-lg border border-gray-300 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden"
+     data-title="{{ playlist.name|lower }}"
+     data-tracks="{{ playlist.num_tracks }}"
+     data-owner="{{ playlist.owner_name|lower }}">
+    <!-- Cover Art -->
+    <div class="aspect-square bg-gray-100 relative overflow-hidden">
+        <a href="{% url 'playlist' playlist.id %}"
+           hx-boost="true"
+           hx-indicator="#spinner"
+           hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+            <img src="{{ playlist.image_url_large }}"
+                 alt="{{ playlist.name }} cover art"
+                 class="w-full h-full object-cover min-h-[70px] min-w-[70px] hover:opacity-80 transition-opacity">
+        </a>
+    </div>
+    <!-- Content -->
+    <div class="p-4">
+        <!-- Playlist Name -->
+        <div class="mb-2">{% include "web/parts/playlist_name.html" %}</div>
+        <!-- Metadata -->
+        <div class="space-y-1 text-sm text-gray-600 mb-3 h-12 flex flex-col justify-start">
+            <div class="flex items-center">
+                {% include "web/icons/tw_music_notes.html" with class="w-4 h-4 mr-1" %}
+                <span>{{ playlist.num_tracks }} track{{ playlist.num_tracks|pluralize }}</span>
+            </div>
+            <div class="flex items-center">
+                {% include "web/icons/tw_user.html" with class="w-4 h-4 mr-1" %}
+                <a href="{{ playlist.owner_url }}"
+                   class="text-blue-600 hover:text-blue-800 transition-colors truncate">{{ playlist.owner_name }}</a>
+            </div>
+        </div>
+        <!-- Actions -->
+        <div class="pt-3 border-t border-gray-100 min-h-[60px] flex items-start">
+            {% include "web/parts/playlist_actions.html" %}
+        </div>
+    </div>
+</div>

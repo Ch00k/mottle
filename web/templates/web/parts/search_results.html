@@ -1,0 +1,66 @@
+<div id="search-results">
+    <!-- Tabs -->
+    {% if query %}
+        <div class="bg-white border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <nav class="flex space-x-8" role="tablist">
+                    <button class="tab-button py-4 px-1 border-b-2 font-medium text-sm transition-colors active"
+                            data-tab="artists"
+                            onclick="switchTab('artists')">
+                        Artists
+                        {% if artists %}
+                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                {{ artists|length }}
+                            </span>
+                        {% endif %}
+                    </button>
+                    <button class="tab-button py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                            data-tab="playlists"
+                            onclick="switchTab('playlists')">
+                        Playlists
+                        {% if playlists %}
+                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                {{ playlists|length }}
+                            </span>
+                        {% endif %}
+                    </button>
+                </nav>
+            </div>
+        </div>
+    {% endif %}
+    <!-- Search Results -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% if not query %}
+            <div class="text-center py-12">
+                {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                <h3 class="mt-4 text-lg font-medium text-gray-900">Search for content</h3>
+                <p class="mt-2 text-gray-500">Enter a search term above to find artists and playlists.</p>
+            </div>
+        {% else %}
+            <!-- Artists Tab Content -->
+            <div id="tab-artists" class="tab-content">
+                {% if artists %}
+                    {% include "web/parts/artists.html" %}
+                {% else %}
+                    <div class="text-center py-12">
+                        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                        <h3 class="mt-4 text-lg font-medium text-gray-900">No artists found</h3>
+                        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <!-- Playlists Tab Content -->
+            <div id="tab-playlists" class="tab-content hidden">
+                {% if playlists %}
+                    {% include "web/parts/playlists.html" with source="playlists_search" %}
+                {% else %}
+                    <div class="text-center py-12">
+                        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+                        <h3 class="mt-4 text-lg font-medium text-gray-900">No playlists found</h3>
+                        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>

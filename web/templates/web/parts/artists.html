@@ -1,30 +1,56 @@
 {% if artists %}
-    <table>
-        <tbody>
+    <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {% for artist in artists %}
-                <tr>
-                    <td>
-                        <img class="small" src="{{ artist.image_url_small }}">
-                    </td>
-                    <td>
-                        <a href="{% url 'albums' artist.id %}"
-                           hx-boost="true"
-                           hx-indicator="#spinner"
-                           hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>{{ artist.name }}</a>
-                    </td>
-                    <td>{{ artist.genres | join:", " }}</td>
-                    {% if events_enabled %}
-                        <td>
-                            <a href="{% url 'artist_events' artist.id %}"
+                <div class="bg-white rounded-lg shadow-lg border border-gray-300 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden">
+                    <!-- Artist Image -->
+                    <div class="aspect-square bg-gray-100 relative overflow-hidden">
+                        <img src="{{ artist.image_url_large }}"
+                             alt="{{ artist.name }} photo"
+                             class="w-full h-full object-cover min-h-[70px] min-w-[70px]">
+                        <!-- Hover overlay -->
+                        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200"></div>
+                    </div>
+                    <!-- Content -->
+                    <div class="p-4 flex flex-col h-full">
+                        <!-- Artist Name -->
+                        <div class="mb-2">
+                            <a href="{% url 'albums' artist.id %}"
                                hx-boost="true"
                                hx-indicator="#spinner"
-                               hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>
-                                {% include "web/icons/calendar.html" %}
+                               hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'
+                               class="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2">
+                                {{ artist.name }}
                             </a>
-                        </td>
-                    {% endif %}
-                </tr>
+                        </div>
+                        <!-- Genres -->
+                        <div class="mb-3 h-12 flex items-start">
+                            {% if artist.genres %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for genre in artist.genres|slice:":3" %}
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                            {{ genre }}
+                                        </span>
+                                    {% endfor %}
+                                    {% if artist.genres|length > 3 %}
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                                            +{{ artist.genres|length|add:"-3" }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <!-- Actions -->
+                        <div class="pt-3 border-t border-gray-100">{% include "web/parts/artist_actions.html" %}</div>
+                    </div>
+                </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
+{% else %}
+    <div class="text-center py-12">
+        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
+        <h3 class="mt-4 text-lg font-medium text-gray-900">No artists found</h3>
+        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
+    </div>
 {% endif %}

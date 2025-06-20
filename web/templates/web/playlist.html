@@ -3,62 +3,89 @@
     {{ playlist.name }}
 {% endblock title %}
 {% block page_title %}
-    <div class="centered">
-        <img class="large" src="{{ playlist.image_url_large }}" />
-        <div>
-            <a href="{{ playlist.url }}">{{ playlist.name }}</a>
+    <div class="flex flex-col md:flex-row items-start md:items-center gap-6 bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div class="flex-shrink-0">
+            <img class="w-32 h-32 md:w-40 md:h-40 rounded-lg shadow-lg"
+                 src="{{ playlist.image_url_large }}"
+                 alt="{{ playlist.name }} cover" />
         </div>
-        {% include "web/parts/playlist_actions.html" with source="playlist" %}
+        <div class="flex-1 min-w-0">
+            <h1 class="text-2xl md:text-4xl font-bold text-gray-900 mb-2 truncate">
+                <a href="{{ playlist.url }}"
+                   class="hover:text-blue-600 transition-colors"
+                   target="_blank">{{ playlist.name }}</a>
+            </h1>
+            <div class="text-sm text-gray-600 mb-4">
+                {% if playlist.description %}<p class="mb-2">{{ playlist.description }}</p>{% endif %}
+                <p>{{ tracks|length }} track{{ tracks|length|pluralize }}</p>
+            </div>
+            {% include "web/parts/playlist_actions.html" with source="playlist" %}
+        </div>
     </div>
 {% endblock page_title %}
 {% block content %}
-    {% if tracks %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Artwork</th>
-                    <th class="sortable" onClick="sortTable(this)">Artist</th>
-                    <th class="sortable" onClick="sortTable(this)">Album</th>
-                    <th class="sortable" onClick="sortTable(this)">Track</th>
-                    <th class="sortable" onClick="sortTable(this)">Duration</th>
-                    <th class="sortable" onClick="sortTable(this)">Added</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for track in tracks %}
-                    <tr>
-                        <td>
-                            <img class="small" src="{{ track.album.image_url_small }}" />
-                        </td>
-                        <td>
-                            {% for artist in track.artists %}
-                                <a href="{{ artist.url }}">{{ artist.name }}</a>
-                                <br>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <a href="{% url 'album' track.album.id %}">{{ track.album.name }}</a>
-                        </td>
-                        <td>
-                            <a href="{{ track.url }}">{{ track.name }}</a>
-                        </td>
-                        <td>{{ track.duration }}</td>
-                        <td>{{ track.added_at | date:"Y-m-d" }}</td>
-                        <td>
-                            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-                                {% include "web/parts/playlist_track_delete.html" %}
-                            {% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <article>
-            <aside>
-                <h3>No tracks found</h3>
-            </aside>
-        </article>
-    {% endif %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% if tracks %}
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+                <!-- Track List -->
+                <div class="divide-y divide-gray-200">
+                    {% for track in tracks %}
+                        <div id="track-row" class="p-4 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center space-x-4">
+                                <!-- Album Art -->
+                                <div class="flex-shrink-0">
+                                    <img class="w-18 h-18 rounded-md shadow-sm object-cover"
+                                         style="min-width: 70px;
+                                                min-height: 70px"
+                                         src="{{ track.album.image_url_small }}"
+                                         alt="{{ track.album.name }} cover" />
+                                </div>
+                                <!-- Track Info -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                        <div class="flex-1 min-w-0">
+                                            <!-- Track Name -->
+                                            <h3 class="text-sm font-medium text-gray-900 truncate">
+                                                <a href="{{ track.url }}"
+                                                   class="hover:text-blue-600 transition-colors"
+                                                   target="_blank">{{ track.name }}</a>
+                                            </h3>
+                                            <!-- Artists -->
+                                            <p class="text-sm text-gray-600 truncate">
+                                                {% for artist in track.artists %}
+                                                    <a href="{{ artist.url }}"
+                                                       class="hover:text-blue-600 transition-colors"
+                                                       target="_blank">{{ artist.name }}</a>
+                                                    {% if not forloop.last %},{% endif %}
+                                                {% endfor %}
+                                            </p>
+                                            <!-- Album -->
+                                            <p class="text-xs text-gray-500 truncate mt-1">
+                                                <a href="{% url 'album' track.album.id %}"
+                                                   class="hover:text-blue-600 transition-colors">{{ track.album.name }}</a>
+                                            </p>
+                                        </div>
+                                        <!-- Track Meta -->
+                                        <div class="mt-2 md:mt-0 md:ml-4 flex items-center space-x-4 text-sm text-gray-500">
+                                            <span>{{ track.duration }}</span>
+                                            <span>{{ track.added_at | date:"M j, Y" }}</span>
+                                            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+                                                <div class="flex-shrink-0">{% include "web/parts/playlist_track_delete.html" %}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <div class="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
+                {% include 'web/icons/tw_music_notes_empty.html' %}
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No tracks found</h3>
+                <p class="text-gray-600">This playlist appears to be empty or the tracks couldn't be loaded.</p>
+            </div>
+        {% endif %}
+    </div>
 {% endblock content %}
