@@ -2,6 +2,10 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <meta charset="utf-8">
+        <meta name="description" content="My description">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="{% static 'web/tw.css' %}" rel="stylesheet">
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.ico' %}">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"
@@ -32,9 +36,6 @@
                 spinner.style.pointerEvents = 'none';
             });
         </script>
-        <meta charset="utf-8">
-        <meta name="description" content="My description">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         {% block head %}
         {% endblock head %}
         <title>

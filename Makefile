@@ -3,7 +3,7 @@ DOCKER_BUILDKIT := 1
 
 build_dev:
 	@echo Building development image
-	docker build . -t mottle:latest --build-arg POETRY_GROUPS=main,debug,dev
+	docker build . -t mottle:latest --build-arg UV_DEP_GROUPS="--group dev --group debug"
 
 up:
 	docker compose --profile default --profile taskrunner up --remove-orphans --detach; \
@@ -22,6 +22,9 @@ shell:
 
 makemigrations:
 	docker compose exec web ./manage.py makemigrations
+
+manage:
+	docker compose exec web ./manage.py $(CMD)
 
 test:
 	uv run pytest web/tests

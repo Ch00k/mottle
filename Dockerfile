@@ -7,10 +7,12 @@ RUN apt-get update && apt-get install \
 
 WORKDIR /app
 
+ARG UV_DEP_GROUPS="--group debug"
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --all-extras --no-dev
+    uv sync --locked --no-install-project --all-extras ${UV_DEP_GROUPS}
 
 COPY . ./
 

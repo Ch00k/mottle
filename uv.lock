@@ -646,13 +646,11 @@ dependencies = [
     { name = "whitenoise" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 debug = [
     { name = "ipython" },
     { name = "pdbpp" },
 ]
-
-[package.dev-dependencies]
 dev = [
     { name = "django-stubs" },
     { name = "factory-boy" },
@@ -676,11 +674,9 @@ requires-dist = [
     { name = "django-prometheus", specifier = "==2.3.1" },
     { name = "django-q2", specifier = "==1.8.0" },
     { name = "environs", specifier = "==14.2.0" },
-    { name = "ipython", marker = "extra == 'debug'", specifier = "==9.3.0" },
     { name = "json-log-formatter", specifier = "==1.1.1" },
     { name = "lxml", specifier = "==5.4.0" },
     { name = "openai", specifier = "==1.88.0" },
-    { name = "pdbpp", marker = "extra == 'debug'", specifier = "==0.11.6" },
     { name = "pillow", specifier = "==11.2.1" },
     { name = "prometheus-client", specifier = "==0.22.1" },
     { name = "sentry-sdk", extras = ["django"], specifier = "==2.30.0" },
@@ -690,9 +686,12 @@ requires-dist = [
     { name = "unidecode", specifier = "==1.4.0" },
     { name = "whitenoise", specifier = "==6.9.0" },
 ]
-provides-extras = ["debug"]
 
 [package.metadata.requires-dev]
+debug = [
+    { name = "ipython", specifier = "==9.3.0" },
+    { name = "pdbpp", specifier = "==0.11.6" },
+]
 dev = [
     { name = "django-stubs", specifier = "==5.2.0" },
     { name = "factory-boy", specifier = "==3.3.3" },
