@@ -32,6 +32,9 @@ test:
 debug:
 	docker compose attach web  # exit with Ctrl+PQ
 
+css:
+	tailwindcss -i web/static/web/src/style.css -o web/static/web/style.css
+
 check:
 	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi
 	@if [ -n "$(shell git ls-files --exclude-standard --others)" ]; then echo "Working directory has untracked files" && exit 1; fi

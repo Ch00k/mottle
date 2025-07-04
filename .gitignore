@@ -1,3 +1,4 @@
 *.sqlite3
 images_dump/
 runtime_data/
+screenshots/

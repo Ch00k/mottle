@@ -9,7 +9,7 @@
         <!-- Modal panel -->
         <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full z-10">
             <!-- Header -->
-            <div class="bg-white px-6 py-4 border-b border-gray-200">
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
                     <h3 class="text-xl font-semibold text-gray-900">Playlist Configuration</h3>
                     <button class="text-gray-400 hover:text-gray-600 transition-colors"
@@ -23,21 +23,21 @@
                     <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Overview</h4>
                     <div class="flex items-center space-x-4">
                         <!-- Cover Image with Regenerate Action -->
-                        <div class="flex-shrink-0 relative group">
+                        <div class="flex-shrink-0 relative group cursor-pointer"
+                             hx-post="{% url 'playlist_cover_image' playlist.id %}"
+                             hx-confirm="Are you sure you want to generate new cover image?"
+                             hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
+                             title="Click to regenerate cover image">
                             <img class="w-20 h-20 rounded-lg shadow-lg object-cover"
                                  src="{{ playlist.image_url_large }}"
                                  alt="{{ playlist.name }} cover">
                             <!-- Regenerate Overlay -->
-                            <button class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 rounded-lg transition-all duration-200 flex items-center justify-center group"
-                                    hx-post="{% url 'playlist_cover_image' playlist.id %}"
-                                    hx-confirm="Are you sure you want to generate new cover image?"
-                                    hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
-                                    title="Click to regenerate cover image">
-                                <div class="opacity-0 group-hover:opacity-100 transition-opacity text-white text-center">
+                            <div class="absolute inset-0 rounded-lg transition-all duration-200 flex items-center justify-center pointer-events-none invisible group-hover:visible group-hover:bg-black group-hover:bg-opacity-60">
+                                <div class="text-white text-center">
                                     {% include 'web/icons/tw_refresh.html' with class="w-5 h-5 mx-auto mb-1" %}
                                     <div class="text-xs font-medium">Regenerate</div>
                                 </div>
-                            </button>
+                            </div>
                         </div>
                         <!-- Playlist Info -->
                         <div class="flex-1 min-w-0 flex items-center">

@@ -1,8 +1,8 @@
 {% load static %}
 <nav class="bg-white shadow-xl">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-24">
-            <div class="flex items-center">
+    <div class="container-main">
+        <div class="flex-between h-24">
+            <div class="icon-text">
                 <a href="{% url 'index' %}"
                    hx-boost="true"
                    hx-indicator="#spinner"
@@ -13,17 +13,17 @@
                 </a>
             </div>
             <div class="hidden md:block">
-                <div class="ml-10 flex items-center space-x-4">
+                <div class="ml-10 icon-text space-x-4">
                     {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
                         <a href="{% url 'search' %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
-                           class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center hover:bg-blue-50 h-12">
+                           class="nav-link hover:bg-blue-50 h-12">
                             {% include "web/icons/tw_search.html" with class="h-4 w-4 mr-2" %}
                             Search
                         </a>
                         <div class="relative group">
-                            <button class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center hover:bg-blue-50 h-12">
+                            <button class="nav-link hover:bg-blue-50 h-12">
                                 {{ request.session.spotify_user_display_name }}
                                 <img src="{{ request.session.spotify_user_image_url }}"
                                      alt="User avatar"
@@ -68,7 +68,7 @@
                         <a href="{% url 'login' %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
-                           class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center shadow-md">
+                           class="btn-md btn-primary icon-text shadow-md">
                             {% include "web/icons/tw_login.html" with class="h-4 w-4 mr-2" %}
                             Login
                         </a>
@@ -91,12 +91,12 @@
                 <a href="{% url 'search' %}"
                    hx-boost="true"
                    hx-indicator="#spinner"
-                   class="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base font-medium transition-colors flex items-center">
+                   class="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base font-medium transition-colors icon-text">
                     {% include "web/icons/tw_search.html" with class="h-5 w-5 mr-2" %}
                     Search
                 </a>
                 <div class="space-y-1">
-                    <div class="px-3 py-2 text-gray-500 text-sm font-semibold uppercase tracking-wider flex items-center">
+                    <div class="px-3 py-2 text-gray-500 text-sm font-semibold uppercase tracking-wider icon-text">
                         <img src="{{ request.session.spotify_user_image_url }}"
                              alt="User avatar"
                              class="w-6 h-6 rounded-full mr-2 border-2 border-gray-300">
@@ -105,28 +105,30 @@
                     <a href="{% url 'playlists' %}"
                        hx-boost="true"
                        hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors flex items-center">
+                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
                         {% include "web/icons/tw_music_notes.html" with class="h-5 w-5 mr-2" %}
                         Playlists
                     </a>
-                    <a href="{% url 'user_events' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors flex items-center">
-                        {% include "web/icons/tw_calendar.html" with class="h-5 w-5 mr-2" %}
-                        Events
-                    </a>
+                    {% if request.session.feature_flags.events_enabled %}
+                        <a href="{% url 'user_events' %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner"
+                           class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
+                            {% include "web/icons/tw_calendar.html" with class="h-5 w-5 mr-2" %}
+                            Events
+                        </a>
+                    {% endif %}
                     <a href="{% url 'user_settings' %}"
                        hx-boost="true"
                        hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors flex items-center">
+                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
                         {% include "web/icons/tw_cog.html" with class="h-5 w-5 mr-2" %}
                         Settings
                     </a>
                     <a href="{% url 'logout' %}"
                        hx-boost="true"
                        hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors flex items-center">
+                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
                         {% include "web/icons/tw_logout.html" with class="h-5 w-5 mr-2" %}
                         Logout
                     </a>
@@ -135,7 +137,7 @@
                 <a href="{% url 'login' %}"
                    hx-boost="true"
                    hx-indicator="#spinner"
-                   class="block px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-base font-medium transition-colors flex items-center shadow-md">
+                   class="block px-3 py-2 btn-primary rounded-md text-base font-medium icon-text shadow-md">
                     {% include "web/icons/tw_login.html" with class="h-5 w-5 mr-2" %}
                     Login
                 </a>

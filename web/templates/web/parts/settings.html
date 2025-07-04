@@ -1,6 +1,6 @@
 {% load static %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="bg-white rounded-lg shadow-md border border-gray-200">
+<div class="mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
+    <div class="card">
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-xl font-semibold text-gray-900">Notification Settings</h3>
         </div>
@@ -16,7 +16,7 @@
                                id="playlist-notifications"
                                name="playlist-notifications"
                                {% if playlist_notifications %}checked{% endif %}
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                               class="form-checkbox">
                         <div class="ml-3">
                             <span class="text-sm font-medium text-gray-700">Playlist Changes</span>
                             <p class="text-sm text-gray-500">
@@ -31,7 +31,7 @@
                                    id="release-notifications"
                                    name="release-notifications"
                                    {% if release_notifications %}checked{% endif %}
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                   class="form-checkbox">
                             <div class="ml-3">
                                 <span class="text-sm font-medium text-gray-700">Artist Releases</span>
                                 <p class="text-sm text-gray-500">Receive email notifications about new releases of watched artists</p>
@@ -45,7 +45,7 @@
                                    id="event-notifications"
                                    name="event-notifications"
                                    {% if event_notifications %}checked{% endif %}
-                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                   class="form-checkbox">
                             <div class="ml-3">
                                 <span class="text-sm font-medium text-gray-700">Artist Events</span>
                                 <p class="text-sm text-gray-500">Receive email notifications about events of watched artists</p>

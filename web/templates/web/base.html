@@ -5,7 +5,7 @@
         <meta charset="utf-8">
         <meta name="description" content="My description">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="{% static 'web/tw.css' %}" rel="stylesheet">
+        <link href="{% static 'web/style.css' %}" rel="stylesheet">
         <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.png' %}">
         <script src="https://unpkg.com/htmx.org@2.0.4"
                 integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
@@ -51,7 +51,7 @@
         <header>
             {% include "web/parts/nav.html" %}
             <div class="bg-gradient-to-r from-blue-800 to-blue-500 text-white">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="container-page">
                     <h1 class="text-3xl md:text-4xl font-bold">
                         {% block page_title %}
                         {% endblock page_title %}
@@ -61,7 +61,7 @@
         </header>
         <main class="min-h-screen bg-gray-100">
             <div id="spinner"
-                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 backdrop-blur-md z-[9999] flex items-center justify-center transition-opacity duration-200">
+                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 backdrop-blur-md z-[9999] flex-center transition-opacity duration-200">
                 <div class="relative">
                     <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
                 </div>

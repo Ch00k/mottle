@@ -1,0 +1,18 @@
+{% comment %}
+Reusable empty state component
+
+Parameters:
+- icon: icon template to include (required)
+- title: heading text (required)
+- description: description text (required)
+- icon_class: CSS classes for the icon (optional, defaults to "mx-auto h-12 w-12 text-gray-400")
+- container_class: additional CSS classes for the container (optional)
+
+Usage:
+{% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes_empty.html" title="No playlists found" description="We couldn't find any playlists to display." %}
+{% endcomment %}
+<div class="empty-state {% if container_class %}{{ container_class }}{% endif %}">
+    {% include icon with class=icon_class|default:"mx-auto h-12 w-12 text-gray-400" %}
+    <h3 class="mt-4 text-heading-sm">{{ title }}</h3>
+    <p class="mt-2 text-metadata">{{ description }}</p>
+</div>

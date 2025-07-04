@@ -5,11 +5,14 @@
                 <div class="bg-white rounded-lg shadow-lg border border-gray-300 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden">
                     <!-- Artist Image -->
                     <div class="aspect-square bg-gray-100 relative overflow-hidden">
-                        <img src="{{ artist.image_url_large }}"
-                             alt="{{ artist.name }} photo"
-                             class="w-full h-full object-cover min-h-[70px] min-w-[70px]">
-                        <!-- Hover overlay -->
-                        <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200"></div>
+                        <a href="{% url 'albums' artist.id %}"
+                           hx-boost="true"
+                           hx-indicator="#spinner"
+                           hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>
+                            <img src="{{ artist.image_url_large }}"
+                                 alt="{{ artist.name }} photo"
+                                 class="w-full h-full object-cover min-h-[70px] min-w-[70px] hover:opacity-80 transition-opacity">
+                        </a>
                     </div>
                     <!-- Content -->
                     <div class="p-4 flex flex-col h-full">

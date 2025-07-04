@@ -9,14 +9,14 @@
 {% block content %}
     <!-- Search Bar -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="container-page-short">
             <form class="max-w-3xl mx-auto"
                   hx-get="{% url 'search' %}"
                   hx-target="#search-results"
                   hx-indicator="#spinner">
                 <div class="flex gap-3">
                     <div class="flex-1 relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-3 icon-text pointer-events-none">
                             {% include 'web/icons/tw_search.html' with class="h-5 w-5 text-gray-400" %}
                         </div>
                         <input type="search"
@@ -24,11 +24,10 @@
                                name="query"
                                value="{{ query }}"
                                placeholder="Search for artists and playlists..."
-                               class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 shadow-sm"
+                               class="form-input-with-icon text-gray-900 shadow-sm"
                                hx-trigger="input changed delay:500ms, search">
                     </div>
-                    <button type="submit"
-                            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm flex items-center">
+                    <button type="submit" class="btn-lg btn-primary shadow-sm icon-text">
                         {% include 'web/icons/tw_search.html' with class="h-4 w-4 mr-2" %}
                         Search
                     </button>

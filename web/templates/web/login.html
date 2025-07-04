@@ -7,7 +7,7 @@
 {% endblock page_title %}
 {% block content %}
     <div class="max-w-md mx-auto px-4 py-8">
-        <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+        <div class="card-elevated overflow-hidden">
             <!-- Header -->
             <div class="px-6 py-8 bg-gradient-to-r from-green-800 to-green-500 text-white text-center">
                 <div class="mb-4">{% include 'web/icons/tw_spotify_logo.html' %}</div>
@@ -17,23 +17,23 @@
             <!-- Content -->
             <div class="px-6 py-8">
                 <div class="text-center mb-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-3">What you'll get:</h3>
+                    <h3 class="text-heading-md mb-3">What you'll get:</h3>
                     <div class="space-y-3 text-left">
-                        <div class="flex items-center">
+                        <div class="icon-text">
                             {% include 'web/icons/tw_checkmark.html' %}
-                            <span class="text-sm text-gray-700">Create discographies</span>
+                            <span class="text-metadata">Create discographies</span>
                         </div>
-                        <div class="flex items-center">
+                        <div class="icon-text">
                             {% include 'web/icons/tw_checkmark.html' %}
-                            <span class="text-sm text-gray-700">Merge playlists</span>
+                            <span class="text-metadata">Merge playlists</span>
                         </div>
-                        <div class="flex items-center">
+                        <div class="icon-text">
                             {% include 'web/icons/tw_checkmark.html' %}
-                            <span class="text-sm text-gray-700">Generate cover art with AI</span>
+                            <span class="text-metadata">Generate cover art with AI</span>
                         </div>
-                        <div class="flex items-center">
+                        <div class="icon-text">
                             {% include 'web/icons/tw_checkmark.html' %}
-                            <span class="text-sm text-gray-700">Receive playlist update notifications</span>
+                            <span class="text-metadata">Receive playlist update notifications</span>
                         </div>
                     </div>
                 </div>
@@ -41,8 +41,7 @@
                 <form action="." method="post" class="space-y-4">
                     {% csrf_token %}
                     <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
-                    <button type="submit"
-                            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-4 px-6 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center">
+                    <button type="submit" class="btn-spotify-login icon-text">
                         {% include 'web/icons/tw_spotify_logo.html' with class="h-6 w-6 mr-3" %}
                         Continue with Spotify
                     </button>
