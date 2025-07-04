@@ -3,6 +3,7 @@
 **/*.pyc
 .git
 .direnv
+.venv
 .envrc
 .mypy_cache
 .pytest_cache
