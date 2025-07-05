@@ -9,7 +9,7 @@ Parameters:
 - container_class: additional CSS classes for the container (optional)
 
 Usage:
-{% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes_empty.html" title="No playlists found" description="We couldn't find any playlists to display." %}
+{% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes.html" title="No playlists found" description="We couldn't find any playlists to display." %}
 {% endcomment %}
 <div class="empty-state {% if container_class %}{{ container_class }}{% endif %}">
     {% include icon with class=icon_class|default:"mx-auto h-12 w-12 text-gray-400" %}

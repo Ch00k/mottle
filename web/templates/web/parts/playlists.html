@@ -6,13 +6,13 @@
                 {% include "web/parts/playlist_row.html" %}
             {% empty %}
                 <div class="col-span-full">
-                    {% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes_empty.html" title="You have no playlists" description="Get started by creating your first playlist on Spotify." %}
+                    {% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes.html" title="You have no playlists" description="Get started by creating your first playlist on Spotify." %}
                 </div>
             {% endfor %}
         </div>
     </div>
 {% else %}
     <div class="container-page">
-        {% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes_empty.html" title="No playlists found" description="We couldn't find any playlists to display." %}
+        {% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes.html" title="No playlists found" description="We couldn't find any playlists to display." %}
     </div>
 {% endif %}
