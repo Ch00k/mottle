@@ -25,13 +25,13 @@
                 {% if events %}
                     {% include "web/parts/events.html" %}
                 {% else %}
-                    <div class="text-center py-8">
+                    <div class="empty-state">
                         <p class="text-gray-500 italic">No events found for {{ artist.name }}</p>
                     </div>
                 {% endif %}
             </div>
         {% empty %}
-            <div class="text-center py-12">
+            <div class="empty-state">
                 {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
                 <h3 class="mt-4 text-lg font-medium text-gray-900">No upcoming events</h3>
                 <p class="mt-2 text-gray-500">We couldn't find any upcoming events for your tracked artists.</p>

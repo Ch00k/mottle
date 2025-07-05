@@ -237,6 +237,17 @@
   .invisible {
     visibility: hidden;
   }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
   .absolute {
     position: absolute;
   }
@@ -1192,6 +1203,33 @@
         --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 8px 10px -6px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
         box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
       }
+    }
+  }
+  .focus\:not-sr-only {
+    &:focus {
+      position: static;
+      width: auto;
+      height: auto;
+      padding: 0;
+      margin: 0;
+      overflow: visible;
+      clip: auto;
+      white-space: normal;
+    }
+  }
+  .focus\:absolute {
+    &:focus {
+      position: absolute;
+    }
+  }
+  .focus\:top-4 {
+    &:focus {
+      top: calc(var(--spacing) * 4);
+    }
+  }
+  .focus\:left-4 {
+    &:focus {
+      left: calc(var(--spacing) * 4);
     }
   }
   .focus\:text-blue-600 {
@@ -2310,6 +2348,28 @@
         background-color: var(--color-gray-50);
       }
     }
+  }
+  .sr-only {
+    position: absolute;
+    margin: -1px;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    border-style: var(--tw-border-style);
+    border-width: 0px;
+    padding: calc(var(--spacing) * 0);
+    white-space: nowrap;
+    clip: rect(0, 0, 0, 0);
+  }
+  .focus\:not-sr-only:focus {
+    position: static;
+    margin: calc(var(--spacing) * 0);
+    height: auto;
+    width: auto;
+    overflow: visible;
+    padding: calc(var(--spacing) * 4);
+    white-space: normal;
+    clip: auto;
   }
   .badge {
     display: inline-flex;

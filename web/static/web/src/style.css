@@ -319,6 +319,17 @@
     @apply hover:bg-gray-50 transition-colors;
   }
 
+  /* Accessibility Classes */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .focus\:not-sr-only:focus {
+    @apply static w-auto h-auto p-4 m-0 overflow-visible whitespace-normal;
+    clip: auto;
+  }
+
   /* Badge Components */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800;

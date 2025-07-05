@@ -3,74 +3,134 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <meta name="description" content="My description">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="theme-color" content="#2563eb">
+        <!-- SEO Meta Tags -->
+        <meta name="description"
+              content="{% block meta_description %}Enhanced Spotify features including playlist management, artist tracking, and event discovery{% endblock %}">
+        <meta name="keywords"
+              content="{% block meta_keywords %}spotify, music, playlists, artists, events{% endblock %}">
+        <link rel="canonical"
+              href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}">
+        <!-- Open Graph Meta Tags -->
+        <meta property="og:title"
+              content="{% block og_title %}mottle{% endblock %}">
+        <meta property="og:description"
+              content="{% block og_description %}Enhanced Spotify features including playlist management, artist tracking, and event discovery{% endblock %}">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ request.build_absolute_uri }}">
+        <meta property="og:site_name" content="Mottle">
+        <!-- Twitter Card Meta Tags -->
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:title"
+              content="{% block twitter_title %}mottle{% endblock %}">
+        <meta name="twitter:description"
+              content="{% block twitter_description %}Enhanced Spotify features including playlist management, artist tracking, and event discovery{% endblock %}">
+        <!-- DNS Prefetch & Preconnect -->
+        <link rel="dns-prefetch" href="//unpkg.com">
+        <link rel="preconnect" href="https://unpkg.com" crossorigin>
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="{% static 'web/favicon.png' %}">
+        <link rel="apple-touch-icon" href="{% static 'web/favicon.png' %}">
+        <!-- Critical CSS -->
         <link href="{% static 'web/style.css' %}" rel="stylesheet">
-        <link rel="icon" type="image/x-icon" href="{% static 'web/favicon.png' %}">
-        <script src="https://unpkg.com/htmx.org@2.0.4"
-                integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
-                crossorigin="anonymous"></script>
-        <script src="https://unpkg.com/hyperscript.org@0.9.14"></script>
-        <link rel="stylesheet"
-              href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-              integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-              crossorigin="" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                crossorigin=""></script>
-        <link rel="stylesheet"
-              href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-        <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
-        <script defer src="https://unpkg.com/htmx-toaster/dist/htmx-toaster.min.js"></script>
-        <script>
-            document.addEventListener('htmx:beforeRequest', function() {
-                const spinner = document.getElementById('spinner');
-                spinner.style.opacity = '1';
-                spinner.style.pointerEvents = 'auto';
-            });
-
-            document.addEventListener('htmx:afterRequest', function() {
-                const spinner = document.getElementById('spinner');
-                spinner.style.opacity = '0';
-                spinner.style.pointerEvents = 'none';
-            });
-        </script>
-        {% block head %}
-        {% endblock head %}
+        <!-- Preload Critical Resources -->
+        <link rel="preload" href="{% static 'web/script.js' %}" as="script">
         <title>
-            {% block title %}
-                mottle
-            {% endblock title %}
+            {% block title %}mottle{% endblock %}
         </title>
-        {% block script %}
-            <script src="{% static 'web/script.js' %}"></script>
-        {% endblock script %}
+        {% block head %}{% endblock %}
     </head>
     <body hx-ext="head-support"
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-        <header>
+        <!-- Skip Navigation -->
+        <a href="#main-content"
+           class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50">
+            Skip to main content
+        </a>
+        <!-- Header -->
+        <header role="banner">
             {% include "web/parts/nav.html" %}
             <div class="bg-gradient-to-r from-blue-800 to-blue-500 text-white">
                 <div class="container-page">
                     <h1 class="text-3xl md:text-4xl font-bold">
-                        {% block page_title %}
-                        {% endblock page_title %}
+                        {% block page_title %}{% endblock %}
                     </h1>
                 </div>
             </div>
         </header>
-        <main class="min-h-screen bg-gray-100">
+        <!-- Main Content -->
+        <main id="main-content" class="min-h-screen bg-gray-100" role="main">
+            <!-- Loading Spinner -->
             <div id="spinner"
-                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 backdrop-blur-md z-[9999] flex-center transition-opacity duration-200">
+                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 backdrop-blur-md z-[9999] flex-center transition-opacity duration-200"
+                 role="status"
+                 aria-label="Loading">
                 <div class="relative">
                     <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span class="sr-only">Loading...</span>
                 </div>
             </div>
             <div id="content">
-                {% block content %}
-                {% endblock content %}
+                {% block content %}{% endblock %}
             </div>
         </main>
-        {% include "web/parts/footer.html" %}
+        <!-- Footer -->
+        <footer role="contentinfo">
+            {% include "web/parts/footer.html" %}
+        </footer>
+        <!-- Scripts -->
+        <script src="https://unpkg.com/htmx.org@2.0.4"
+                integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+                crossorigin="anonymous"
+                defer></script>
+        <script src="https://unpkg.com/hyperscript.org@0.9.14" defer></script>
+        <!-- Leaflet CSS & JS (only load when needed) -->
+        {% block maps_resources %}
+            <link rel="stylesheet"
+                  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                  crossorigin="" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+                    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+                    crossorigin=""
+                    defer></script>
+            <link rel="stylesheet"
+                  href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+            <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"
+                    defer></script>
+        {% endblock %}
+        <!-- HTMX Extensions -->
+        <script src="https://unpkg.com/htmx-toaster/dist/htmx-toaster.min.js" defer></script>
+        <!-- App Scripts -->
+        <script>
+        // HTMX Loading States
+        document.addEventListener('htmx:beforeRequest', function() {
+            const spinner = document.getElementById('spinner');
+            if (spinner) {
+                spinner.style.opacity = '1';
+                spinner.style.pointerEvents = 'auto';
+            }
+        });
+
+        document.addEventListener('htmx:afterRequest', function() {
+            const spinner = document.getElementById('spinner');
+            if (spinner) {
+                spinner.style.opacity = '0';
+                spinner.style.pointerEvents = 'none';
+            }
+        });
+        
+        // Error Handling for External Resources
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if HTMX loaded properly
+            if (typeof htmx === 'undefined') {
+                console.warn('HTMX failed to load');
+            }
+        });
+        </script>
+        {% block script %}
+            <script src="{% static 'web/script.js' %}" defer></script>
+        {% endblock %}
     </body>
 </html>
