@@ -1,17 +1,17 @@
 <div id="playlist-card"
-     class="bg-white rounded-lg shadow-lg border border-gray-300 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden"
+     class="card-interactive"
      data-title="{{ playlist.name|lower }}"
      data-tracks="{{ playlist.num_tracks }}"
      data-owner="{{ playlist.owner_name|lower }}">
     <!-- Cover Art -->
-    <div class="aspect-square bg-gray-100 relative overflow-hidden">
+    <div class="image-container-square">
         <a href="{% url 'playlist' playlist.id %}"
            hx-boost="true"
            hx-indicator="#spinner"
            hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
             <img src="{{ playlist.image_url_large }}"
                  alt="{{ playlist.name }} cover art"
-                 class="w-full h-full object-cover min-h-[70px] min-w-[70px] hover:opacity-80 transition-opacity">
+                 class="cover-image">
         </a>
     </div>
     <!-- Content -->

@@ -1,13 +1,10 @@
 {% load static %}
-<div id="modal"
-     _="on closeModal remove me"
-     class="fixed inset-0 z-50 overflow-y-auto">
+<div id="modal" _="on closeModal remove me" class="modal-overlay">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <!-- Background overlay -->
-        <div class="fixed inset-0 backdrop-blur-md transition-opacity"
-             _="on click trigger closeModal"></div>
+        <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full z-10">
+        <div class="modal-panel">
             <!-- Header -->
             <div class="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
@@ -19,7 +16,7 @@
             <!-- Content -->
             <div class="bg-white px-6 py-4 space-y-4">
                 <!-- Playlist Overview Section -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="form-section">
                     <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Overview</h4>
                     <div class="flex items-center space-x-4">
                         <!-- Cover Image with Regenerate Action -->
@@ -55,7 +52,7 @@
                     </div>
                 </div>
                 <!-- Watched Playlists Section -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="form-section">
                     <h4 class="text-md font-medium text-gray-900 mb-3">Watched Playlists</h4>
                     {% if watched_playlists %}
                         <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
@@ -105,7 +102,7 @@
                     {% endif %}
                 </div>
                 <!-- Watched Artists Section -->
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="form-section">
                     <h4 class="text-md font-medium text-gray-900 mb-3">Watched Artists</h4>
                     {% if watched_artists %}
                         <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">

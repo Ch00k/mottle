@@ -40,7 +40,7 @@
                 {% if duplicates %}
                     <div class="bg-white border-b border-gray-200">
                         <!-- Collapsible Header -->
-                        <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                        <div class="px-6 py-4 cursor-pointer hover-subtle"
                              onclick="toggleDuplicates('duplicates-content')">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-3">
@@ -76,7 +76,7 @@
                             <!-- Track List -->
                             <div class="divide-y divide-gray-200 border-t border-gray-200">
                                 {% for track, count in duplicates %}
-                                    <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+                                    <div class="px-6 py-4 hover-subtle">
                                         <div class="flex items-center space-x-4">
                                             <!-- Album Art -->
                                             <div class="flex-shrink-0">

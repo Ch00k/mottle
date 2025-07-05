@@ -179,7 +179,7 @@
                         {% if albums %}
                             <section>
                                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Albums</h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div class="grid-responsive-4col">
                                     {% for album in albums %}
                                         {% include "web/parts/album_card.html" %}
                                     {% endfor %}
@@ -189,7 +189,7 @@
                         {% if singles %}
                             <section>
                                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Singles</h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div class="grid-responsive-4col">
                                     {% for album in singles %}
                                         {% include "web/parts/album_card.html" %}
                                     {% endfor %}
@@ -199,7 +199,7 @@
                         {% if compilations %}
                             <section>
                                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Compilations</h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <div class="grid-responsive-4col">
                                     {% for album in compilations %}
                                         {% include "web/parts/album_card.html" %}
                                     {% endfor %}
@@ -218,7 +218,7 @@
             <!-- Albums Tab Content -->
             {% if albums %}
                 <div id="tab-albums" class="tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div class="grid-responsive-4col">
                         {% for album in albums %}
                             {% include "web/parts/album_card.html" %}
                         {% endfor %}
@@ -228,7 +228,7 @@
             <!-- Singles Tab Content -->
             {% if singles %}
                 <div id="tab-singles" class="tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div class="grid-responsive-4col">
                         {% for album in singles %}
                             {% include "web/parts/album_card.html" %}
                         {% endfor %}
@@ -238,7 +238,7 @@
             <!-- Compilations Tab Content -->
             {% if compilations %}
                 <div id="tab-compilations" class="tab-content hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div class="grid-responsive-4col">
                         {% for album in compilations %}
                             {% include "web/parts/album_card.html" %}
                         {% endfor %}

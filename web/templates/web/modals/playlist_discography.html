@@ -1,13 +1,10 @@
 {% load static %}
-<div id="modal"
-     _="on closeModal remove me"
-     class="fixed inset-0 z-50 overflow-y-auto">
+<div id="modal" _="on closeModal remove me" class="modal-overlay">
     <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <!-- Background overlay -->
-        <div class="fixed inset-0 backdrop-blur-md transition-opacity"
-             _="on click trigger closeModal"></div>
+        <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full z-10">
+        <div class="modal-panel-lg">
             <!-- Header -->
             <div class="bg-white px-6 py-4 border-b border-gray-200">
                 <div class="flex items-center justify-between">
@@ -30,7 +27,7 @@
                               class="space-y-4">
                             {% csrf_token %}
                             <!-- Playlist Details -->
-                            <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="form-section">
                                 <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Details</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
@@ -59,7 +56,7 @@
                                 </div>
                             </div>
                             <!-- Settings -->
-                            <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="form-section">
                                 <h4 class="text-md font-medium text-gray-900 mb-3">Settings</h4>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <label class="flex items-center">
@@ -135,7 +132,7 @@
                     {% if albums %}
                         <div class="bg-white border-b border-gray-200">
                             <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                            <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('albums-content')">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
@@ -220,7 +217,7 @@
                     {% if singles %}
                         <div class="bg-white border-b border-gray-200">
                             <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                            <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('singles-content')">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
@@ -305,7 +302,7 @@
                     {% if compilations %}
                         <div class="bg-white border-b border-gray-200">
                             <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                            <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('compilations-content')">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center space-x-3">
