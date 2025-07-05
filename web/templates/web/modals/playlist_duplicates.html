@@ -1,26 +1,22 @@
 {% load static %}
-<div id="modal"
-     _="on closeModal remove me"
-     class="fixed inset-0 z-50 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+<div id="modal" _="on closeModal remove me" class="modal-overlay">
+    <div class="modal-container">
         <!-- Background overlay -->
-        <div class="fixed inset-0 backdrop-blur-md transition-opacity"
-             _="on click trigger closeModal"></div>
+        <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full z-10">
+        <div class="modal-panel-xl">
             <!-- Header -->
-            <div class="bg-white px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-900">Duplicate Tracks</h3>
-                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
-                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+            <div class="modal-header">
+                <div class="modal-header-layout">
+                    <h3 class="modal-title">Duplicate Tracks</h3>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
                 </div>
             </div>
             <!-- Content -->
-            <div class="bg-white max-h-[80vh] overflow-y-auto">
+            <div class="modal-content-scrollable">
                 <!-- Summary Header -->
                 {% if duplicates %}
-                    <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="modal-section-divider">
                         <div class="flex items-center justify-end">
                             {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
                                 <button hx-post="{% url 'deduplicate_playlist' playlist.id %}"
@@ -29,8 +25,8 @@
                                         hx-indicator="#spinner"
                                         hx-confirm="Are you sure you want to remove all duplicate tracks?"
                                         _="on htmx:afterRequest trigger closeModal"
-                                        class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors flex items-center">
-                                    {% include 'web/icons/tw_trash.html' with class="h-4 w-4 mr-2" %}
+                                        class="modal-button-delete">
+                                    {% include 'web/icons/tw_trash.html' with class="modal-icon modal-icon-mr" %}
                                     Remove All
                                 </button>
                             {% endif %}
@@ -42,10 +38,10 @@
                         <!-- Collapsible Header -->
                         <div class="px-6 py-4 cursor-pointer hover-subtle"
                              onclick="toggleDuplicates('duplicates-content')">
-                            <div class="flex items-center justify-between">
+                            <div class="modal-header-layout">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-6 h-6 flex items-center justify-center">
-                                        {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform duplicates-chevron" %}
+                                        {% include 'web/icons/tw_chevron_down.html' with class="modal-chevron duplicates-chevron" %}
                                     </div>
                                     <div>
                                         <h2 class="text-lg font-semibold text-gray-900">

@@ -1,27 +1,23 @@
 {% load static %}
-<div id="modal"
-     _="on closeModal remove me"
-     class="fixed inset-0 z-50 overflow-y-auto">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+<div id="modal" _="on closeModal remove me" class="modal-overlay">
+    <div class="modal-container">
         <!-- Background overlay -->
-        <div class="fixed inset-0 backdrop-blur-md transition-opacity"
-             _="on click trigger closeModal"></div>
+        <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
-        <div class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full z-10">
+        <div class="modal-panel-xl">
             <!-- Header -->
-            <div class="bg-white px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-900">Playlist Updates</h3>
-                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
-                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+            <div class="modal-header">
+                <div class="modal-header-layout">
+                    <h3 class="modal-title">Playlist Updates</h3>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
                 </div>
             </div>
             <!-- Content -->
-            <div class="bg-white max-h-[80vh] overflow-y-auto">
+            <div class="modal-content-scrollable">
                 <!-- Summary Header -->
                 {% if updates %}
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
+                    <div class="modal-section-divider">
+                        <div class="modal-header-layout">
                             <div>
                                 <a href="javascript:void(0)"
                                    onclick="toggleAll()"
@@ -38,8 +34,8 @@
                                         hx-target="body"
                                         hx-indicator="#spinner"
                                         _="on htmx:afterRequest trigger closeModal"
-                                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors flex items-center">
-                                    {% include 'web/icons/tw_checkmark.html' with class="h-4 w-4 mr-2" %}
+                                        class="modal-button-accept">
+                                    {% include 'web/icons/tw_checkmark.html' with class="modal-icon modal-icon-mr" %}
                                     Accept All
                                 </button>
                             </div>
@@ -52,7 +48,7 @@
                             <!-- Collapsible Header -->
                             <div class="px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
                                  onclick="toggleUpdate('update-{{ forloop.counter }}')">
-                                <div class="flex items-center justify-between">
+                                <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-6 h-6 flex items-center justify-center">
                                             {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform update-chevron" %}
@@ -89,8 +85,8 @@
                                                 hx-indicator="#spinner"
                                                 onclick="event.stopPropagation()"
                                                 _="on htmx:afterRequest trigger closeModal"
-                                                class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full text-green-700 bg-green-100 hover:bg-green-200 transition-colors w-20 justify-center">
-                                            {% include 'web/icons/tw_checkmark.html' with class="h-4 w-4 mr-1 text-green-700" %}
+                                                class="modal-button-accept-small w-20 justify-center">
+                                            {% include 'web/icons/tw_checkmark.html' with class="modal-icon modal-icon-mr-sm" %}
                                             Accept
                                         </button>
                                     </div>

@@ -1,23 +1,22 @@
 {% load static %}
 <div id="modal" _="on closeModal remove me" class="modal-overlay">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+    <div class="modal-container">
         <!-- Background overlay -->
         <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
         <div class="modal-panel-lg">
             <!-- Header -->
-            <div class="bg-white px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-900">Create {{ artist.name }} Discography</h3>
-                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
-                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+            <div class="modal-header">
+                <div class="modal-header-layout">
+                    <h3 class="modal-title">Create {{ artist.name }} Discography</h3>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
                 </div>
             </div>
             <!-- Content -->
-            <div class="bg-white max-h-[80vh] overflow-y-auto">
+            <div class="modal-content-scrollable">
                 {% if albums or singles or compilations %}
                     <!-- Playlist Configuration Form -->
-                    <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="modal-section-divider">
                         <form action="{% url 'albums' artist.id %}"
                               method="post"
                               id="albums-form"
@@ -29,88 +28,82 @@
                             <!-- Playlist Details -->
                             <div class="form-section">
                                 <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Details</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-grid">
                                     <div>
-                                        <label for="playlist-name"
-                                               class="block text-sm font-medium text-gray-700 mb-1">
-                                            Playlist Name
-                                        </label>
+                                        <label for="playlist-name" class="form-label">Playlist Name</label>
                                         <input type="text"
                                                name="name"
                                                id="playlist-name"
                                                value="{{ artist.name }} discography"
                                                onkeyup="toggleSubmitButtonInput('playlist-name', 'create')"
                                                required
-                                               class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                               class="form-input-text">
                                     </div>
                                     <div>
-                                        <label for="playlist-description"
-                                               class="block text-sm font-medium text-gray-700 mb-1">
-                                            Description (optional)
-                                        </label>
+                                        <label for="playlist-description" class="form-label">Description (optional)</label>
                                         <input type="text"
                                                name="description"
                                                id="playlist-description"
-                                               class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                               class="form-input-text">
                                     </div>
                                 </div>
                             </div>
                             <!-- Settings -->
                             <div class="form-section">
                                 <h4 class="text-md font-medium text-gray-900 mb-3">Settings</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <label class="flex items-center">
+                                <div class="form-grid">
+                                    <label class="form-checkbox-wrapper">
                                         <input type="checkbox"
                                                name="is-public"
                                                id="is-public"
                                                checked
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-3 text-sm text-gray-700">Make public</span>
+                                               class="form-checkbox">
+                                        <span class="form-checkbox-label">Make public</span>
                                     </label>
-                                    <label class="flex items-center">
+                                    <label class="form-checkbox-wrapper">
                                         <input type="checkbox"
                                                name="generate-cover"
                                                id="generate-cover"
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-3 text-sm text-gray-700">Generate cover image</span>
+                                               class="form-checkbox">
+                                        <span class="form-checkbox-label">Generate cover image</span>
                                     </label>
                                     {% if events_enabled %}
-                                        <label class="flex items-center">
+                                        <label class="form-checkbox-wrapper">
                                             <input type="checkbox"
                                                    name="track-events"
                                                    id="track-events"
                                                    checked
-                                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                            <span class="ml-3 text-sm text-gray-700">Watch artist for live events</span>
+                                                   class="form-checkbox">
+                                            <span class="form-checkbox-label">Watch artist for live events</span>
                                         </label>
                                     {% endif %}
-                                    <label class="flex items-center">
+                                    <label class="form-checkbox-wrapper">
                                         <input type="checkbox"
                                                name="auto-update"
                                                id="auto-update"
                                                checked
                                                onClick="toggleRelatedCheckbox(this, 'auto-accept')"
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-3 text-sm text-gray-700">Watch artist for new releases</span>
+                                               class="form-checkbox">
+                                        <span class="form-checkbox-label">Watch artist for new releases</span>
                                     </label>
-                                    <label class="flex items-center md:col-span-2">
+                                    <label class="form-checkbox-wrapper md:col-span-2">
                                         <input type="checkbox"
                                                name="auto-accept"
                                                id="auto-accept"
-                                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                                        <span class="ml-3 text-sm text-gray-700">Automatically add tracks from new releases to the playlist</span>
+                                               class="form-checkbox">
+                                        <span class="form-checkbox-label">Automatically add tracks from new releases to the playlist</span>
                                     </label>
                                 </div>
                             </div>
                         </form>
                     </div>
                     <!-- Albums Overview Header -->
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
+                    <div class="modal-section-divider">
+                        <div class="modal-header-layout">
                             <div>
                                 <a href="javascript:void(0)"
                                    onclick="toggleAllAlbums()"
-                                   class="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center">
+                                   class="text-sm text-gray-500 hover:text-gray-700 transition-colors form-checkbox-wrapper">
                                     <span id="toggleAllIcon" class="transform transition-transform mr-1">
                                         {% include 'web/icons/tw_chevron_down.html' with class="h-3 w-3" %}
                                     </span>
@@ -121,8 +114,8 @@
                                 <button type="submit"
                                         form="albums-form"
                                         id="create"
-                                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                                    {% include "web/icons/tw_plus.html" with class="h-4 w-4 mr-2" %}
+                                        class="modal-button-create">
+                                    {% include "web/icons/tw_plus.html" with class="modal-icon modal-icon-mr" %}
                                     Create Playlist
                                 </button>
                             </div>
@@ -134,9 +127,9 @@
                             <!-- Collapsible Header -->
                             <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('albums-content')">
-                                <div class="flex items-center justify-between">
+                                <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 flex items-center justify-center">
+                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
                                             {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform albums-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
@@ -144,7 +137,7 @@
                                             <input type="checkbox"
                                                    name="all-albums"
                                                    id="all-albums"
-                                                   class="toggling h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                   class="toggling form-checkbox"
                                                    onClick="toggleCheckboxGroup(this, 'album')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_albums %}disabled{% endif %}
@@ -155,7 +148,7 @@
                                             </div>
                                         </label>
                                     </div>
-                                    <div class="flex items-center space-x-4">
+                                    <div class="form-checkbox-wrapper space-x-4">
                                         <!-- Album Preview -->
                                         <div class="flex -space-x-1">
                                             {% for album in albums|slice:":3" %}
@@ -165,7 +158,7 @@
                                                      title="{{ album.name }}">
                                             {% endfor %}
                                             {% if albums|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
                                                     <span class="text-xs font-medium text-gray-600">+{{ albums|length|add:"-3" }}</span>
                                                 </div>
                                             {% endif %}
@@ -186,11 +179,11 @@
                                                          class="w-full h-full object-cover">
                                                     <!-- Selection Checkbox -->
                                                     <div class="absolute top-2 left-2">
-                                                        <label class="inline-flex items-center">
+                                                        <label class="inline-form-checkbox-wrapper">
                                                             <input type="checkbox"
                                                                    name="album"
                                                                    form="albums-form"
-                                                                   class="toggling album h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                   class="toggling album form-checkbox"
                                                                    value="{{ album.id }}"
                                                                    onchange="toggleSubmitButton()"
                                                                    checked>
@@ -201,7 +194,7 @@
                                                 <div class="p-3">
                                                     <h3 class="text-sm font-medium text-gray-900 truncate"
                                                         title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
                                                         <span>{{ album.release_year }}</span>
                                                         <span>{{ album.num_tracks }} tracks</span>
                                                     </div>
@@ -219,9 +212,9 @@
                             <!-- Collapsible Header -->
                             <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('singles-content')">
-                                <div class="flex items-center justify-between">
+                                <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 flex items-center justify-center">
+                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
                                             {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform singles-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
@@ -229,7 +222,7 @@
                                             <input type="checkbox"
                                                    name="all-singles"
                                                    id="all-singles"
-                                                   class="toggling h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                   class="toggling form-checkbox"
                                                    onClick="toggleCheckboxGroup(this, 'single')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_singles %}disabled{% endif %}
@@ -240,7 +233,7 @@
                                             </div>
                                         </label>
                                     </div>
-                                    <div class="flex items-center space-x-4">
+                                    <div class="form-checkbox-wrapper space-x-4">
                                         <!-- Singles Preview -->
                                         <div class="flex -space-x-1">
                                             {% for single in singles|slice:":3" %}
@@ -250,7 +243,7 @@
                                                      title="{{ single.name }}">
                                             {% endfor %}
                                             {% if singles|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
                                                     <span class="text-xs font-medium text-gray-600">+{{ singles|length|add:"-3" }}</span>
                                                 </div>
                                             {% endif %}
@@ -271,11 +264,11 @@
                                                          class="w-full h-full object-cover">
                                                     <!-- Selection Checkbox -->
                                                     <div class="absolute top-2 left-2">
-                                                        <label class="inline-flex items-center">
+                                                        <label class="inline-form-checkbox-wrapper">
                                                             <input type="checkbox"
                                                                    name="album"
                                                                    form="albums-form"
-                                                                   class="toggling single h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                   class="toggling single form-checkbox"
                                                                    value="{{ album.id }}"
                                                                    onchange="toggleSubmitButton()"
                                                                    checked>
@@ -286,7 +279,7 @@
                                                 <div class="p-3">
                                                     <h3 class="text-sm font-medium text-gray-900 truncate"
                                                         title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
                                                         <span>{{ album.release_year }}</span>
                                                         <span>{{ album.num_tracks }} tracks</span>
                                                     </div>
@@ -304,9 +297,9 @@
                             <!-- Collapsible Header -->
                             <div class="px-6 py-4 cursor-pointer hover-subtle"
                                  onclick="toggleAlbumSection('compilations-content')">
-                                <div class="flex items-center justify-between">
+                                <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 flex items-center justify-center">
+                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
                                             {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform compilations-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
@@ -314,7 +307,7 @@
                                             <input type="checkbox"
                                                    name="all-compilations"
                                                    id="all-compilations"
-                                                   class="toggling h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                   class="toggling form-checkbox"
                                                    onClick="toggleCheckboxGroup(this, 'compilation')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_compilations %}disabled{% endif %}>
@@ -324,7 +317,7 @@
                                             </div>
                                         </label>
                                     </div>
-                                    <div class="flex items-center space-x-4">
+                                    <div class="form-checkbox-wrapper space-x-4">
                                         <!-- Compilations Preview -->
                                         <div class="flex -space-x-1">
                                             {% for compilation in compilations|slice:":3" %}
@@ -334,7 +327,7 @@
                                                      title="{{ compilation.name }}">
                                             {% endfor %}
                                             {% if compilations|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
                                                     <span class="text-xs font-medium text-gray-600">+{{ compilations|length|add:"-3" }}</span>
                                                 </div>
                                             {% endif %}
@@ -355,11 +348,11 @@
                                                          class="w-full h-full object-cover">
                                                     <!-- Selection Checkbox -->
                                                     <div class="absolute top-2 left-2">
-                                                        <label class="inline-flex items-center">
+                                                        <label class="inline-form-checkbox-wrapper">
                                                             <input type="checkbox"
                                                                    name="album"
                                                                    form="albums-form"
-                                                                   class="toggling compilation h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                                   class="toggling compilation form-checkbox"
                                                                    value="{{ album.id }}"
                                                                    onchange="toggleSubmitButton()">
                                                         </label>
@@ -369,7 +362,7 @@
                                                 <div class="p-3">
                                                     <h3 class="text-sm font-medium text-gray-900 truncate"
                                                         title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
                                                         <span>{{ album.release_year }}</span>
                                                         <span>{{ album.num_tracks }} tracks</span>
                                                     </div>

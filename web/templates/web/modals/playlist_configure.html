@@ -1,23 +1,22 @@
 {% load static %}
 <div id="modal" _="on closeModal remove me" class="modal-overlay">
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+    <div class="modal-container">
         <!-- Background overlay -->
         <div class="modal-backdrop" _="on click trigger closeModal"></div>
         <!-- Modal panel -->
         <div class="modal-panel">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-900">Playlist Configuration</h3>
-                    <button class="text-gray-400 hover:text-gray-600 transition-colors"
-                            _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+            <div class="modal-header">
+                <div class="modal-header-layout">
+                    <h3 class="modal-title">Playlist Configuration</h3>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
                 </div>
             </div>
             <!-- Content -->
-            <div class="bg-white px-6 py-4 space-y-4">
+            <div class="modal-content-spaced">
                 <!-- Playlist Overview Section -->
                 <div class="form-section">
-                    <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Overview</h4>
+                    <h4 class="modal-section-title">Playlist Overview</h4>
                     <div class="flex items-center space-x-4">
                         <!-- Cover Image with Regenerate Action -->
                         <div class="flex-shrink-0 relative group cursor-pointer"
@@ -40,12 +39,12 @@
                         <div class="flex-1 min-w-0 flex items-center">
                             <div class="flex items-center justify-between w-full">
                                 <div id="playlist-name-container">{% include "web/parts/playlist_name.html" %}</div>
-                                <button class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                <button class="modal-button-edit"
                                         hx-get="{% url 'rename_playlist' playlist.id %}"
                                         hx-target="#playlist-name-container"
                                         hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                                    {% include 'web/icons/tw_edit.html' with class="w-3 h-3" %}
-                                    <span class="ml-1">Rename</span>
+                                    {% include 'web/icons/tw_edit.html' with class="modal-icon-sm" %}
+                                    <span class="modal-icon-mr-sm">Rename</span>
                                 </button>
                             </div>
                         </div>
@@ -53,7 +52,7 @@
                 </div>
                 <!-- Watched Playlists Section -->
                 <div class="form-section">
-                    <h4 class="text-md font-medium text-gray-900 mb-3">Watched Playlists</h4>
+                    <h4 class="modal-section-title">Watched Playlists</h4>
                     {% if watched_playlists %}
                         <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -78,7 +77,7 @@
                                                        name="watched-playlist-id"
                                                        value="{{ watched_playlist.id }}">
                                                 {% include "web/parts/accept.html" with playlist_id=playlist.id enabled=auto_accept_updates %}
-                                                <button class="p-2 text-red-600"
+                                                <button class="modal-button-delete-icon"
                                                         hx-post="{% url 'unwatch_playlist' watched_playlist.id %}"
                                                         hx-include="[name='watching-playlist-id']"
                                                         hx-confirm="Are you sure you want to stop watching playlist {{ playlist.name }}?"
@@ -86,7 +85,7 @@
                                                         hx-swap="outerHTML"
                                                         hx-indicator="#spinner"
                                                         title="Stop watching">
-                                                    {% include 'web/icons/tw_trash.html' with class="w-4 h-4" %}
+                                                    {% include 'web/icons/tw_trash.html' with class="modal-icon" %}
                                                 </button>
                                             </div>
                                         </div>
@@ -103,7 +102,7 @@
                 </div>
                 <!-- Watched Artists Section -->
                 <div class="form-section">
-                    <h4 class="text-md font-medium text-gray-900 mb-3">Watched Artists</h4>
+                    <h4 class="modal-section-title">Watched Artists</h4>
                     {% if watched_artists %}
                         <input type="hidden" name="watching-playlist-id" value="{{ playlist.id }}">
                         <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">

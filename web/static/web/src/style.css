@@ -143,6 +143,55 @@
     @apply block text-sm font-medium text-gray-700 mb-2;
   }
 
+  /* Modal-Specific Form Components */
+  .form-input-text {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  .form-select {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  .form-radio {
+    @apply h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300;
+  }
+
+  .form-checkbox-wrapper {
+    @apply flex items-center;
+  }
+
+  .form-checkbox-label {
+    @apply ml-3 text-sm text-gray-700;
+  }
+
+  .form-radio-wrapper {
+    @apply flex items-center;
+  }
+
+  .form-radio-label {
+    @apply ml-2 block text-sm font-medium text-gray-700;
+  }
+
+  .form-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .form-grid-3 {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .form-section-background {
+    @apply bg-gray-50 rounded-lg p-4;
+  }
+
+  .form-field-group {
+    @apply space-y-1;
+  }
+
+  .form-button-group {
+    @apply flex space-x-3;
+  }
+
   /* Typography Components */
   .text-heading-lg {
     @apply text-xl font-semibold text-gray-900;
@@ -267,6 +316,196 @@
 
   .modal-panel-lg {
     @apply relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full z-10;
+  }
+
+  .modal-panel-xl {
+    @apply relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full z-10;
+  }
+
+  .modal-panel-sm {
+    @apply relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full z-10;
+  }
+
+  .modal-container {
+    @apply flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0;
+  }
+
+  .modal-section-divider {
+    @apply px-6 py-4 border-b border-gray-200;
+  }
+
+  .modal-section-content {
+    @apply px-6 py-4 border-t border-gray-200;
+  }
+
+  .modal-collapsible-header {
+    @apply px-6 py-4 cursor-pointer hover:bg-gray-50 transition-colors;
+  }
+
+  .modal-track-item {
+    @apply px-6 py-4 hover:bg-gray-50 transition-colors;
+  }
+
+  .modal-chevron-container {
+    @apply w-6 h-6 flex items-center justify-center;
+  }
+
+  .modal-preview-images {
+    @apply flex -space-x-1;
+  }
+
+  .modal-album-grid {
+    @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4;
+  }
+
+  /* Modal Header Components */
+  .modal-header {
+    @apply bg-white px-6 py-4 border-b border-gray-200;
+  }
+
+  .modal-header-gradient {
+    @apply bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200;
+  }
+
+  .modal-header-layout {
+    @apply flex items-center justify-between;
+  }
+
+  .modal-title {
+    @apply text-xl font-semibold text-gray-900;
+  }
+
+  .modal-close-button {
+    @apply text-gray-400 hover:text-gray-600 transition-colors;
+  }
+
+  /* Modal Content Components */
+  .modal-content {
+    @apply bg-white px-6 py-4;
+  }
+
+  .modal-content-scrollable {
+    @apply bg-white max-h-[80vh] overflow-y-auto;
+  }
+
+  .modal-content-spaced {
+    @apply bg-white px-6 py-4 space-y-4;
+  }
+
+  /* Modal Section Components */
+  .modal-section-title {
+    @apply text-base font-medium text-gray-900 mb-3;
+  }
+
+  .modal-collapsible-title {
+    @apply text-lg font-semibold text-gray-900;
+  }
+
+  /* Modal Button Components */
+  .modal-button-primary {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors;
+  }
+
+  .modal-button-success {
+    @apply px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors;
+  }
+
+  .modal-button-danger {
+    @apply px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors;
+  }
+
+  .modal-button-small {
+    @apply inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors;
+  }
+
+  /* Specialized Action Button Components */
+  .modal-button-accept {
+    @apply inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors;
+  }
+
+  .modal-button-accept-small {
+    @apply inline-flex items-center px-3 py-1 text-xs font-medium rounded-full text-green-700 bg-green-100 hover:bg-green-200 transition-colors;
+  }
+
+  .modal-button-delete {
+    @apply inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors;
+  }
+
+  .modal-button-delete-icon {
+    @apply p-2 text-red-600 hover:text-red-800 transition-colors;
+  }
+
+  .modal-button-create {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors;
+  }
+
+  .modal-button-edit {
+    @apply inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors;
+  }
+
+  /* Icon Size Standardization */
+  .modal-icon-sm {
+    @apply w-3 h-3;
+  }
+
+  .modal-icon {
+    @apply w-4 h-4;
+  }
+
+  .modal-icon-lg {
+    @apply w-5 h-5;
+  }
+
+  /* Icon Spacing */
+  .modal-icon-mr {
+    @apply mr-2;
+  }
+
+  .modal-icon-mr-sm {
+    @apply mr-1;
+  }
+
+  /* Chevron Component */
+  .modal-chevron {
+    @apply w-4 h-4 text-gray-400 transform transition-transform;
+  }
+
+  /* Modal Empty State Components */
+  .modal-empty-state {
+    @apply px-6 py-12 text-center;
+  }
+
+  .modal-empty-state-compact {
+    @apply text-center py-4 bg-gray-50 rounded-lg;
+  }
+
+  .modal-empty-icon {
+    @apply mx-auto h-12 w-12 text-gray-400;
+  }
+
+  .modal-empty-icon-small {
+    @apply mx-auto h-6 w-6 text-gray-400;
+  }
+
+  .modal-empty-title {
+    @apply mt-4 text-lg font-medium text-gray-900;
+  }
+
+  .modal-empty-description {
+    @apply mt-2 text-gray-500;
+  }
+
+  /* Modal List Components */
+  .modal-list {
+    @apply divide-y divide-gray-200 border-t border-gray-200;
+  }
+
+  .modal-list-item {
+    @apply px-6 py-4 hover:bg-gray-50 transition-colors;
+  }
+
+  .modal-list-item-layout {
+    @apply flex items-center space-x-4;
   }
 
   /* Login specific styles */
