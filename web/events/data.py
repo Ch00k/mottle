@@ -531,7 +531,8 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
                 if r[2] is not None:
                     result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
     else:
-        result_urls = urls
+        urls = [f"{SONGKICK_BASE_URL}/{u}" for u in urls]
+        result_urls = [(await ShortURL.shorten(u)).full_short_url for u in urls]
 
     if event_type == EventType.live_stream:
         stream_urls = result_urls
