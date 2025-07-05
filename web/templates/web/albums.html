@@ -171,7 +171,7 @@
             </div>
         </div>
         <!-- Release Content -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="container-page">
             <!-- All Tab Content -->
             <div id="tab-all" class="tab-content">
                 {% if albums or singles or compilations %}
@@ -208,7 +208,7 @@
                         {% endif %}
                     </div>
                 {% else %}
-                    <div class="text-center py-12">
+                    <div class="empty-state">
                         {% include "web/icons/tw_music_notes.html" with class="mx-auto h-12 w-12 text-gray-400" %}
                         <h3 class="mt-4 text-lg font-medium text-gray-900">No releases found</h3>
                         <p class="mt-2 text-gray-500">{{ artist.name }} has no releases available.</p>
@@ -248,51 +248,12 @@
         </div>
     </div>
 {% else %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="text-center py-12">
+    <div class="container-page">
+        <div class="empty-state">
             {% include "web/icons/tw_music_notes.html" %}
             <h3 class="mt-4 text-lg font-medium text-gray-900">No albums found</h3>
             <p class="mt-2 text-gray-500">{{ artist.name }} has no albums available.</p>
         </div>
     </div>
 {% endif %}
-<style>
-    .tab-button {
-        border-bottom-color: transparent;
-        color: #6b7280;
-    }
-
-    .tab-button:hover {
-        color: #374151;
-        border-bottom-color: #d1d5db;
-    }
-
-    .tab-button.active {
-        color: #2563eb;
-        border-bottom-color: #2563eb;
-    }
-
-    .tab-content {
-        display: block;
-    }
-
-    .tab-content.hidden {
-        display: none;
-    }
-</style>
-<script>
-    function switchTab(tabName) {
-        // Update active tab button
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-
-        // Show/hide tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('hidden');
-        });
-        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    }
-</script>
 {% endblock content %}

@@ -4,6 +4,10 @@
 
 @layer components {
   /* Container Components */
+  .container-base {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
   .container-main {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
@@ -17,25 +21,33 @@
   }
 
   /* Card Components */
+  .card-base {
+    @apply bg-white rounded-lg border border-gray-200;
+  }
+
   .card {
-    @apply bg-white rounded-lg shadow-md border border-gray-200;
+    @apply bg-white rounded-lg border border-gray-200 shadow-md;
   }
 
   .card-interactive {
-    @apply bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden;
+    @apply bg-white rounded-lg border border-gray-200 shadow-md hover:shadow-xl hover:scale-105 transition-all duration-200 overflow-hidden cursor-pointer;
   }
 
   .card-elevated {
-    @apply bg-white rounded-lg shadow-lg border border-gray-300;
+    @apply bg-white rounded-lg border border-gray-300 shadow-lg;
   }
 
   .feature-card {
-    @apply bg-white rounded-lg shadow-md border border-gray-200 min-h-48 p-6 hover:shadow-lg transition-shadow flex flex-col;
+    @apply bg-white rounded-lg border border-gray-200 shadow-md min-h-48 p-6 hover:shadow-lg transition-shadow flex flex-col;
   }
 
   /* Button Components */
-  .btn {
+  .btn-base {
     @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-3 py-2 text-sm;
   }
 
   .btn-sm {
@@ -47,7 +59,7 @@
   }
 
   .btn-lg {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-4 py-2 text-sm;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-4 py-2 text-base;
   }
 
   .btn-action {
@@ -81,23 +93,23 @@
 
   /* Small Action Button Variants */
   .btn-sm-primary {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors px-2 py-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 bg-blue-50;
   }
 
   .btn-sm-success {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors px-2 py-1 text-xs text-green-600 hover:text-green-800 bg-green-50;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-2 py-1 text-xs text-green-600 hover:text-green-800 bg-green-50;
   }
 
   .btn-sm-warning {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors px-2 py-1 text-xs text-orange-600 hover:text-orange-800 bg-orange-50;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-2 py-1 text-xs text-orange-600 hover:text-orange-800 bg-orange-50;
   }
 
   .btn-sm-danger {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors px-2 py-1 text-xs text-red-600 hover:text-red-800 bg-red-50;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-2 py-1 text-xs text-red-600 hover:text-red-800 bg-red-50;
   }
 
   .btn-sm-accent {
-    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors px-2 py-1 text-xs text-purple-600 hover:text-purple-800 bg-purple-50;
+    @apply inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 px-2 py-1 text-xs text-purple-600 hover:text-purple-800 bg-purple-50;
   }
 
   /* Navigation Components */
@@ -106,12 +118,24 @@
   }
 
   /* Grid Components */
+  .grid-base {
+    @apply grid gap-6;
+  }
+
   .grid-responsive {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }
 
   .grid-responsive-2col {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6;
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2;
+  }
+
+  .grid-responsive-3col {
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .grid-responsive-4col {
+    @apply grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }
 
   /* Form Components */
@@ -238,8 +262,20 @@
     @apply flex items-start;
   }
 
+  .flex-end {
+    @apply flex items-end;
+  }
+
+  .flex-col-center {
+    @apply flex flex-col items-center justify-center;
+  }
+
   .icon-text {
     @apply flex items-center;
+  }
+
+  .transition-all {
+    @apply transition-all duration-200;
   }
 
   /* State Components */
@@ -249,11 +285,7 @@
 
   /* Tab Components */
   .tab-button {
-    @apply py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-gray-600;
-  }
-
-  .tab-button:hover {
-    @apply text-gray-700 border-gray-300;
+    @apply py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none focus:text-gray-700;
   }
 
   .tab-button.active {
@@ -280,11 +312,6 @@
   /* Action Button Components */
   .btn-action-xs {
     @apply inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors;
-  }
-
-  /* Grid Components - Additional */
-  .grid-responsive-4col {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
   }
 
   /* Hover Effects */
