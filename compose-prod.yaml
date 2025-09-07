@@ -1,5 +1,5 @@
 x-image: &image
-  image: ghcr.io/ch00k/mottle:0.27.7
+  image: ghcr.io/ch00k/mottle:0.27.8
 x-logging: &logging
   logging:
     driver: fluentd
