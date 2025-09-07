@@ -26,12 +26,8 @@ RUN apt-get update && apt-get install \
     libgdal32 \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
-RUN groupadd -g 1000 app
-RUN useradd -d /app -u 1000 -g 1000 -s /bin/bash app
+COPY --from=builder /app /app
 
-COPY --from=builder --chown=app /app /app
-
-USER app
 WORKDIR /app
 
 RUN mkdir -p /tmp/prometheus_multiproc_dir
