@@ -1,0 +1,120 @@
+x-image: &image
+  image: ghcr.io/ch00k/mottle:0.27.7
+x-logging: &logging
+  logging:
+    driver: fluentd
+    options:
+      fluentd-async: "true"
+      tag: docker-compose.mottle.app
+      labels: fluentbit-es-index
+x-env: &env
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+  SECRET_KEY: ${SECRET_KEY}
+  URLSHORTENER_BASE_URL: ${URLSHORTENER_BASE_URL}
+  SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN}
+  DATABASE_FILE: ${DATABASE_FILE}
+  DATABASE_FILE_TASKS: ${DATABASE_FILE_TASKS}
+  STATIC_ROOT: ${STATIC_ROOT}
+  SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+  SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+  SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI}
+  SPOTIFY_TOKEN_ENCRYPTION_KEYS: ${SPOTIFY_TOKEN_ENCRYPTION_KEYS}
+  MAILERSEND_API_TOKEN: ${MAILERSEND_API_TOKEN}
+  MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  OPENAI_IMAGES_DUMP_DIR: ${OPENAI_IMAGES_DUMP_DIR}
+  SENTRY_DSN: ${SENTRY_DSN}
+  SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT}
+  BRIGHTDATA_PROXY_ADDRESS: ${BRIGHTDATA_PROXY_ADDRESS}
+  BRIGHTDATA_PROXY_USERNAME: ${BRIGHTDATA_PROXY_USERNAME}
+  BRIGHTDATA_PROXY_PASSWORD: ${BRIGHTDATA_PROXY_PASSWORD}
+name: mottle
+services:
+  collectstatic:
+    !!merge <<:
+      - *image
+      - *logging
+    labels:
+      - fluentbit-es-index=fluentbit.mottle.app
+    environment:
+      !!merge <<: *env
+    command: /app/manage.py collectstatic --noinput
+    volumes:
+      - ./static:/static
+  migrate:
+    !!merge <<:
+      - *image
+      - *logging
+    labels:
+      - fluentbit-es-index=fluentbit.mottle.app
+    environment:
+      !!merge <<: *env
+    command: bash -c "/app/manage.py migrate --database default && /app/manage.py migrate --database tasks"
+    volumes:
+      - ./database:/database
+  web:
+    !!merge <<:
+      - *image
+      - *logging
+    labels:
+      - fluentbit-es-index=fluentbit.mottle.app
+      - prometheus.scraping-enabled=true
+    environment:
+      !!merge <<: *env
+    command: daphne --bind 0.0.0.0 --port ${WEB_LISTEN_PORT} --verbosity 0 mottle.asgi:application
+    volumes:
+      - ./static:/static
+      - ./database:/database
+    ports:
+      - ${WEB_LISTEN_HOST}:${WEB_LISTEN_PORT}:${WEB_LISTEN_PORT}
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  taskrunner_default:
+    !!merge <<:
+      - *image
+      - *logging
+    labels:
+      - fluentbit-es-index=fluentbit.mottle.app
+      - prometheus.scraping-enabled=true
+    environment:
+      !!merge <<: *env
+      DJANGO_SETTINGS_MODULE: mottle.settings
+      Q_CLUSTER_NAME: default
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
+    command: python /app/taskrunner/run.py 0.0.0.0 10002
+    volumes:
+      - ./database:/database
+      - ./images_dump:/images_dump
+    ports:
+      - 127.0.0.1:10002:10002
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  taskrunner_long_running:
+    !!merge <<:
+      - *image
+      - *logging
+    labels:
+      - fluentbit-es-index=fluentbit.mottle.app
+      - prometheus.scraping-enabled=true
+    environment:
+      !!merge <<: *env
+      DJANGO_SETTINGS_MODULE: mottle.settings
+      Q_CLUSTER_NAME: long_running
+      SCHEDULER_ENABLED: true
+      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
+    command: python /app/taskrunner/run.py 0.0.0.0 10003
+    volumes:
+      - ./database:/database
+      - ./images_dump:/images_dump
+    ports:
+      - 127.0.0.1:10003:10003
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
