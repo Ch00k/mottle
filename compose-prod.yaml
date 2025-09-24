@@ -1,5 +1,8 @@
-x-image: &image
-  image: ghcr.io/ch00k/mottle:0.27.8
+x-build: &build
+  build:
+    context: .
+    dockerfile: Dockerfile
+  pull_policy: build
 x-logging: &logging
   logging:
     driver: fluentd
@@ -34,7 +37,7 @@ name: mottle
 services:
   collectstatic:
     !!merge <<:
-      - *image
+      - *build
       - *logging
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
@@ -45,7 +48,7 @@ services:
       - ./static:/static
   migrate:
     !!merge <<:
-      - *image
+      - *build
       - *logging
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
@@ -56,7 +59,7 @@ services:
       - ./database:/database
   web:
     !!merge <<:
-      - *image
+      - *build
       - *logging
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
@@ -75,7 +78,7 @@ services:
         condition: service_completed_successfully
   taskrunner_default:
     !!merge <<:
-      - *image
+      - *build
       - *logging
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
@@ -97,7 +100,7 @@ services:
         condition: service_completed_successfully
   taskrunner_long_running:
     !!merge <<:
-      - *image
+      - *build
       - *logging
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
