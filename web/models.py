@@ -44,7 +44,7 @@ class EventUpdateChangesJSONDecoder(json.JSONDecoder):
     def object_hook(self, obj: Any) -> Any:
         if (geolocation := obj.get("geolocation")) is not None:
             x_old, y_old = geolocation["old"]
-            x_new, y_new = geolocation["old"]
+            x_new, y_new = geolocation["new"]
 
             obj["geolocation"]["old"] = Point(x=x_old, y=y_old, srid=settings.GEODJANGO_SRID)
             obj["geolocation"]["new"] = Point(x=x_new, y=y_new, srid=settings.GEODJANGO_SRID)
