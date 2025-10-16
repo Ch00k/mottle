@@ -1,5 +1,14 @@
-SHELL := bash
 DOCKER_BUILDKIT := 1
+
+.PHONY: lint test up down logs ssh shell makemigrations manage debug css check tag
+
+lint:
+	uv run ruff format .
+	uv run ruff check --fix .
+	uv run mypy --config-file pyproject.toml .
+
+test:
+	uv run pytest -s -vvv tests/
 
 up:
 	docker compose --file compose.dev.yaml up --remove-orphans
@@ -22,9 +31,6 @@ makemigrations:
 manage:
 	docker compose --file compose.dev.yaml exec web ./manage.py $(CMD)
 
-test:
-	uv run pytest web/tests
-
 debug:
 	docker compose --file compose.dev.yaml attach web  # exit with Ctrl+PQ
 
@@ -44,6 +50,3 @@ tag: check
 	git push
 	git tag -a $(APP_VERSION) -m $(APP_VERSION)
 	git push origin $(APP_VERSION)
-
-pre_release: check tag build deploy_pre
-release: check tag build deploy

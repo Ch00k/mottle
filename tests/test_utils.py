@@ -21,18 +21,22 @@ def test_custom_json_encoder_decoder() -> None:
     data = {
         "stream_urls": ["http://example.com/stream"],
         "tickets_urls": ["http://example.com/tickets"],
-        "geolocation": Point(5, 23, srid=settings.GEODJANGO_SRID),
+        "geolocation": {
+            "old": Point(5, 23, srid=settings.GEODJANGO_SRID),
+            "new": Point(23, 5, srid=settings.GEODJANGO_SRID),
+        },
     }
     data_normalized = {
         "stream_urls": ["http://example.com/stream"],
         "tickets_urls": ["http://example.com/tickets"],
-        "geolocation": [5.0, 23.0],
+        "geolocation": {"old": [5.0, 23.0], "new": [23.0, 5.0]},
     }
 
     as_json = json.dumps(data, cls=EventUpdateChangesJSONEncoder)
     as_object = json.loads(as_json, cls=EventUpdateChangesJSONDecoder)
 
     as_object_normalized = copy.deepcopy(as_object)
-    as_object_normalized["geolocation"] = list(as_object_normalized["geolocation"].coords)
+    as_object_normalized["geolocation"]["old"] = list(as_object_normalized["geolocation"]["old"].coords)
+    as_object_normalized["geolocation"]["new"] = list(as_object_normalized["geolocation"]["new"].coords)
 
     assert as_object_normalized == data_normalized
