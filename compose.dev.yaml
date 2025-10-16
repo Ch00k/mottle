@@ -1,0 +1,101 @@
+x-build: &build
+  build:
+    context: .
+    dockerfile: Dockerfile
+  pull_policy: build
+
+x-env: &env
+  PYTHONPATH: /app/mounted
+  DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-mottle.settings}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-127.0.0.1}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://127.0.0.1}
+  SECRET_KEY: ${SECRET_KEY:-foobar}
+  URLSHORTENER_BASE_URL: ${URLSHORTENER_BASE_URL:-http://127.0.0.1}
+  SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-127.0.0.1}
+  DATABASE_FILE: ${DATABASE_FILE:-/app/database/db.sqlite3}
+  DATABASE_FILE_TASKS: ${DATABASE_FILE_TASKS:-/app/database/tasks.sqlite3}
+  STATIC_ROOT: ${STATIC_ROOT:-/app/mounted/web/static}
+  SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-foo}
+  SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-bar}
+  SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-http://127.0.0.1:65534/callback/}
+  SPOTIFY_TOKEN_ENCRYPTION_KEYS: ${SPOTIFY_TOKEN_ENCRYPTION_KEYS:-qux}
+  MAILERSEND_API_TOKEN: ${MAILERSEND_API_TOKEN:-quuz}
+  MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-me@e.mail}
+  MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Mottle Dev}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-quz}
+  OPENAI_IMAGES_DUMP_DIR: ${OPENAI_IMAGES_DUMP_DIR:-/images_dump/}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-dev}
+  BRIGHTDATA_PROXY_ADDRESS: ${BRIGHTDATA_PROXY_ADDRESS:-}
+  BRIGHTDATA_PROXY_USERNAME: ${BRIGHTDATA_PROXY_USERNAME:-}
+  BRIGHTDATA_PROXY_PASSWORD: ${BRIGHTDATA_PROXY_PASSWORD:-}
+  PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
+
+name: mottle-dev
+
+services:
+  migrate:
+    <<: *build
+    environment:
+      <<: *env
+    command: bash -c "./manage.py migrate --database default && ./manage.py migrate --database tasks"
+    volumes:
+      - ./runtime_data/database:/app/database
+      - .:/app/mounted
+      - /app/mounted/.venv  # exclude .venv
+    working_dir: /app/mounted
+
+  web:
+    <<: *build
+    environment:
+      <<: *env
+    command: ./manage.py runserver 0.0.0.0:65534
+    volumes:
+      - ./runtime_data/database:/app/database
+      - .:/app/mounted
+      - /app/mounted/.venv  # exclude .venv
+    working_dir: /app/mounted
+    ports:
+      - 127.0.0.1:65534:65534
+    stdin_open: true
+    tty: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  taskrunner_default:
+    <<: *build
+    profiles:
+      - taskrunner
+    environment:
+      <<: *env
+      Q_CLUSTER_NAME: default
+      SCHEDULER_ENABLED: false
+    command: python ./taskrunner/run.py 0.0.0.0 10002
+    volumes:
+      - ./runtime_data/database:/app/database
+      - ./runtime_data/images_dump:/images_dump
+      - .:/app/mounted
+      - /app/mounted/.venv  # exclude .venv
+    working_dir: /app/mounted
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  taskrunner_long_running:
+    <<: *build
+    profiles:
+      - taskrunner
+    environment:
+      <<: *env
+      Q_CLUSTER_NAME: long_running
+      SCHEDULER_ENABLED: false
+    command: python ./taskrunner/run.py 0.0.0.0 10003
+    volumes:
+      - ./runtime_data/database:/app/database
+      - .:/app/mounted
+      - /app/mounted/.venv  # exclude .venv
+    working_dir: /app/mounted
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

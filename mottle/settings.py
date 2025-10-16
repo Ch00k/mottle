@@ -132,7 +132,7 @@ sentry_sdk.init(
     ],
 )
 
-SCHEDULER_ENABLED = env.bool("SCHEDULER_ENABLED", False)
+SCHEDULER_ENABLED = env.bool("SCHEDULER_ENABLED", True)
 
 Q_CLUSTER = {
     "name": "default",

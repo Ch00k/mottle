@@ -3,6 +3,7 @@ x-build: &build
     context: .
     dockerfile: Dockerfile
   pull_policy: build
+
 x-logging: &logging
   logging:
     driver: fluentd
@@ -10,7 +11,9 @@ x-logging: &logging
       fluentd-async: "true"
       tag: docker-compose.mottle.app
       labels: fluentbit-es-index
+
 x-env: &env
+  DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-mottle.settings}
   ALLOWED_HOSTS: ${ALLOWED_HOSTS}
   CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
   SECRET_KEY: ${SECRET_KEY}
@@ -33,39 +36,44 @@ x-env: &env
   BRIGHTDATA_PROXY_ADDRESS: ${BRIGHTDATA_PROXY_ADDRESS}
   BRIGHTDATA_PROXY_USERNAME: ${BRIGHTDATA_PROXY_USERNAME}
   BRIGHTDATA_PROXY_PASSWORD: ${BRIGHTDATA_PROXY_PASSWORD}
+  PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
+
 name: mottle
+
 services:
   collectstatic:
-    !!merge <<:
+    <<:
       - *build
       - *logging
+    environment:
+      <<: *env
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
-    environment:
-      !!merge <<: *env
     command: /app/manage.py collectstatic --noinput
     volumes:
       - ./static:/static
+
   migrate:
-    !!merge <<:
+    <<:
       - *build
       - *logging
+    environment:
+      <<: *env
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
-    environment:
-      !!merge <<: *env
     command: bash -c "/app/manage.py migrate --database default && /app/manage.py migrate --database tasks"
     volumes:
       - ./database:/database
+
   web:
-    !!merge <<:
+    <<:
       - *build
       - *logging
+    environment:
+      <<: *env
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
       - prometheus.scraping-enabled=true
-    environment:
-      !!merge <<: *env
     command: daphne --bind 0.0.0.0 --port ${WEB_LISTEN_PORT} --verbosity 0 mottle.asgi:application
     volumes:
       - ./static:/static
@@ -74,20 +82,21 @@ services:
       - ${WEB_LISTEN_HOST}:${WEB_LISTEN_PORT}:${WEB_LISTEN_PORT}
     restart: unless-stopped
     depends_on:
+      collectstatic:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
+
   taskrunner_default:
-    !!merge <<:
+    <<:
       - *build
       - *logging
+    environment:
+      <<: *env
+      Q_CLUSTER_NAME: default
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
       - prometheus.scraping-enabled=true
-    environment:
-      !!merge <<: *env
-      DJANGO_SETTINGS_MODULE: mottle.settings
-      Q_CLUSTER_NAME: default
-      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
     command: python /app/taskrunner/run.py 0.0.0.0 10002
     volumes:
       - ./database:/database
@@ -98,19 +107,17 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+
   taskrunner_long_running:
-    !!merge <<:
+    <<:
       - *build
       - *logging
+    environment:
+      <<: *env
+      Q_CLUSTER_NAME: long_running
     labels:
       - fluentbit-es-index=fluentbit.mottle.app
       - prometheus.scraping-enabled=true
-    environment:
-      !!merge <<: *env
-      DJANGO_SETTINGS_MODULE: mottle.settings
-      Q_CLUSTER_NAME: long_running
-      SCHEDULER_ENABLED: true
-      PROMETHEUS_MULTIPROC_DIR: /tmp/prometheus_multiproc_dir
     command: python /app/taskrunner/run.py 0.0.0.0 10003
     volumes:
       - ./database:/database
