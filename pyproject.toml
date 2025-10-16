@@ -10,7 +10,7 @@ repository = "https://github.com/Ch00k/mottle"
 requires-python = ">=3.12,<3.13"
 
 dependencies = [
-  "django==5.2.3",
+  "django==5.2.7",
   "environs==14.2.0",
   "cryptography==45.0.4",
   "django-htmx==1.23.0",
