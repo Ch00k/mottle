@@ -677,7 +677,7 @@ requires-dist = [
     { name = "json-log-formatter", specifier = "==1.1.1" },
     { name = "lxml", specifier = "==5.4.0" },
     { name = "openai", specifier = "==1.88.0" },
-    { name = "pillow", specifier = "==11.2.1" },
+    { name = "pillow", specifier = "==12.0.0" },
     { name = "prometheus-client", specifier = "==0.22.1" },
     { name = "sentry-sdk", extras = ["django"], specifier = "==2.30.0" },
     { name = "tekore", specifier = "==6.0.0" },
@@ -844,21 +844,21 @@ wheels = [
 
 [[package]]
 name = "pillow"
-version = "11.2.1"
+version = "12.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/af/cb/bb5c01fcd2a69335b86c22142b2bccfc3464087efb7fd382eee5ffc7fdf7/pillow-11.2.1.tar.gz", hash = "sha256:a64dd61998416367b7ef979b73d3a85853ba9bec4c2925f74e588879a58716b6", size = 47026707, upload-time = "2025-04-12T17:50:03.289Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/b0/cace85a1b0c9775a9f8f5d5423c8261c858760e2466c79b2dd184638b056/pillow-12.0.0.tar.gz", hash = "sha256:87d4f8125c9988bfbed67af47dd7a953e2fc7b0cc1e7800ec6d2080d490bb353", size = 47008828, upload-time = "2025-10-15T18:24:14.008Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/40/052610b15a1b8961f52537cc8326ca6a881408bc2bdad0d852edeb6ed33b/pillow-11.2.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:78afba22027b4accef10dbd5eed84425930ba41b3ea0a86fa8d20baaf19d807f", size = 3190185, upload-time = "2025-04-12T17:48:00.417Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/7e/b86dbd35a5f938632093dc40d1682874c33dcfe832558fc80ca56bfcb774/pillow-11.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:78092232a4ab376a35d68c4e6d5e00dfd73454bd12b230420025fbe178ee3b0b", size = 3030306, upload-time = "2025-04-12T17:48:02.391Z" },
-    { url = "https://files.pythonhosted.org/packages/a4/5c/467a161f9ed53e5eab51a42923c33051bf8d1a2af4626ac04f5166e58e0c/pillow-11.2.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:25a5f306095c6780c52e6bbb6109624b95c5b18e40aab1c3041da3e9e0cd3e2d", size = 4416121, upload-time = "2025-04-12T17:48:04.554Z" },
-    { url = "https://files.pythonhosted.org/packages/62/73/972b7742e38ae0e2ac76ab137ca6005dcf877480da0d9d61d93b613065b4/pillow-11.2.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0c7b29dbd4281923a2bfe562acb734cee96bbb129e96e6972d315ed9f232bef4", size = 4501707, upload-time = "2025-04-12T17:48:06.831Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/3a/427e4cb0b9e177efbc1a84798ed20498c4f233abde003c06d2650a6d60cb/pillow-11.2.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:3e645b020f3209a0181a418bffe7b4a93171eef6c4ef6cc20980b30bebf17b7d", size = 4522921, upload-time = "2025-04-12T17:48:09.229Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/7c/d8b1330458e4d2f3f45d9508796d7caf0c0d3764c00c823d10f6f1a3b76d/pillow-11.2.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:b2dbea1012ccb784a65349f57bbc93730b96e85b42e9bf7b01ef40443db720b4", size = 4612523, upload-time = "2025-04-12T17:48:11.631Z" },
-    { url = "https://files.pythonhosted.org/packages/b3/2f/65738384e0b1acf451de5a573d8153fe84103772d139e1e0bdf1596be2ea/pillow-11.2.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:da3104c57bbd72948d75f6a9389e6727d2ab6333c3617f0a89d72d4940aa0443", size = 4587836, upload-time = "2025-04-12T17:48:13.592Z" },
-    { url = "https://files.pythonhosted.org/packages/6a/c5/e795c9f2ddf3debb2dedd0df889f2fe4b053308bb59a3cc02a0cd144d641/pillow-11.2.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:598174aef4589af795f66f9caab87ba4ff860ce08cd5bb447c6fc553ffee603c", size = 4669390, upload-time = "2025-04-12T17:48:15.938Z" },
-    { url = "https://files.pythonhosted.org/packages/96/ae/ca0099a3995976a9fce2f423166f7bff9b12244afdc7520f6ed38911539a/pillow-11.2.1-cp312-cp312-win32.whl", hash = "sha256:1d535df14716e7f8776b9e7fee118576d65572b4aad3ed639be9e4fa88a1cad3", size = 2332309, upload-time = "2025-04-12T17:48:17.885Z" },
-    { url = "https://files.pythonhosted.org/packages/7c/18/24bff2ad716257fc03da964c5e8f05d9790a779a8895d6566e493ccf0189/pillow-11.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:14e33b28bf17c7a38eede290f77db7c664e4eb01f7869e37fa98a5aa95978941", size = 2676768, upload-time = "2025-04-12T17:48:19.655Z" },
-    { url = "https://files.pythonhosted.org/packages/da/bb/e8d656c9543276517ee40184aaa39dcb41e683bca121022f9323ae11b39d/pillow-11.2.1-cp312-cp312-win_arm64.whl", hash = "sha256:21e1470ac9e5739ff880c211fc3af01e3ae505859392bf65458c224d0bf283eb", size = 2415087, upload-time = "2025-04-12T17:48:21.991Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/90/4fcce2c22caf044e660a198d740e7fbc14395619e3cb1abad12192c0826c/pillow-12.0.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:53561a4ddc36facb432fae7a9d8afbfaf94795414f5cdc5fc52f28c1dca90371", size = 5249377, upload-time = "2025-10-15T18:22:05.993Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/e0/ed960067543d080691d47d6938ebccbf3976a931c9567ab2fbfab983a5dd/pillow-12.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:71db6b4c1653045dacc1585c1b0d184004f0d7e694c7b34ac165ca70c0838082", size = 4650343, upload-time = "2025-10-15T18:22:07.718Z" },
+    { url = "https://files.pythonhosted.org/packages/e7/a1/f81fdeddcb99c044bf7d6faa47e12850f13cee0849537a7d27eeab5534d4/pillow-12.0.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:2fa5f0b6716fc88f11380b88b31fe591a06c6315e955c096c35715788b339e3f", size = 6232981, upload-time = "2025-10-15T18:22:09.287Z" },
+    { url = "https://files.pythonhosted.org/packages/88/e1/9098d3ce341a8750b55b0e00c03f1630d6178f38ac191c81c97a3b047b44/pillow-12.0.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:82240051c6ca513c616f7f9da06e871f61bfd7805f566275841af15015b8f98d", size = 8041399, upload-time = "2025-10-15T18:22:10.872Z" },
+    { url = "https://files.pythonhosted.org/packages/a7/62/a22e8d3b602ae8cc01446d0c57a54e982737f44b6f2e1e019a925143771d/pillow-12.0.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:55f818bd74fe2f11d4d7cbc65880a843c4075e0ac7226bc1a23261dbea531953", size = 6347740, upload-time = "2025-10-15T18:22:12.769Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/87/424511bdcd02c8d7acf9f65caa09f291a519b16bd83c3fb3374b3d4ae951/pillow-12.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b87843e225e74576437fd5b6a4c2205d422754f84a06942cfaf1dc32243e45a8", size = 7040201, upload-time = "2025-10-15T18:22:14.813Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/4d/435c8ac688c54d11755aedfdd9f29c9eeddf68d150fe42d1d3dbd2365149/pillow-12.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:c607c90ba67533e1b2355b821fef6764d1dd2cbe26b8c1005ae84f7aea25ff79", size = 6462334, upload-time = "2025-10-15T18:22:16.375Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/f2/ad34167a8059a59b8ad10bc5c72d4d9b35acc6b7c0877af8ac885b5f2044/pillow-12.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:21f241bdd5080a15bc86d3466a9f6074a9c2c2b314100dd896ac81ee6db2f1ba", size = 7134162, upload-time = "2025-10-15T18:22:17.996Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/b1/a7391df6adacf0a5c2cf6ac1cf1fcc1369e7d439d28f637a847f8803beb3/pillow-12.0.0-cp312-cp312-win32.whl", hash = "sha256:dd333073e0cacdc3089525c7df7d39b211bcdf31fc2824e49d01c6b6187b07d0", size = 6298769, upload-time = "2025-10-15T18:22:19.923Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/0b/d87733741526541c909bbf159e338dcace4f982daac6e5a8d6be225ca32d/pillow-12.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:9fe611163f6303d1619bbcb653540a4d60f9e55e622d60a3108be0d5b441017a", size = 7001107, upload-time = "2025-10-15T18:22:21.644Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/96/aaa61ce33cc98421fb6088af2a03be4157b1e7e0e87087c888e2370a7f45/pillow-12.0.0-cp312-cp312-win_arm64.whl", hash = "sha256:7dfb439562f234f7d57b1ac6bc8fe7f838a4bd49c79230e0f6a1da93e82f1fad", size = 2436012, upload-time = "2025-10-15T18:22:23.621Z" },
 ]
 
 [[package]]
