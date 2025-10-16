@@ -72,6 +72,7 @@ ignore = [
   "FBT002",  # Boolean argument
   "G004",    # Logging statement uses f-string
   "N818",    # Exception class name
+  "PLC0415", # Import not at top of file
   "PLR0911", # Too many return statements
   "PLR0912", # Too many branches
   "PLR0913", # Too many arguments

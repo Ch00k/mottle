@@ -54,9 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 class MottleRetryingSender(RetryingSender):
-    def send(  # type: ignore [return]
-        self, request: Request
-    ) -> Response | Coroutine[None, None, Response]:  # pyright: ignore[reportReturnType]
+    def send(self, request: Request) -> Response | Coroutine[None, None, Response]:
         """Delegate request to underlying sender and retry if failed."""
         if self.is_async:
             return self._async_send(request)
@@ -64,7 +62,7 @@ class MottleRetryingSender(RetryingSender):
         tries = self.retries + 1
         delay_seconds = 1
 
-        while tries > 0:  # noqa: RET503
+        while tries > 0:
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
                 r = self.sender.send(request)
 
@@ -91,11 +89,13 @@ class MottleRetryingSender(RetryingSender):
             else:
                 return r
 
+        raise RuntimeError("Retry loop exited without returning a response")
+
     async def _async_send(self, request: Request) -> Response:  # pyright: ignore[reportReturnType]
         tries = self.retries + 1
         delay_seconds = 1
 
-        while tries > 0:  # noqa: RET503
+        while tries > 0:
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
                 r = await self.sender.send(request)  # pyright: ignore[reportGeneralTypeIssues]
 
@@ -119,6 +119,8 @@ class MottleRetryingSender(RetryingSender):
                 delay_seconds *= 2
             else:
                 return r
+
+        raise RuntimeError("Retry loop exited without returning a response")
 
 
 def get_auth(credentials: Credentials, scope: list[str], state: str | None = None) -> UserAuth:

@@ -12,13 +12,15 @@ from tekore import Credentials
 env = Env()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = env.str("SECRET_KEY")
+SECRET_KEY = env.str("SECRET_KEY", "very-secret-key")
 DEBUG = env.bool("DJANGO_DEBUG", False)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", ["127.0.0.1"])  # ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
 ALLOWED_HOSTS.append(gethostbyname(gethostname()))  # Needed for Prometheus scraping to work
 
-CSRF_TRUSTED_ORIGINS: list[str] = env.list("CSRF_TRUSTED_ORIGINS")  # ["https://mottle.it", "https://www.mottle.it"]
+CSRF_TRUSTED_ORIGINS: list[str] = env.list(
+    "CSRF_TRUSTED_ORIGINS", ["https://mottle.it"]
+)  # ["https://mottle.it", "https://www.mottle.it"]
 SESSION_COOKIE_DOMAIN = env.str("SESSION_COOKIE_DOMAIN", None)
 # SESSION_COOKIE_AGE = 3_153_600_000  # 100 years
 SESSION_SAVE_EVERY_REQUEST = True
@@ -250,8 +252,8 @@ if DEBUG_SQL:
 
 TEKORE_HTTP_TIMEOUT = env.int("TEKORE_HTTP_TIMEOUT", 15)
 
-SPOTIFY_CLIENT_ID = env.str("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = env.str("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_CLIENT_ID = env.str("SPOTIFY_CLIENT_ID", "client-id")
+SPOTIFY_CLIENT_SECRET = env.str("SPOTIFY_CLIENT_SECRET", "client-secret")
 SPOTIFY_REDIRECT_URI = env.str("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:65534/callback/")
 SPOTIFY_TOKEN_SCOPE = env.list(
     "SPOTIFY_TOKEN_SCOPE",
@@ -275,24 +277,26 @@ SPOTIFY_CREDEINTIALS = Credentials(
     redirect_uri=SPOTIFY_REDIRECT_URI,
 )
 
-SPOTIFY_TOKEN_ENCRYPTION_KEYS: list[str] = env.list("SPOTIFY_TOKEN_ENCRYPTION_KEYS")
+SPOTIFY_TOKEN_ENCRYPTION_KEYS: list[str] = env.list(
+    "SPOTIFY_TOKEN_ENCRYPTION_KEYS", ["dGhpc19pc19hX3Rlc3Rfa2V5XzMyX2J5dGVzX2xvbmc="]
+)
 SPOTIFY_TOKEN_CRYPTER = MultiFernet([Fernet(k) for k in SPOTIFY_TOKEN_ENCRYPTION_KEYS])
 
 PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)
 
-MAILERSEND_API_TOKEN = env.str("MAILERSEND_API_TOKEN")
+MAILERSEND_API_TOKEN = env.str("MAILERSEND_API_TOKEN", "mailsend-api-token")
 MAILERSEND_HTTP_TIMEOUT = env.int("MAILERSEND_HTTP_TIMEOUT", 15)
-MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL")
-MAIL_FROM_NAME = env.str("MAIL_FROM_NAME")
+MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL", "me@e.mail")
+MAIL_FROM_NAME = env.str("MAIL_FROM_NAME", "Me")
 
-OPENAI_API_KEY = env.str("OPENAI_API_KEY", None)
+OPENAI_API_KEY = env.str("OPENAI_API_KEY", "openai-api-key")
 OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_dump")
 
 HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
 
-BRIGHTDATA_PROXY_ADDRESS = env.str("BRIGHTDATA_PROXY_ADDRESS", None)
-BRIGHTDATA_PROXY_USERNAME = env.str("BRIGHTDATA_PROXY_USERNAME", None)
-BRIGHTDATA_PROXY_PASSWORD = env.str("BRIGHTDATA_PROXY_PASSWORD", None)
+BRIGHTDATA_PROXY_ADDRESS = env.str("BRIGHTDATA_PROXY_ADDRESS", "proxy-address")
+BRIGHTDATA_PROXY_USERNAME = env.str("BRIGHTDATA_PROXY_USERNAME", "proxy-username")
+BRIGHTDATA_PROXY_PASSWORD = env.str("BRIGHTDATA_PROXY_PASSWORD", "proxy-password")
 
 EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD", 85)
 
