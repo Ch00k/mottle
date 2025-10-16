@@ -15,7 +15,7 @@ dependencies = [
   "cryptography==46.0.3",
   "django-htmx==1.23.0",
   "whitenoise==6.9.0",
-  "sentry-sdk[django]==2.30.0",
+  "sentry-sdk[django]==2.42.0",
   "django-prometheus==2.4.1",
   "prometheus-client==0.22.1",
   "openai==1.88.0",
