@@ -14,9 +14,6 @@ from .exceptions import HeuristicsException
 if TYPE_CHECKING:
     from .data import Event
 
-coco_logger = coco.logging.getLogger()
-coco_logger.setLevel(logging.CRITICAL)
-
 logger = logging.getLogger(__name__)
 
 cc = coco.CountryConverter()
