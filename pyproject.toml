@@ -45,7 +45,7 @@ dev = [
   "pytest-django==4.11.1",
   "ruff>=0.14.0",
 ]
-debug = ["ipython==9.6.0", "pdbpp==0.11.6"]
+debug = ["ipython==9.6.0", "pdbpp==0.11.7"]
 
 [tool.ruff]
 line-length = 120
