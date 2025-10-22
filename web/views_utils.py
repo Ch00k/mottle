@@ -219,72 +219,99 @@ async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: s
 
 async def compile_event_updates_email(
     updates: dict[EventArtist, list[EventUpdate]], spotify_client: MottleSpotifyClient
-) -> str:
-    message = ""
+) -> tuple[str, str]:
+    plaintext = ""
+    html = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Event Updates</title>\n</head>\n<body>\n'
 
     for event_artist, event_updates in updates.items():
         artist_spotify_id = await sync_to_async(lambda: event_artist.artist.spotify_id)()
         spotify_artist = await spotify_client.get_artist(artist_spotify_id)
-        artist_name_line = f"Artist: {spotify_artist.name}"
-        message += artist_name_line + "\n"
-        message += "=" * len(artist_name_line) + "\n"
+
+        artist_name_line = f"{spotify_artist.name}"
+        plaintext += artist_name_line + "\n"
+        plaintext += "=" * len(artist_name_line) + "\n"
+        html += f"<h1>{spotify_artist.name}</h1>\n\n"
 
         for update in event_updates:
             event = update.event
             event_type = " ".join(event.type.split("_"))
             if update.type == EventUpdate.FULL:
                 if event.type == EventType.live_stream:
-                    stream_urls = "\n".join(event.stream_urls)  # type: ignore [arg-type]  # TODO: WTF!?
-                    message += f"New {event_type}: {event.date}\n"
-                    if stream_urls:
-                        message += "Stream available at:\n"
-                        message += stream_urls
+                    plaintext += f"New {event_type}: {event.date}\n"
+                    html += f"<h2>New {event_type}: {event.date}</h2>\n"
+
+                    if event.stream_urls:
+                        plaintext += "Stream available at:\n"
+                        plaintext += "\n".join(event.stream_urls) + "\n"
+                        stream_links = ", ".join([f'<a href="{url}">here</a>' for url in event.stream_urls])
+                        html += f"<p>Watch stream {stream_links}</p>\n"
                     else:
-                        message += "Stream is not available yet"
-                    message += "\n"
+                        plaintext += "Stream is not available yet\n"
+                        html += "<p>Stream is not available yet</p>\n"
                 else:
-                    tickets_urls = "\n".join(event.tickets_urls)  # type: ignore [arg-type]  # TODO: WTF!?
-                    message += f"New {event_type}: {event.date} at {event.venue} ({event.city}, {event.country})\n"
-                    if tickets_urls:
-                        message += "Tickets available at:\n"
-                        message += tickets_urls
+                    plaintext += f"New {event_type} on {event.date} at {event.venue} ({event.city}, {event.country})\n"
+                    html += (
+                        f"<h2>New {event_type} on {event.date} at {event.venue} ({event.city}, {event.country})</h2>\n"
+                    )
+
+                    if event.tickets_urls:
+                        plaintext += "Tickets available at:\n"
+                        plaintext += "\n".join(event.tickets_urls) + "\n"
+                        tickets_links = ", ".join([f'<a href="{url}">here</a>' for url in event.tickets_urls])
+                        html += f"<p>Buy tickets {tickets_links}</p>\n"
                     else:
-                        message += "Tickets are not available yet"
-                    message += "\n"
+                        plaintext += "Tickets are not available yet\n"
+                        html += "<p>Tickets are not available yet</p>\n"
             elif event.type == EventType.live_stream:
                 if "stream_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
-                    stream_urls = "\n".join(update.changes["stream_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
-                    message += f"Stream URLs for {event_type} on {event.date} have changed\n"
-                    message += "Stream available at:\n"
-                    message += stream_urls
-                    message += "\n"
+                    plaintext += f"Stream URLs for {event_type} on {event.date} have changed\n"
+                    plaintext += "Stream available at:\n"
+                    plaintext += "\n".join(update.changes["stream_urls"]["new"]) + "\n"  # type: ignore [index]
+                    html += f"<h2>Stream URLs for {event_type} on {event.date} have changed</h2>\n"
+                    stream_links = ", ".join(
+                        [f'<a href="{url}">here</a>' for url in update.changes["stream_urls"]["new"]]  # type: ignore [index]
+                    )
+                    html += f"<p>Stream available at: {stream_links}</p>\n"
             elif "tickets_urls" in update.changes:  # type: ignore [operator]  # TODO: WTF!?
-                tickets_urls = "\n".join(update.changes["tickets_urls"]["new"])  # type: ignore [index]  # TODO: WTF!?
-                message += (
+                plaintext += (
                     f"Tickets URLs for {event_type} on {event.date} at {event.venue} "
                     f"({event.city}, {event.country}) have changed\n"
                 )
-                message += "Tickets available at:\n"
-                message += tickets_urls
-                message += "\n"
-            message += "\n"
-        # message += "\n"
+                plaintext += "Tickets available at:\n"
+                plaintext += "\n".join(update.changes["tickets_urls"]["new"]) + "\n"  # type: ignore [index]
+                html += (
+                    f"<h2>Tickets URLs for {event_type} on {event.date} at {event.venue} "
+                    f"({event.city}, {event.country}) have changed</h2>\n"
+                )
+                tickets_links = ", ".join(
+                    [f'<a href="{url}">here</a>' for url in update.changes["tickets_urls"]["new"]]  # type: ignore [index]
+                )
+                html += f"<p>Tickets available at: {tickets_links}</p>\n"
 
-    return message
+            plaintext += "\n"
+            html += "\n"
+
+        html += "<hr>\n\n"
+
+    html += "</body>\n</html>"
+    return plaintext, html
 
 
 async def compile_playlist_updates_email(
     updates: dict[str, list[dict[str, Any]]],
     spotify_client: MottleSpotifyClient,
     num_to_show: int = 10,
-) -> str:
-    message = ""
+) -> tuple[str, str]:
+    plaintext = ""
+    html = '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Playlist Updates</title>\n</head>\n<body>\n'
 
     for playlist_spotify_id, playlist_updates in updates.items():
         playlist_data = await spotify_client.get_playlist(playlist_spotify_id)
+
         playlist_name_line = f"Playlist: {playlist_data.name}"
-        message += playlist_name_line + "\n"
-        message += "=" * len(playlist_name_line) + "\n"
+        plaintext += playlist_name_line + "\n"
+        plaintext += "=" * len(playlist_name_line) + "\n"
+        html += f"<h1>Playlist: {playlist_data.name}</h1>\n\n"
 
         for update in playlist_updates:
             watched_playlist: Playlist | None = await sync_to_async(lambda: update["update"].source_playlist)()
@@ -292,32 +319,48 @@ async def compile_playlist_updates_email(
 
             if watched_playlist is not None:
                 watched_playlist_data = await spotify_client.get_playlist(watched_playlist.spotify_id)
+
                 watched_playlist_line = (
                     f"Watched playlist: {watched_playlist_data.name} by {watched_playlist_data.owner.display_name}"
                 )
-                message += watched_playlist_line + "\n"
-                message += "-" * len(watched_playlist_line) + "\n"
-                message += "New tracks:\n"
+                plaintext += watched_playlist_line + "\n"
+                plaintext += "-" * len(watched_playlist_line) + "\n"
+                plaintext += "New tracks:\n"
+                html += (
+                    f"<h2>Watched playlist: {watched_playlist_data.name} "
+                    f"by {watched_playlist_data.owner.display_name}</h2>\n"
+                )
+                html += "<h3>New tracks:</h3>\n<ul>\n"
 
                 tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
                 for track_data in tracks_data[: num_to_show - 1]:
-                    message += f"{track_data.name} by {', '.join([a.name for a in track_data.artists])}\n"
+                    artists_str = ", ".join([a.name for a in track_data.artists])
+                    plaintext += f"{track_data.name} by {artists_str}\n"
+                    html += f"<li>{track_data.name} by {artists_str}</li>\n"
 
                 if len(tracks_data) > num_to_show:
-                    message += f"...and {len(tracks_data) - num_to_show} more\n"
+                    plaintext += f"...and {len(tracks_data) - num_to_show} more\n"
+                    html += f"<li>...and {len(tracks_data) - num_to_show} more</li>\n"
+                html += "</ul>\n"
             elif watched_artist is not None:
                 watched_artist_data = await spotify_client.get_artist(watched_artist.spotify_id)
+
                 watched_artist_line = f"Watched artist: {watched_artist_data.name}"
-                message += watched_artist_line + "\n"
-                message += "-" * len(watched_artist_line) + "\n"
-                message += "New albums:\n"
+                plaintext += watched_artist_line + "\n"
+                plaintext += "-" * len(watched_artist_line) + "\n"
+                plaintext += "New albums:\n"
+                html += f"<h2>Watched artist: {watched_artist_data.name}</h2>\n"
+                html += "<h3>New albums:</h3>\n<ul>\n"
 
                 albums_data = await spotify_client.get_albums(update["update"].albums_added)
                 for album_data in albums_data[: num_to_show - 1]:
-                    message += f"{album_data.name} ({album_data.release_date})\n"
+                    plaintext += f"{album_data.name} ({album_data.release_date})\n"
+                    html += f"<li>{album_data.name} ({album_data.release_date})</li>\n"
 
                 if len(albums_data) > num_to_show:
-                    message += f"...and {len(albums_data) - num_to_show} more\n"
+                    plaintext += f"...and {len(albums_data) - num_to_show} more\n"
+                    html += f"<li>...and {len(albums_data) - num_to_show} more</li>\n"
+                html += "</ul>\n"
 
                 # TODO: Show tracks from albums?
             else:
@@ -325,22 +368,30 @@ async def compile_playlist_updates_email(
                 logger.error(f"PlaylistUpdate {update} has no source playlist or artist")
                 continue
 
-            message += "\n"
+            plaintext += "\n"
 
             path = reverse("playlist_updates", args=[playlist_spotify_id])
             if update["auto_acceptable"]:
                 if update["auto_accept_successful"]:
-                    message += "The update has been auto-accepted\n"
+                    plaintext += "The update has been auto-accepted\n"
+                    html += "<p>The update has been auto-accepted</p>\n"
                 else:
-                    message += (
+                    plaintext += (
                         f"The update could not be auto-accepted. Please accept manually at https://mottle.it{path}\n"
                     )
+                    html += (
+                        f"<p>The update could not be auto-accepted. Please accept manually "
+                        f'<a href="https://mottle.it{path}">here</a></p>\n'
+                    )
             else:
-                message += f"Accept the update at https://mottle.it{path}\n"
+                plaintext += f"Accept the update at https://mottle.it{path}\n"
+                html += f'<p>Accept the update <a href="https://mottle.it{path}">here</a></p>\n'
 
-            message += "\n"
+            plaintext += "\n"
+            html += "\n<hr>\n\n"
 
-    return message
+    html += "</body>\n</html>"
+    return plaintext, html
 
 
 def camel_to_snake(string: str) -> str:
