@@ -156,8 +156,8 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
                 else:
                     update["auto_accept_successful"] = True
 
-    message = await compile_playlist_updates_email(updates, spotify_client)
-    logger.debug(f"Email message:\n{message}")
+    plaintext_message, html_message = await compile_playlist_updates_email(updates, spotify_client)
+    logger.debug(f"Email message:\n{plaintext_message}")
 
     if not send_notifications:
         logger.warning("Email notifications disabled")
@@ -174,7 +174,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
 
     logger.info(f"Sending email to {user.email}")
     try:
-        await send_email(user.email, "We've got updates for you", message)
+        await send_email(user.email, "We've got updates for you", plaintext_message, html_message)
     except Exception as e:
         logger.error(f"Failed to send email to {user.email}: {e}")
     else:
@@ -296,9 +296,9 @@ async def acheck_artists_for_event_updates(
             all_updates = list(itertools.chain.from_iterable(artists_with_events.values()))
             logger.info(f"Event updates for user {spotify_user}: {all_updates}")
 
-            message = await compile_event_updates_email(artists_with_events, spotify_client)
+            plaintext_message, html_message = await compile_event_updates_email(artists_with_events, spotify_client)
 
-            logger.debug(f"Email message for {spotify_user}:\n{message}")
+            logger.debug(f"Email message for {spotify_user}:\n{plaintext_message}")
 
             if not send_notifications:
                 logger.warning("Email notifications disabled")
@@ -314,7 +314,7 @@ async def acheck_artists_for_event_updates(
 
             logger.info(f"Sending email to {spotify_user.email}")
             try:
-                await send_email(spotify_user.email, "We've got updates for you", message)
+                await send_email(spotify_user.email, "We've got updates for you", plaintext_message, html_message)
             except Exception as e:
                 logger.error(f"Failed to send email to {spotify_user.email}: {e}")
             else:
