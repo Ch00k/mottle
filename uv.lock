@@ -274,11 +274,11 @@ wheels = [
 
 [[package]]
 name = "django-hosts"
-version = "6.0"
+version = "7.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b0/05/217d45b4e5f0003d19322badae2ba96f242f42e51626402437b0839f2fb8/django-hosts-6.0.tar.gz", hash = "sha256:e7aec357504d36f384c65fba67deabc4552f36f347b96bb7a3d131a1250d7299", size = 36429, upload-time = "2023-10-27T13:54:12.244Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/c0/cf2b37b6ef4dda89d00f040e69b4f8a3f52fa4f74b33141b68983c0fecce/django_hosts-7.0.0.tar.gz", hash = "sha256:08006bc09f5af69638721ced0657f24044835a22a608732ee1004adc9c95fb7c", size = 36858, upload-time = "2025-06-19T07:43:22.746Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/ab/ad0298e961e709108b34e64ce490064723063296efdd48dc29f38d2864dd/django_hosts-6.0-py3-none-any.whl", hash = "sha256:34a97a183b3fb8a00de3e0a8af5355a25ff5203019d2e213edd8f12c330cc303", size = 27799, upload-time = "2023-10-27T13:54:17.987Z" },
+    { url = "https://files.pythonhosted.org/packages/93/05/8056f3e631b0aee8ac99929a558d132634945d3cb16253fb2a2785b62dcf/django_hosts-7.0.0-py3-none-any.whl", hash = "sha256:93d3c941336463fd0c9377c1773d1c53a49606fa72656ed7ddfa474d2fe1f907", size = 27858, upload-time = "2025-06-19T07:43:33.953Z" },
 ]
 
 [[package]]
@@ -677,7 +677,7 @@ requires-dist = [
     { name = "daphne", specifier = "==4.2.0" },
     { name = "django", specifier = "==5.2.7" },
     { name = "django-dirtyfields", specifier = "==1.9.7" },
-    { name = "django-hosts", specifier = "==6.0" },
+    { name = "django-hosts", specifier = "==7.0.0" },
     { name = "django-htmx", specifier = "==1.26.0" },
     { name = "django-prometheus", specifier = "==2.4.1" },
     { name = "django-q2", specifier = "==1.8.0" },
