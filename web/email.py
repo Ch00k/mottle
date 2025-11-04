@@ -1,29 +1,20 @@
 import logging
 
+from asgiref.sync import sync_to_async
 from django.conf import settings
-from httpx import AsyncClient, Response, Timeout
-
-URL = "https://api.mailersend.com/v1/email"
-HEADERS = {"Authorization": f"Bearer {settings.MAILERSEND_API_TOKEN}"}
+from django.core.mail import EmailMultiAlternatives
 
 logger = logging.getLogger(__name__)
 
 
-async def send_email(address: str, subject: str, plaintext_body: str, html_body: str) -> Response:
-    mail_from = {"email": settings.MAIL_FROM_EMAIL, "name": settings.MAIL_FROM_NAME}
-    mail_to = [{"email": address}]
+async def send_email(address: str, subject: str, plaintext_body: str, html_body: str) -> None:
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=plaintext_body,
+        from_email=f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>",
+        to=[address],
+    )
+    email.attach_alternative(html_body, "text/html")
 
-    request_body = {"from": mail_from, "to": mail_to, "subject": subject, "text": plaintext_body, "html": html_body}
-
-    client = AsyncClient(timeout=Timeout(settings.MAILERSEND_HTTP_TIMEOUT))
-    resp = await client.post(URL, headers=HEADERS, json=request_body)
-
-    try:
-        resp_body = resp.json()
-    except Exception:
-        resp_body = resp.text
-
-    logger.debug(f"Mailersend response: {resp_body}")
-
-    resp.raise_for_status()
-    return resp
+    await sync_to_async(email.send)()
+    logger.debug(f"Email sent to {address}")
