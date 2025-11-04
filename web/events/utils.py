@@ -1,6 +1,6 @@
 import logging
 import unicodedata
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import country_converter as coco
 from django.conf import settings
@@ -17,34 +17,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 cc = coco.CountryConverter()
-
-
-def get_proxy_url(
-    country: str | None = None,
-    state: str | None = None,
-    city: str | None = None,
-    dns_resolution_type: Literal["local", "remote"] | None = None,
-) -> str | None:
-    address = settings.BRIGHTDATA_PROXY_ADDRESS
-    username = settings.BRIGHTDATA_PROXY_USERNAME
-    password = settings.BRIGHTDATA_PROXY_PASSWORD
-
-    if address is None or username is None or password is None:
-        raise RuntimeError("Proxy settings are not configured")
-
-    if country:
-        username += f"-country-{country}"
-
-    if state:
-        username += f"-state-{state}"
-
-    if city:
-        username += f"-city-{city}"
-
-    if dns_resolution_type:
-        username += f"-dns-{dns_resolution_type}"
-
-    return f"http://{username}:{password}@{address}"
 
 
 def get_normalized_country_name(country_name: str | None) -> str | None:
