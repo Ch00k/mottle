@@ -284,10 +284,16 @@ SPOTIFY_TOKEN_CRYPTER = MultiFernet([Fernet(k) for k in SPOTIFY_TOKEN_ENCRYPTION
 
 PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", False)
 
-MAILERSEND_API_TOKEN = env.str("MAILERSEND_API_TOKEN", "mailsend-api-token")
-MAILERSEND_HTTP_TIMEOUT = env.int("MAILERSEND_HTTP_TIMEOUT", 15)
 MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL", "me@e.mail")
 MAIL_FROM_NAME = env.str("MAIL_FROM_NAME", "Me")
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env.str("EMAIL_HOST", "localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", 587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", 15)
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY", "openai-api-key")
 OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_dump")
