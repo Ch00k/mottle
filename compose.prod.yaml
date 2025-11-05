@@ -13,6 +13,7 @@ x-logging: &logging
       labels: fluentbit-es-index
 
 x-env: &env
+  APP_VERSION: ${APP_VERSION:-dev}
   DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-mottle.settings}
   ALLOWED_HOSTS: ${ALLOWED_HOSTS}
   CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}

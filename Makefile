@@ -1,6 +1,4 @@
-DOCKER_BUILDKIT := 1
-
-.PHONY: lint test up down logs ssh shell makemigrations manage debug css check tag
+.PHONY: lint test up down logs ssh shell makemigrations manage debug css release-patch release-minor release-major
 
 lint:
 	uv run ruff format .
@@ -37,16 +35,11 @@ debug:
 css:
 	tailwindcss -i web/static/web/src/style.css -o web/static/web/style.css
 
-check:
-	@if ! git diff-index --quiet HEAD --; then echo "Working directory is not clean" && exit 1; fi
-	@if [ -n "$(shell git ls-files --exclude-standard --others)" ]; then echo "Working directory has untracked files" && exit 1; fi
+release-patch:
+	./release.sh patch
 
-tag: check
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is not set" && exit 1; fi
-	@$(eval APP_VERSION=$(shell uv version --bump $(VERSION) --short))
-	@echo Releasing version: $(APP_VERSION)
-	git add pyproject.toml uv.lock
-	git commit -m "Release $(APP_VERSION)"
-	git push
-	git tag -a $(APP_VERSION) -m $(APP_VERSION)
-	git push origin $(APP_VERSION)
+release-minor:
+	./release.sh minor
+
+release-major:
+	./release.sh major

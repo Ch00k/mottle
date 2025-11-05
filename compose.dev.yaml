@@ -5,6 +5,7 @@ x-build: &build
   pull_policy: build
 
 x-env: &env
+  APP_VERSION: ${APP_VERSION:-dev}
   PYTHONPATH: /app/mounted
   DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-mottle.settings}
   ALLOWED_HOSTS: ${ALLOWED_HOSTS:-127.0.0.1}
