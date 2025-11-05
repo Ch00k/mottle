@@ -6,6 +6,9 @@ lint:
 	uv run mypy --config-file pyproject.toml .
 
 test:
+	docker compose --file compose.dev.yaml run --rm web pytest -s -vvv tests/
+
+test_ci:
 	uv run pytest -s -vvv tests/
 
 up:
