@@ -35,7 +35,6 @@ from .constants import (
     SONGKICK_BASE_URL,
 )
 from .exceptions import HTTPClientException, RetriesExhaustedException
-from .utils import get_proxy_url
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +250,7 @@ async_musicbrainz_client = AsyncRetryingClient(
     timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
-    proxy=get_proxy_url(),
+    proxy=settings.PROXY_URL,
     limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
 )
 
@@ -265,7 +264,7 @@ async_songkick_client = AsyncRetryingClient(
     # log_request_details=True,
     base_url=SONGKICK_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
-    proxy=get_proxy_url(),
+    proxy=settings.PROXY_URL,
     limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
 )
 
@@ -280,7 +279,7 @@ async_bandsintown_client = AsyncRetryingClient(
     # log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
     headers={"User-Agent": settings.HTTP_USER_AGENT},
-    proxy=get_proxy_url(),
+    proxy=settings.PROXY_URL,
     limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
 )
 
