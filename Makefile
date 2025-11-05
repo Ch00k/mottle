@@ -6,10 +6,10 @@ lint:
 	uv run mypy --config-file pyproject.toml .
 
 test:
-	docker compose --file compose.dev.yaml run --rm web pytest -s -vvv tests/
+	docker compose --file compose.dev.yaml run --rm --no-deps --quiet-build web pytest -s -vvv --cov --cov-branch --cov-report=xml tests/
 
 test_ci:
-	uv run pytest -s -vvv tests/
+	uv run pytest -s -vvv --cov --cov-branch --cov-report=xml tests/
 
 up:
 	docker compose --file compose.dev.yaml up --remove-orphans
