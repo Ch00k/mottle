@@ -46,12 +46,6 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Pushing version bump to origin..."
     git push origin main
 
-    echo "Creating annotated tag..."
-    git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
-
-    echo "Pushing tag to origin..."
-    git push origin "$NEW_VERSION"
-
     echo "Release $NEW_VERSION created successfully!"
     echo "Monitor at https://github.com/Ch00k/mottle/actions"
 else
