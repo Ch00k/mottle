@@ -32,9 +32,7 @@ WORKDIR /app
 
 RUN mkdir -p /tmp/prometheus_multiproc_dir
 
-ARG APP_VERSION=dev
-ENV APP_VERSION=${APP_VERSION} \
-    PATH=/app/.venv/bin:${PATH} \
+ENV PATH=/app/.venv/bin:${PATH} \
     PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
 
