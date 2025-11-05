@@ -62,7 +62,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="playlistupdate",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     models.Q(("source_playlist__isnull", False), ("source_artist__isnull", False), _connector="OR"),
                     models.Q(("source_artist__isnull", False), ("source_playlist__isnull", False), _negated=True),
                 ),
@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="playlistwatchconfig",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     models.Q(("watched_playlist__isnull", False), ("watched_artist__isnull", False), _connector="OR"),
                     models.Q(("watched_artist__isnull", False), ("watched_playlist__isnull", False), _negated=True),
                 ),

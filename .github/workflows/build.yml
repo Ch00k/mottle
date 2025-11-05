@@ -37,3 +37,9 @@ jobs:
 
       - name: Run tests
         run: make test_ci
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true

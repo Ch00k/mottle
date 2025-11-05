@@ -15,7 +15,7 @@ dependencies = [
   "cryptography==46.0.3",
   "django-htmx==1.26.0",
   "whitenoise==6.9.0",
-  "sentry-sdk[django]==2.42.1",
+  "sentry-sdk[django]==2.43.0",
   "django-prometheus==2.4.1",
   "prometheus-client==0.23.1",
   "openai==1.88.0",
@@ -43,6 +43,7 @@ dev = [
   "pytest-asyncio==1.2.0",
   "pytest-django==4.11.1",
   "ruff>=0.14.0",
+  "pytest-cov>=7.0.0",
 ]
 debug = ["ipython==9.6.0", "pdbpp==0.11.7"]
 
@@ -79,6 +80,14 @@ ignore = [
   "PLR0915", # Too many statements
   "RUF012",  # Mutable class attributes
   "S101",    # Use of assert
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "S105",    # Hardcoded password strings in tests
+  "S106",    # Hardcoded passwords OK in tests
+  "ARG001",  # Unused function arguments (fixtures)
+  #"RET504",  # Unnecessary assignment before yield/return
 ]
 
 [tool.ruff.format]

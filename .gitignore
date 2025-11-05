@@ -2,3 +2,5 @@
 images_dump/
 runtime_data/
 screenshots/
+.coverage
+coverage.xml
