@@ -17,6 +17,7 @@ from web.models import (
     Artist,
     Event,
     EventArtist,
+    EventUpdate,
     EventUpdateChangesJSONDecoder,
     EventUpdateChangesJSONEncoder,
     Playlist,
@@ -1356,3 +1357,237 @@ class TestPlaylistWatchConfig:
                 watched_playlist=None,
                 watched_artist=None,
             )
+
+
+@pytest.mark.asyncio
+class TestEventSignals(TestCase):
+    async def test_post_save_creates_full_event_update_on_creation(self) -> None:
+        """Test that creating a new Event triggers a FULL EventUpdate."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_create")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_create",
+            bandsintown_url="https://www.bandsintown.com/a/signal_create",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_create",
+            type="concert",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue="Signal Venue",
+            city="London",
+            country="UK",
+            geolocation=Point(-0.1, 51.5, srid=settings.GEODJANGO_SRID),
+        )
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 1
+        assert updates[0].type == EventUpdate.FULL
+        assert updates[0].changes is None
+
+    async def test_post_save_creates_partial_event_update_on_stream_urls_change(self) -> None:
+        """Test that updating stream_urls triggers a PARTIAL EventUpdate."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_stream")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_stream",
+            bandsintown_url="https://www.bandsintown.com/a/signal_stream",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_stream",
+            type="live_stream",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue=None,
+            city=None,
+            country=None,
+            geolocation=None,
+            stream_urls=["https://example.com/stream1"],
+        )
+
+        # Clear the FULL update created on creation
+        await event.updates.all().adelete()
+
+        # Update stream_urls
+        event.stream_urls = ["https://example.com/stream2"]
+        await event.asave()
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 1
+        assert updates[0].type == EventUpdate.PARTIAL
+        assert updates[0].changes is not None
+        assert "stream_urls" in updates[0].changes
+        assert updates[0].changes["stream_urls"]["old"] == ["https://example.com/stream1"]
+        assert updates[0].changes["stream_urls"]["new"] == ["https://example.com/stream2"]
+
+    async def test_post_save_creates_partial_event_update_on_tickets_urls_change(self) -> None:
+        """Test that updating tickets_urls triggers a PARTIAL EventUpdate."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_tickets")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_tickets",
+            bandsintown_url="https://www.bandsintown.com/a/signal_tickets",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_tickets",
+            type="concert",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue="Tickets Venue",
+            city="London",
+            country="UK",
+            geolocation=Point(-0.1, 51.5, srid=settings.GEODJANGO_SRID),
+            tickets_urls=["https://example.com/tickets1"],
+        )
+
+        # Clear the FULL update created on creation
+        await event.updates.all().adelete()
+
+        # Update tickets_urls
+        event.tickets_urls = ["https://example.com/tickets2"]
+        await event.asave()
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 1
+        assert updates[0].type == EventUpdate.PARTIAL
+        assert updates[0].changes is not None
+        assert "tickets_urls" in updates[0].changes
+        assert updates[0].changes["tickets_urls"]["old"] == ["https://example.com/tickets1"]
+        assert updates[0].changes["tickets_urls"]["new"] == ["https://example.com/tickets2"]
+
+    async def test_post_save_creates_partial_event_update_on_geolocation_change(self) -> None:
+        """Test that updating geolocation triggers a PARTIAL EventUpdate."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_geo")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_geo",
+            bandsintown_url="https://www.bandsintown.com/a/signal_geo",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        old_location = Point(-0.1, 51.5, srid=settings.GEODJANGO_SRID)
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_geo",
+            type="concert",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue="Geo Venue",
+            city="London",
+            country="UK",
+            geolocation=old_location,
+        )
+
+        # Clear the FULL update created on creation
+        await event.updates.all().adelete()
+
+        # Update geolocation
+        new_location = Point(-0.2, 51.6, srid=settings.GEODJANGO_SRID)
+        event.geolocation = new_location
+        await event.asave()
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 1
+        assert updates[0].type == EventUpdate.PARTIAL
+        assert updates[0].changes is not None
+        assert "geolocation" in updates[0].changes
+        assert isinstance(updates[0].changes["geolocation"]["old"], Point)
+        assert isinstance(updates[0].changes["geolocation"]["new"], Point)
+        assert updates[0].changes["geolocation"]["old"].coords == old_location.coords
+        assert updates[0].changes["geolocation"]["new"].coords == new_location.coords
+
+    async def test_post_save_no_event_update_on_other_field_changes(self) -> None:
+        """Test that updating other fields does not trigger an EventUpdate."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_other")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_other",
+            bandsintown_url="https://www.bandsintown.com/a/signal_other",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_other",
+            type="concert",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue="Other Venue",
+            city="London",
+            country="UK",
+            geolocation=Point(-0.1, 51.5, srid=settings.GEODJANGO_SRID),
+        )
+
+        # Clear the FULL update created on creation
+        await event.updates.all().adelete()
+
+        # Update a field that should not trigger an update
+        event.venue = "Updated Venue"
+        await event.asave()
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 0
+
+    async def test_post_save_creates_partial_event_update_with_multiple_changes(self) -> None:
+        """Test that updating multiple tracked fields creates one PARTIAL EventUpdate with all changes."""
+        artist = await Artist.objects.acreate(spotify_id="artist_signal_multi")
+        event_artist = await EventArtist.objects.acreate(
+            artist=artist,
+            musicbrainz_id=uuid.uuid4(),
+            songkick_url="https://www.songkick.com/artists/signal_multi",
+            bandsintown_url="https://www.bandsintown.com/a/signal_multi",
+            songkick_name_match_accuracy=100,
+            bandsintown_name_match_accuracy=95,
+        )
+
+        old_location = Point(-0.1, 51.5, srid=settings.GEODJANGO_SRID)
+        event = await Event.objects.acreate(
+            artist=event_artist,
+            source="songkick",
+            source_url="https://www.songkick.com/concerts/signal_multi",
+            type="concert",
+            date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+            venue="Multi Venue",
+            city="London",
+            country="UK",
+            geolocation=old_location,
+            stream_urls=["https://example.com/stream1"],
+            tickets_urls=["https://example.com/tickets1"],
+        )
+
+        # Clear the FULL update created on creation
+        await event.updates.all().adelete()
+
+        # Update multiple tracked fields
+        new_location = Point(-0.2, 51.6, srid=settings.GEODJANGO_SRID)
+        event.geolocation = new_location
+        event.stream_urls = ["https://example.com/stream2"]
+        event.tickets_urls = ["https://example.com/tickets2"]
+        await event.asave()
+
+        updates = [u async for u in event.updates.all()]
+        assert len(updates) == 1
+        assert updates[0].type == EventUpdate.PARTIAL
+        assert updates[0].changes is not None
+        assert "geolocation" in updates[0].changes
+        assert "stream_urls" in updates[0].changes
+        assert "tickets_urls" in updates[0].changes
