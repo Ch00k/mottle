@@ -434,6 +434,7 @@ def list_has(albums: list[SimpleAlbum], album_type: AlbumType) -> bool:
 def chunked_off(spotify_client: Spotify) -> Generator:
     if not spotify_client.chunked_on:
         yield
+        return
 
     spotify_client.chunked_on = False
     try:
