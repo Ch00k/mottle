@@ -6,7 +6,7 @@ lint:
 	uv run mypy --config-file pyproject.toml .
 
 test:
-	docker compose --file compose.dev.yaml run --rm --no-deps --quiet-build web pytest -s -vvv --cov --cov-branch --cov-report=xml tests/
+	docker compose --file compose.dev.yaml run --rm --no-deps --quiet-build web pytest --cov --cov-branch --cov-report=xml $(if $(ARGS),$(ARGS),tests/)
 
 test_ci:
 	uv run pytest -s -vvv --cov --cov-branch --cov-report=xml tests/
