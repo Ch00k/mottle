@@ -154,18 +154,6 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
 
-    # client_ip, is_routable = get_client_ip(request)
-    # logger.debug(f"User's IP address: {client_ip}, is routable: {is_routable}")
-
-    # user_location = None
-    # if client_ip is not None and is_routable:
-    #     try:
-    #         user_location = await get_ip_location(client_ip)
-    #     except GeolocationError as e:
-    #         logger.error(e)
-
-    # logger.debug(f"User's location: {user_location}")
-
     spotify_user, created = await SpotifyUser.objects.aupdate_or_create(
         spotify_id=user.id,
         defaults={"display_name": user.display_name, "email": user.email},
