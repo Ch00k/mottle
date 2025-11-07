@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Event Updates</title>
+    </head>
+    <body>
+        {% for artist_name, event_updates in updates %}
+            <h1>{{ artist_name }}</h1>
+            {% for update in event_updates %}
+                {% if update.is_full %}
+                    {% if update.event_type == "live_stream" %}
+                        <h2>New {{ update.event_type_display }}: {{ update.event.date|date:"Y-m-d" }}</h2>
+                        {% if update.event.stream_urls %}
+                            <p>
+                                Watch stream
+                                {% for url in update.event.stream_urls %}
+                                    {# djlint:off #}
+                                    <a href="{{ url }}">here</a>{% if not forloop.last %}, {% endif %}
+                                    {# djlint:on #}
+                                {% endfor %}
+                            </p>
+                        {% else %}
+                            <p>Stream is not available yet</p>
+                        {% endif %}
+                    {% else %}
+                        <h2>
+                            New {{ update.event_type_display }} on {{ update.event.date|date:"Y-m-d" }} at {{ update.event.venue }} ({{ update.event.city }}, {{ update.event.country }})
+                        </h2>
+                        {% if update.event.tickets_urls %}
+                            <p>
+                                Buy tickets
+                                {% for url in update.event.tickets_urls %}
+                                    {# djlint:off #}
+                                    <a href="{{ url }}">here</a>{% if not forloop.last %}, {% endif %}
+                                    {# djlint:on #}
+                                {% endfor %}
+                            </p>
+                        {% else %}
+                            <p>Tickets are not available yet</p>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    {% if update.event_type == "live_stream" %}
+                        {% if update.has_stream_urls_change %}
+                            <h2>Stream URLs for {{ update.event_type_display }} on {{ update.event.date|date:"Y-m-d" }} have changed</h2>
+                            <p>
+                                Stream available at:
+                                {% for url in update.changes.stream_urls.new %}
+                                    {# djlint:off #}
+                                    <a href="{{ url }}">here</a>{% if not forloop.last %}, {% endif %}
+                                    {# djlint:on #}
+                                {% endfor %}
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        {% if update.has_tickets_urls_change %}
+                            <h2>
+                                Tickets URLs for {{ update.event_type_display }} on {{ update.event.date|date:"Y-m-d" }} at {{ update.event.venue }} ({{ update.event.city }}, {{ update.event.country }}) have changed
+                            </h2>
+                            <p>
+                                Tickets available at:
+                                {% for url in update.changes.tickets_urls.new %}
+                                    {# djlint:off #}
+                                    <a href="{{ url }}">here</a>{% if not forloop.last %}, {% endif %}
+                                    {# djlint:on #}
+                                {% endfor %}
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+            <hr>
+        {% endfor %}
+    </body>
+</html>
