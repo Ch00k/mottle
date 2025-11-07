@@ -10,11 +10,11 @@ repos:
           - --fix
       - id: ruff-format
 
-  - repo: https://github.com/djlint/djLint
-    rev: v1.36.4
-    hooks:
-      - id: djlint-reformat-django
-      #- id: djlint-django
+  #- repo: https://github.com/djlint/djLint
+  #  rev: v1.36.4
+  #  hooks:
+  #    - id: djlint-reformat-django
+  #    #- id: djlint-django
 
   - repo: local
     hooks:

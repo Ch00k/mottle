@@ -1,0 +1,91 @@
+Playlist: My Chill Playlist
+===========================
+Watched playlist: Indie Discoveries by Jane Smith
+-------------------------------------------------
+New tracks:
+Blinding Lights by The Weeknd
+Save Your Tears by The Weeknd
+Starboy by The Weeknd, Daft Punk
+
+The update has been auto-accepted
+
+Watched artist: The Weeknd
+--------------------------
+New albums:
+After Hours (2020-03-20)
+Starboy (2016-11-25)
+
+The update could not be auto-accepted. Please accept manually at https://mottle.it/playlist/target_playlist1/updates/
+
+Playlist: Workout Mix
+=====================
+Watched playlist: Top Rock Hits by Bob Johnson
+----------------------------------------------
+New tracks:
+Bohemian Rhapsody by Queen
+Stairway to Heaven by Led Zeppelin
+
+Accept the update at https://mottle.it/playlist/target_playlist2/updates/
+
+Playlist: Many Tracks Playlist
+==============================
+Watched playlist: Mega Playlist by Jane Smith
+---------------------------------------------
+New tracks:
+Track 6 by Artist 6
+Track 7 by Artist 7
+Track 8 by Artist 8
+Track 9 by Artist 9
+Track 10 by Artist 10
+Track 11 by Artist 11
+Track 12 by Artist 12
+Track 13 by Artist 13
+Track 14 by Artist 14
+...and 5 more
+
+Accept the update at https://mottle.it/playlist/target_playlist3/updates/
+
+Playlist: Album Collection
+==========================
+Watched artist: Taylor Swift
+----------------------------
+New albums:
+Album 3 (2023-04-01)
+Album 4 (2024-05-01)
+Album 5 (2020-06-01)
+Album 6 (2021-07-01)
+Album 7 (2022-08-01)
+Album 8 (2023-09-01)
+Album 9 (2024-01-01)
+Album 10 (2020-02-01)
+Album 11 (2021-03-01)
+...and 2 more
+
+Accept the update at https://mottle.it/playlist/target_playlist4/updates/
+
+Playlist: Exactly Ten Tracks
+============================
+Watched playlist: Boundary Playlist by Jane Smith
+-------------------------------------------------
+New tracks:
+Track 21 by Artist 21
+Track 22 by Artist 22
+Track 23 by Artist 23
+Track 24 by Artist 24
+Track 25 by Artist 25
+Track 26 by Artist 26
+Track 27 by Artist 27
+Track 28 by Artist 28
+Track 29 by Artist 29
+
+Accept the update at https://mottle.it/playlist/target_playlist5/updates/
+
+Playlist: Few Albums Playlist
+=============================
+Watched artist: Dua Lipa
+------------------------
+New albums:
+Album 15 (2020-07-01)
+Album 16 (2021-08-01)
+
+Accept the update at https://mottle.it/playlist/target_playlist6/updates/
