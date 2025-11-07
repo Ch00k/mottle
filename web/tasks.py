@@ -8,15 +8,16 @@ from functools import partial
 from typing import Any
 
 from asgiref.sync import async_to_sync, sync_to_async
+from django.conf import settings
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import send_mail
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
 from featureflags.data import FeatureFlag
 from web.metrics import TASK_RUNTIME_SECONDS
 
-from .email import send_email
 from .events.data import EventSourceArtist, MusicBrainzArtist
 from .events.enums import ArtistNameMatchAccuracy, EventType
 from .events.exceptions import MusicBrainzException
@@ -156,8 +157,8 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
                 else:
                     update["auto_accept_successful"] = True
 
-    plaintext_message, html_message = await compile_playlist_updates_email(updates, spotify_client)
-    logger.debug(f"Email message:\n{plaintext_message}")
+    html_message = await compile_playlist_updates_email(updates, spotify_client)
+    logger.debug(f"Email message:\n{html_message}")
 
     if not send_notifications:
         logger.warning("Email notifications disabled")
@@ -174,7 +175,13 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
 
     logger.info(f"Sending email to {user.email}")
     try:
-        await send_email(user.email, "We've got updates for you", plaintext_message, html_message)
+        await sync_to_async(send_mail)(
+            subject="We've got updates for you",
+            message="",
+            html_message=html_message,
+            from_email=f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>",
+            recipient_list=[user.email],
+        )
     except Exception as e:
         logger.error(f"Failed to send email to {user.email}: {e}")
     else:
@@ -296,9 +303,9 @@ async def acheck_artists_for_event_updates(
             all_updates = list(itertools.chain.from_iterable(artists_with_events.values()))
             logger.info(f"Event updates for user {spotify_user}: {all_updates}")
 
-            plaintext_message, html_message = await compile_event_updates_email(artists_with_events, spotify_client)
+            html_message = await compile_event_updates_email(artists_with_events, spotify_client)
 
-            logger.debug(f"Email message for {spotify_user}:\n{plaintext_message}")
+            logger.debug(f"Email message for {spotify_user}:\n{html_message}")
 
             if not send_notifications:
                 logger.warning("Email notifications disabled")
@@ -314,7 +321,13 @@ async def acheck_artists_for_event_updates(
 
             logger.info(f"Sending email to {spotify_user.email}")
             try:
-                await send_email(spotify_user.email, "We've got updates for you", plaintext_message, html_message)
+                await sync_to_async(send_mail)(
+                    subject="We've got updates for you",
+                    message="",
+                    html_message=html_message,
+                    from_email=f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>",
+                    recipient_list=[spotify_user.email],
+                )
             except Exception as e:
                 logger.error(f"Failed to send email to {spotify_user.email}: {e}")
             else:

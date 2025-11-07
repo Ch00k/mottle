@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 from django.test import TestCase
+from minify_html import minify
 from tekore.model import FullAlbum, FullArtist, FullPlaylist, FullTrack, PublicUser
 
 from web.events.enums import EventType
@@ -12,21 +13,12 @@ from web.utils import MottleSpotifyClient
 from web.views_utils import camel_to_snake, compile_event_updates_email, compile_playlist_updates_email
 
 
-class TestCamelToSnake:
-    def test_converts_single_word(self) -> None:
-        assert camel_to_snake("Playlist") == "playlist"
-
-    def test_converts_camel_case(self) -> None:
-        assert camel_to_snake("PlaylistMetadata") == "playlist_metadata"
-
-    def test_handles_consecutive_capitals(self) -> None:
-        assert camel_to_snake("HTTPResponse") == "h_t_t_p_response"
-
-    def test_preserves_leading_capital(self) -> None:
-        assert camel_to_snake("Artist") == "artist"
-
-    def test_handles_already_snake_case(self) -> None:
-        assert camel_to_snake("already_snake") == "already_snake"
+def test_camel_to_snake() -> None:
+    assert camel_to_snake("Playlist") == "playlist"
+    assert camel_to_snake("PlaylistMetadata") == "playlist_metadata"
+    assert camel_to_snake("HTTPResponse") == "h_t_t_p_response"
+    assert camel_to_snake("Artist") == "artist"
+    assert camel_to_snake("already_snake") == "already_snake"
 
 
 @pytest.mark.asyncio
@@ -207,21 +199,18 @@ class TestCompileEventUpdatesEmail(TestCase):
             event_artist2: [update2_1, update2_2],
             event_artist3: [update3_1, update3_2],
         }
-        plaintext, html = await compile_event_updates_email(updates, mock_spotify_client)
+        html = await compile_event_updates_email(updates, mock_spotify_client)
 
-        # Compare against golden files
-        golden_dir = Path(__file__).parent / "golden" / "event_updates_email"
-        golden_plaintext = golden_dir / "plaintext.txt"
-        golden_html = golden_dir / "html.html"
+        # Compare against golden file
+        golden_dir = Path(__file__).parent / "golden"
+        golden_html = golden_dir / "event_updates_email.html"
 
-        # Uncomment to update golden files
+        # Uncomment to update golden file
         # golden_dir.mkdir(parents=True, exist_ok=True)
-        # golden_plaintext.write_text(plaintext)
         # golden_html.write_text(html)
 
-        # Verify against golden files
-        assert plaintext.strip() == golden_plaintext.read_text().strip()
-        assert html.strip() == golden_html.read_text().strip()
+        # Verify against golden file
+        assert minify(html) == minify(golden_html.read_text())
 
 
 @pytest.mark.asyncio
@@ -502,18 +491,15 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
                 {"update": update6_1, "auto_acceptable": False, "auto_accept_successful": False},
             ],
         }
-        plaintext, html = await compile_playlist_updates_email(updates, mock_spotify_client)
+        html = await compile_playlist_updates_email(updates, mock_spotify_client)
 
-        # Compare against golden files
-        golden_dir = Path(__file__).parent / "golden" / "playlist_updates_email"
-        golden_plaintext = golden_dir / "plaintext.txt"
-        golden_html = golden_dir / "html.html"
+        # Compare against golden file
+        golden_dir = Path(__file__).parent / "golden"
+        golden_html = golden_dir / "playlist_updates_email.html"
 
-        # Uncomment to update golden files
+        # Uncomment to update golden file
         # golden_dir.mkdir(parents=True, exist_ok=True)
-        # golden_plaintext.write_text(plaintext)
         # golden_html.write_text(html)
 
-        # Verify against golden files
-        assert plaintext.strip() == golden_plaintext.read_text().strip()
-        assert html.strip() == golden_html.read_text().strip()
+        # Verify against golden file
+        assert minify(html) == minify(golden_html.read_text())

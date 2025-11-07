@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Playlist Updates</title>
+    </head>
+    <body>
+        {% for playlist_name, playlist_updates in updates %}
+            <h1>Playlist: {{ playlist_name }}</h1>
+            {% for update_info in playlist_updates %}
+                {% if update_info.watched_playlist %}
+                    <h2>Watched playlist: {{ update_info.watched_playlist.name }} by {{ update_info.watched_playlist.owner_name }}</h2>
+                    <h3>New tracks:</h3>
+                    <ul>
+                        {% for track in update_info.tracks %}<li>{{ track.name }} by {{ track.artists }}</li>{% endfor %}
+                        {% if update_info.tracks_truncated %}<li>...and {{ update_info.tracks_remaining }} more</li>{% endif %}
+                    </ul>
+                {% elif update_info.watched_artist %}
+                    <h2>Watched artist: {{ update_info.watched_artist.name }}</h2>
+                    <h3>New albums:</h3>
+                    <ul>
+                        {% for album in update_info.albums %}<li>{{ album.name }} ({{ album.release_date }})</li>{% endfor %}
+                        {% if update_info.albums_truncated %}<li>...and {{ update_info.albums_remaining }} more</li>{% endif %}
+                    </ul>
+                {% endif %}
+                {% if update_info.auto_acceptable %}
+                    {% if update_info.auto_accept_successful %}
+                        <p>The update has been auto-accepted</p>
+                    {% else %}
+                        <p>
+                            The update could not be auto-accepted. Please accept manually <a href="https://mottle.it{{ update_info.playlist_updates_url }}">here</a>
+                        </p>
+                    {% endif %}
+                {% else %}
+                    <p>
+                        Accept the update <a href="https://mottle.it{{ update_info.playlist_updates_url }}">here</a>
+                    </p>
+                {% endif %}
+                <hr>
+            {% endfor %}
+        {% endfor %}
+    </body>
+</html>
