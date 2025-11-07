@@ -125,3 +125,6 @@ django_settings_module = "mottle.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "mottle.settings"
 django_debug_mode = "keep"
+
+[tool.djlint]
+extend_exclude = "tests/golden/event_updates_email/html.html,tests/golden/playlist_updates_email/html.html"
