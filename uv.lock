@@ -284,14 +284,14 @@ wheels = [
 
 [[package]]
 name = "django-dirtyfields"
-version = "1.9.7"
+version = "1.9.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/f6/800c94ff7312b6aed9e3763f07acdb71b1bf457dd4a602de24d888104550/django_dirtyfields-1.9.7.tar.gz", hash = "sha256:23cde794612499e8b5e0f840a1c389a6fd666fcc9c01e82299fcd8ba90af151b", size = 21988, upload-time = "2025-03-22T09:46:51.024Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/ab/850295c9c9cc5aadd5ea5993716ee54641440e1bc3655129e202aa311399/django_dirtyfields-1.9.8.tar.gz", hash = "sha256:f18fd998bc891390f92c98a0a1a7a8140b8e8cc8defa5f6539ad416550c46559", size = 21746, upload-time = "2025-11-17T12:45:33.066Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/34/e3095c10f3d6838329d11ecce36d8136bfe553b4e960cb10f1fcca434841/django_dirtyfields-1.9.7-py3-none-any.whl", hash = "sha256:084957fb8db092c05814ce92dc34276d52a0056e09a55b090bdab29f98eacc53", size = 8447, upload-time = "2025-03-22T09:46:49.601Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/48/0478f21ae59ac5107c4f8901b827f66556781ca6e4137dd36f343a47abbb/django_dirtyfields-1.9.8-py3-none-any.whl", hash = "sha256:28e2de32df1385d7ccd33c23a6de90e3579e9b9644bc9bdfe6214e6c8b51a127", size = 7678, upload-time = "2025-11-17T12:45:32.145Z" },
 ]
 
 [[package]]
@@ -691,7 +691,7 @@ requires-dist = [
     { name = "cryptography", specifier = "==46.0.3" },
     { name = "daphne", specifier = "==4.2.1" },
     { name = "django", specifier = "==5.2.8" },
-    { name = "django-dirtyfields", specifier = "==1.9.7" },
+    { name = "django-dirtyfields", specifier = "==1.9.8" },
     { name = "django-hosts", specifier = "==7.0.0" },
     { name = "django-htmx", specifier = "==1.26.0" },
     { name = "django-prometheus", specifier = "==2.4.1" },
