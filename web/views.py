@@ -22,7 +22,6 @@ from django.views.decorators.http import (
 from django_htmx.http import push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
-from featureflags.data import FeatureFlag
 from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
 from web.templatetags.tekore_model_extras import get_smallest_image
 
@@ -180,9 +179,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     request.session["spotify_user_display_name"] = spotify_user.display_name
     request.session["spotify_user_email"] = spotify_user.email
     request.session["spotify_user_image_url"] = get_smallest_image(user.images)
-    request.session["feature_flags"] = {
-        "events_enabled": await FeatureFlag.aevents_enabled_for_user(spotify_user.spotify_id),
-    }
+    request.session["feature_flags"] = {"events_enabled": settings.EVENTS_ENABLED}
 
     await spotify_auth_request.adelete()
 
@@ -334,9 +331,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
             dump_to_disk=True,
         )
 
-    if await FeatureFlag.aevents_enabled_for_user(request.session["spotify_user_spotify_id"]) and bool(
-        request.POST.get("track-events", False)
-    ):
+    if settings.EVENTS_ENABLED and bool(request.POST.get("track-events", False)):
         await sync_to_async(task_track_artists_events)(
             artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
         )
@@ -504,9 +499,7 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         for track in playlist_tracks
         if isinstance(track.track, FullPlaylistTrack)
     ]
-    if await FeatureFlag.aevents_enabled_for_user(request.session["spotify_user_spotify_id"]) and request.GET.get(
-        "track-artists", False
-    ):
+    if settings.EVENTS_ENABLED and request.GET.get("track-artists", False):
         artists = {}
         for track in tracks:
             for artist in track.artists:
@@ -1030,7 +1023,6 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
 @require_http_methods(["GET", "POST"])
 async def user_settings(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
-    # events_enabled = await FeatureFlag.aevents_enabled_for_user(request.session["spotify_user_spotify_id"])
     user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
 
     if request.method == "GET":
@@ -1102,7 +1094,7 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
 @require_GET
 async def user_events(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
-    events_enabled = FeatureFlag.aevents_enabled_for_user(request.session["spotify_user_spotify_id"])
+    events_enabled = settings.EVENTS_ENABLED
 
     if not events_enabled:
         return trigger_client_event(

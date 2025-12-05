@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Optional
 
+from django.conf import settings
 from sentry_sdk import capture_exception, capture_message
 
-from featureflags.data import FeatureFlag
 from urlshortener.models import ShortURL
 
 from .constants import (
@@ -515,7 +515,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
     urls = [u.split("?")[0] for u in urls]
 
-    if await FeatureFlag.resolve_songkick_urls():
+    if settings.RESOLVE_SONGKICK_URLS:
         calls = [asend_get_request(async_songkick_client, u, redirect_url=True, raise_for_lte_300=False) for u in urls]
         results = await asyncio.gather(*calls, return_exceptions=True)
 

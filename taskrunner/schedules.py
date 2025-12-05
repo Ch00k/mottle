@@ -3,20 +3,17 @@ from datetime import datetime
 from typing import cast
 
 from croniter.croniter import croniter
+from django.conf import settings
 from django_q.models import Schedule
 from django_q.utils import localtime
-
-from featureflags.data import FeatureFlag
 
 logger = logging.getLogger(__name__)
 
 PLAYLIST_UPDATES_NAME = "playlist_updates"
 PLAYLIST_UPDATES_FUNC = "web.tasks.check_playlists_for_updates"
-PLAYLIST_UPDATES_SCHEDULE = FeatureFlag.playlist_updates_schedule()
 
 EVENT_UPDATES_NAME = "event_updates"
 EVENT_UPDATES_FUNC = "web.tasks.check_artists_for_event_updates"
-EVENT_UPDATES_SCHEDULE = FeatureFlag.event_updates_schedule()
 
 
 def get_next_run(cron_schedule: str) -> datetime:
@@ -24,32 +21,36 @@ def get_next_run(cron_schedule: str) -> datetime:
 
 
 def playlist_updates() -> None:
-    if PLAYLIST_UPDATES_SCHEDULE is None:
-        raise RuntimeError("playlist_updates schedule is not set")
+    schedule = settings.SCHEDULE.get("PLAYLIST_UPDATES")
+    if schedule is None:
+        logger.warning("PLAYLIST_UPDATES schedule is not set. Skipping task creation")
+        return
 
     Schedule.objects.update_or_create(
         name=PLAYLIST_UPDATES_NAME,
         defaults={
             "func": PLAYLIST_UPDATES_FUNC,
             "schedule_type": Schedule.CRON,
-            "cron": PLAYLIST_UPDATES_SCHEDULE,
+            "cron": schedule,
             "cluster": "long_running",
-            "next_run": get_next_run(PLAYLIST_UPDATES_SCHEDULE),
+            "next_run": get_next_run(schedule),
         },
     )
 
 
 def event_updates() -> None:
-    if EVENT_UPDATES_SCHEDULE is None:
-        raise RuntimeError("event_updates schedule is not set")
+    schedule = settings.SCHEDULE.get("EVENT_UPDATES")
+    if schedule is None:
+        logger.warning("EVENT_UPDATES schedule is not set. Skipping task creation")
+        return
 
     Schedule.objects.update_or_create(
         name=EVENT_UPDATES_NAME,
         defaults={
             "func": EVENT_UPDATES_FUNC,
             "schedule_type": Schedule.CRON,
-            "cron": EVENT_UPDATES_SCHEDULE,
+            "cron": schedule,
             "cluster": "long_running",
-            "next_run": get_next_run(EVENT_UPDATES_SCHEDULE),
+            "next_run": get_next_run(schedule),
         },
     )

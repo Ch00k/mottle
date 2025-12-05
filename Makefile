@@ -14,6 +14,9 @@ test_ci:
 up:
 	docker compose --file compose.dev.yaml up --remove-orphans
 
+up-all:
+	docker compose --file compose.dev.yaml --profile taskrunner up --remove-orphans
+
 down:
 	docker compose --file compose.dev.yaml down --remove-orphans
 
