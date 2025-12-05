@@ -35,7 +35,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "web",
-    "featureflags",
     "urlshortener",
     "django_hosts",
     "django_htmx",
@@ -303,11 +302,15 @@ HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
 
 PROXY_URL = env.str("PROXY_URL", None)
 
+EVENTS_ENABLED = env.bool("EVENTS_ENABLED", True)
+EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT = env.int("EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT", 100)
+EVENTS_FETCH_CONCURRENCY_LIMIT = env.int("EVENTS_FETCH_CONCURRENCY_LIMIT", 100)
 EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD", 85)
+RESOLVE_SONGKICK_URLS = env.bool("RESOLVE_SONGKICK_URLS", False)
 
 GEODJANGO_SRID = 4326
 
 SCHEDULE = {
-    "PLAYLIST_UPDATES": env.str("SCHEDULE_PLAYLIST_UPDATES", ""),
-    "EVENT_UPDATES": env.str("SCHEDULE_EVENT_UPDATES", ""),
+    "PLAYLIST_UPDATES": env.str("SCHEDULE_PLAYLIST_UPDATES", None),
+    "EVENT_UPDATES": env.str("SCHEDULE_EVENT_UPDATES", None),
 }

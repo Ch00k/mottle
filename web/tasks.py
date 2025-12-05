@@ -15,7 +15,6 @@ from django.core.mail import send_mail
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
-from featureflags.data import FeatureFlag
 from web.metrics import TASK_RUNTIME_SECONDS
 
 from .events.data import EventSourceArtist, MusicBrainzArtist
@@ -231,7 +230,7 @@ async def acheck_artists_for_event_updates(
     if concurrent_execution:
         calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
 
-        concurrency_limit = concurrency_limit or await FeatureFlag.aevent_fetching_concurrency_limit()
+        concurrency_limit = concurrency_limit or settings.EVENTS_FETCH_CONCURRENCY_LIMIT
 
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
@@ -527,7 +526,7 @@ async def atrack_artists_events(
             if artist_name
         ]
 
-        concurrency_limit = concurrency_limit or await FeatureFlag.aevent_sources_fetching_concurrency_limit()
+        concurrency_limit = concurrency_limit or settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT
 
         if concurrency_limit:
             results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)

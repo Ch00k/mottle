@@ -3,10 +3,10 @@ from functools import partial
 from typing import Any, cast
 
 from asgiref.sync import async_to_sync
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from tekore.model import FullPlaylistTrack
 
-from featureflags.data import FeatureFlag
 from taskrunner.tasks import task_track_artists_events
 from web.data import TrackData
 from web.models import SpotifyUser
@@ -32,7 +32,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--concurrency-limit",
             type=int,
-            default=FeatureFlag.event_sources_fetching_concurrency_limit(),
+            default=settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT,
             help="Limit the number of concurrent executions for event fetching (how many artists to check at once)",
         )
 
@@ -41,9 +41,7 @@ class Command(BaseCommand):
         artist_id: str | None = options.get("artist_id")  # pyright: ignore[reportAssignmentType]
         playlist_id: str | None = options.get("playlist_id")  # pyright: ignore[reportAssignmentType]
         force_reevaluate: bool = cast("bool", options.get("force_reevaluate", False))  # pyright: ignore[reportAssignmentType]
-        concurrency_limit: int = cast(
-            "int", options.get("concurrency_limit", FeatureFlag.event_fetching_concurrency_limit())
-        )
+        concurrency_limit: int = cast("int", options.get("concurrency_limit", settings.EVENTS_FETCH_CONCURRENCY_LIMIT))
 
         if not user_id:
             raise CommandError("You must provide a user ID")
