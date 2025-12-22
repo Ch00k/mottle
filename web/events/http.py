@@ -1,15 +1,16 @@
 import asyncio
 import logging
 import random
+import ssl
 import string
 import time
 import timeit
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import certifi
 import httpx
 from django.conf import settings
 from lxml import html as lh
-from prometheus_client import Counter, Histogram
 
 from web.metrics import (
     BANDSINTOWN_API_EXCEPTIONS,
@@ -36,13 +37,36 @@ from .constants import (
 )
 from .exceptions import HTTPClientException, RetriesExhaustedException
 
+if TYPE_CHECKING:
+    from prometheus_client import Counter, Histogram
+
 logger = logging.getLogger(__name__)
 
 
+def create_ssl_context(use_urllib3: bool = False) -> ssl.SSLContext:
+    """Create SSL context that bypasses Cloudflare bot detection.
+
+    Uses either Python's create_default_context() with OP_NO_TICKET added, or urllib3's create_urllib3_context(),
+    which changes the TLS fingerprint to avoid Cloudflare's bot detection.
+    """
+    if use_urllib3:
+        from urllib3.util.ssl_ import create_urllib3_context
+
+        return create_urllib3_context()
+
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    ssl_context.options |= ssl.OP_NO_TICKET
+    return ssl_context
+
+
 class AsyncRetryingClient(httpx.AsyncClient):
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    ssl_context.options |= ssl.OP_NO_TICKET
+
     def __init__(
         self,
         name: str,
+        verify: ssl.SSLContext | str | bool = ssl_context,
         throttle_response_code: int | None = None,
         retries: int = 10,
         delay_seconds: float = 0.0,
@@ -58,6 +82,7 @@ class AsyncRetryingClient(httpx.AsyncClient):
         super().__init__(*args, **kwargs)
 
         self.name = name
+        self.verify = verify
         self.throttle_response_code = throttle_response_code
         self.retries = retries
         self.delay_seconds = delay_seconds
