@@ -1,8 +1,10 @@
-import logging
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from json_log_formatter import BUILTIN_ATTRS, JSONFormatter
+
+if TYPE_CHECKING:
+    import logging
 
 BUILTIN_ATTRS.add("taskName")
 

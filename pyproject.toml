@@ -7,7 +7,7 @@ license = { file = "LICENSE" }
 readme = "README.md"
 homepage = "https://mottle.it"
 repository = "https://github.com/Ch00k/mottle"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14"
 
 dependencies = [
   "django==5.2.8",
@@ -30,7 +30,7 @@ dependencies = [
   "json-log-formatter==1.1.1",
   "daphne==4.2.1",
   "django-hosts==7.0.0",
-  "tekore==6.0.0",
+  "tekore==6.1.0",
   "croniter==6.0.0",
 ]
 
@@ -46,7 +46,7 @@ dev = [
   "pytest-cov>=7.0.0",
   "minify-html>=0.18.1",
 ]
-debug = ["ipython==9.7.0", "pdbpp==0.11.7"]
+debug = ["ipython==9.8.0", "pdbpp==0.11.7"]
 
 [tool.ruff]
 line-length = 120

@@ -4,12 +4,11 @@ import random
 import string
 import time
 import timeit
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from django.conf import settings
 from lxml import html as lh
-from prometheus_client import Counter, Histogram
 
 from web.metrics import (
     BANDSINTOWN_API_EXCEPTIONS,
@@ -35,6 +34,9 @@ from .constants import (
     SONGKICK_BASE_URL,
 )
 from .exceptions import HTTPClientException, RetriesExhaustedException
+
+if TYPE_CHECKING:
+    from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
 

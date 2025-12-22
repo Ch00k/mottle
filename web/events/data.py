@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any, Optional
+from typing import Any
 
 from django.conf import settings
 from sentry_sdk import capture_exception, capture_message
@@ -54,7 +54,7 @@ class MusicBrainzArtist:
     bandsintown_url: str | None = None
 
     @staticmethod
-    async def find(artist_spotify_id: str, artist_name: str) -> Optional["MusicBrainzArtist"]:
+    async def find(artist_spotify_id: str, artist_name: str) -> MusicBrainzArtist | None:
         try:
             return await MusicBrainzArtist.find_by_spotify_url(f"https://open.spotify.com/artist/{artist_spotify_id}")
         except MusicBrainzException as e:
@@ -62,7 +62,7 @@ class MusicBrainzArtist:
             return await MusicBrainzArtist.find_by_name(artist_name)
 
     @staticmethod
-    async def find_by_spotify_url(url: str) -> Optional["MusicBrainzArtist"]:
+    async def find_by_spotify_url(url: str) -> MusicBrainzArtist | None:
         try:
             resp = await asend_get_request(
                 async_musicbrainz_client, "url", params={"resource": url, "inc": "artist-rels"}
@@ -93,7 +93,7 @@ class MusicBrainzArtist:
             return artist
 
     @staticmethod
-    async def find_by_name(artist_name: str) -> Optional["MusicBrainzArtist"]:
+    async def find_by_name(artist_name: str) -> MusicBrainzArtist | None:
         if not artist_name:
             raise MusicBrainzException("Artist name is empty")
 
@@ -138,7 +138,7 @@ class MusicBrainzArtist:
         return None
 
     @staticmethod
-    async def from_artist_id(artist_id: str) -> "MusicBrainzArtist":
+    async def from_artist_id(artist_id: str) -> MusicBrainzArtist:
         try:
             resp = await asend_get_request(
                 async_musicbrainz_client, f"artist/{artist_id}", params={"inc": "aliases+url-rels"}
@@ -234,7 +234,7 @@ class EventSourceArtist:
     @staticmethod
     async def find(
         artist_name: str, alternative_names: list[str], use_advanced_heuristics: bool = False
-    ) -> "EventSourceArtist":
+    ) -> EventSourceArtist:
         if artist_name in alternative_names:
             alternative_names.remove(artist_name)
 

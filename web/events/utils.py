@@ -121,7 +121,7 @@ def replace_unicode_characters(string: str) -> str:
     )
 
 
-def should_fetch_event(event_url: str, event_source: EventDataSource, events: dict[str, "Event"]) -> bool:
+def should_fetch_event(event_url: str, event_source: EventDataSource, events: dict[str, Event]) -> bool:
     existing_event = events.get(event_url)
 
     if existing_event is None:

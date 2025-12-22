@@ -33,7 +33,7 @@ class ShortURL(BaseModel):
         super().save(*args, **kwargs)
 
     @staticmethod
-    async def shorten(url: str) -> "ShortURL":
+    async def shorten(url: str) -> ShortURL:
         short_url, _ = await ShortURL.objects.aget_or_create(url=url)
         return short_url
 

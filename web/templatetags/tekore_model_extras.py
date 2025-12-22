@@ -1,6 +1,10 @@
+from typing import TYPE_CHECKING
+
 from django import template
 from django.templatetags.static import static
-from tekore.model import Image, Item
+
+if TYPE_CHECKING:
+    from tekore.model import Image, Item
 
 register = template.Library()
 
