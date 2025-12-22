@@ -23,7 +23,7 @@ LABEL org.opencontainers.image.source=https://github.com/ch00k/mottle
 RUN apt-get update && apt-get install \
     --no-install-recommends --no-install-suggests -y \
     libsqlite3-mod-spatialite \
-    libgdal32 \
+    libgdal36 \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 COPY --from=builder /app /app
