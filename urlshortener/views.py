@@ -1,8 +1,12 @@
-from django.http import HttpRequest, HttpResponse
+from typing import TYPE_CHECKING
+
 from django.shortcuts import aget_object_or_404, redirect
 from django.views.decorators.http import require_GET
 
 from urlshortener.models import ShortURL
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest, HttpResponse
 
 
 @require_GET

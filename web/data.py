@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import date
 from functools import total_ordering
+from typing import TYPE_CHECKING
 
 from tekore.model import (
     FullArtist,
@@ -13,7 +13,11 @@ from tekore.model import (
 )
 
 from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url, humanize_duration
-from .views_utils import AlbumMetadata, ArtistMetadata, PlaylistMetadata
+
+if TYPE_CHECKING:
+    from datetime import date
+
+    from .views_utils import AlbumMetadata, ArtistMetadata, PlaylistMetadata
 
 
 @total_ordering
@@ -57,7 +61,7 @@ class AlbumData(SpotifyEntityData):
         return super().__lt__(other)
 
     @staticmethod
-    def from_tekore_model(album: SimpleAlbum) -> "AlbumData":
+    def from_tekore_model(album: SimpleAlbum) -> AlbumData:
         return AlbumData(
             id=album.id,
             name=album.name,
@@ -71,7 +75,7 @@ class AlbumData(SpotifyEntityData):
         )
 
     @staticmethod
-    async def from_metadata(metadata: AlbumMetadata) -> "AlbumData":
+    async def from_metadata(metadata: AlbumMetadata) -> AlbumData:
         return AlbumData(
             id=await metadata.id,
             name=await metadata.name,
@@ -99,7 +103,7 @@ class ArtistData(SpotifyEntityData):
         return super().__lt__(other)
 
     @staticmethod
-    def from_tekore_model(artist: FullArtist) -> "ArtistData":
+    def from_tekore_model(artist: FullArtist) -> ArtistData:
         return ArtistData(
             id=artist.id,
             name=artist.name,
@@ -110,7 +114,7 @@ class ArtistData(SpotifyEntityData):
         )
 
     @staticmethod
-    async def from_metadata(metadata: ArtistMetadata) -> "ArtistData":
+    async def from_metadata(metadata: ArtistMetadata) -> ArtistData:
         return ArtistData(
             id=await metadata.id,
             name=await metadata.name,
@@ -142,7 +146,7 @@ class TrackData(SpotifyEntityData):
         track: FullTrack | FullPlaylistTrack | SimpleTrack,
         album: AlbumData | None = None,
         added_at: date | None = None,
-    ) -> "TrackData":
+    ) -> TrackData:
         album_data: AlbumData | None
 
         if isinstance(track, (FullTrack, FullPlaylistTrack)):
@@ -198,7 +202,7 @@ class PlaylistData(SpotifyEntityData):
     @staticmethod
     async def from_metadata(
         metadata: PlaylistMetadata,
-    ) -> "PlaylistData":
+    ) -> PlaylistData:
         return PlaylistData(
             id=await metadata.id,
             name=await metadata.name,
@@ -213,7 +217,7 @@ class PlaylistData(SpotifyEntityData):
         )
 
     @staticmethod
-    def from_tekore_model(playlist: FullPlaylist | SimplePlaylist) -> "PlaylistData":
+    def from_tekore_model(playlist: FullPlaylist | SimplePlaylist) -> PlaylistData:
         return PlaylistData(
             id=playlist.id,
             name=playlist.name,

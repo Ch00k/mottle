@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import pytest
@@ -22,6 +22,9 @@ from web.models import (
     User,
 )
 from web.utils import MottleSpotifyClient
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 
 @pytest.fixture

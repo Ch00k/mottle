@@ -1,15 +1,19 @@
 import logging
-from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
 from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse
-from django_hosts import host
-from django_htmx.middleware import HtmxDetails
 
 from .models import SpotifyAuth
 from .utils import MottleException, MottleSpotifyClient
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from django_hosts import host
+    from django_htmx.middleware import HtmxDetails
 
 logger = logging.getLogger(__name__)
 

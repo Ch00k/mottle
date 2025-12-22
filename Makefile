@@ -2,7 +2,7 @@
 
 lint:
 	uv run ruff format .
-	uv run ruff check --fix .
+	uv run ruff check --fix --unsafe-fixes .
 	uv run mypy --config-file pyproject.toml .
 
 test:

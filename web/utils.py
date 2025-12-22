@@ -2,11 +2,10 @@ import asyncio
 import itertools
 import logging
 from collections import Counter
-from collections.abc import Awaitable, Callable, Generator, Iterable
 from contextlib import contextmanager
 from functools import partial
 from types import MethodType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from tekore import Spotify
@@ -31,6 +30,9 @@ from tekore.model import (
 )
 
 from .spotify import get_client
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Generator, Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -353,7 +355,7 @@ async def perform_parallel_requests(func: Callable, items: list[str]) -> Any:
 
 
 async def perform_parallel_chunked_requests(func: Callable, items: list[str], chunk_size: int = 100) -> Any:
-    chunks = itertools.batched(items, chunk_size)
+    chunks = itertools.batched(items, chunk_size, strict=False)
     calls = [func(chunk) for chunk in chunks]
     qualname = func.func.__qualname__ if isinstance(func, partial) else func.__qualname__
     logger.debug(f"Paralellizing {qualname} into {len(calls)} chunked calls")

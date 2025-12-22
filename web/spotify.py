@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 import time
-from collections.abc import Coroutine
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from httpx import AsyncClient, Client, Timeout
@@ -20,6 +20,9 @@ from tekore import (
 )
 
 from .metrics import SPOTIFY_API_RESPONSE_TIME_SECONDS, SPOTIFY_API_RESPONSES
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
 
 SPOTIFY_ID_PATTERN = r"[a-zA-Z0-9]{22}"
 SPOTIFY_ID_PLACEHOLDER = "<sid>"

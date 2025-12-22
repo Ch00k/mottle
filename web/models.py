@@ -4,7 +4,7 @@ import json
 import logging
 import uuid
 from collections import defaultdict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
 from dirtyfields import DirtyFieldsMixin
@@ -15,7 +15,6 @@ from django.contrib.gis.measure import Distance
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from tekore import Token
-from tekore.model import PlaylistTrack
 
 from web.events.data import EventSourceArtist
 from web.events.enums import EventDataSource, EventType
@@ -24,6 +23,9 @@ from .events.data import Event as FetchedEvent
 from .events.data import Venue as FetchedVenue
 from .spotify import authenticate
 from .utils import MottleException, MottleSpotifyClient
+
+if TYPE_CHECKING:
+    from tekore.model import PlaylistTrack
 
 TOKEN_EXPIRATION_THRESHOLD = 60
 
@@ -99,7 +101,7 @@ class User(BaseModel):
     def __str__(self) -> str:
         return f"<User {self.id} spotify_user={self.spotify_user}>"
 
-    async def upcoming_events(self) -> dict["EventArtist", list["Event"]]:
+    async def upcoming_events(self) -> dict[EventArtist, list[Event]]:
         artists_with_events = defaultdict(list)
 
         if self.location is None:
@@ -273,7 +275,7 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         musicbrainz_id: str | None,
         fetched_artist: EventSourceArtist,
         watching_spotify_user_ids: list[str],
-    ) -> "EventArtist":
+    ) -> EventArtist:
         event_artist = await EventArtist.objects.acreate(
             artist=artist,
             musicbrainz_id=musicbrainz_id,
@@ -294,7 +296,7 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         self.bandsintown_name_match_accuracy = fetched_artist.bandsintown_match_accuracy
         await self.asave()
 
-    async def update_events(self, force_refetch: bool = False) -> "EventArtist":
+    async def update_events(self, force_refetch: bool = False) -> EventArtist:
         fetched_artist = await self.as_fetched_artist(with_events=not force_refetch)
         await fetched_artist.fetch_events()
 
@@ -348,7 +350,7 @@ class Event(DirtyFieldsMixin, BaseModel):
     @staticmethod
     async def update_or_create_from_fetched_event(
         fetched_event: FetchedEvent, event_artist: EventArtist
-    ) -> tuple["Event", bool]:
+    ) -> tuple[Event, bool]:
         venue = fetched_event.venue
 
         if venue is None:
@@ -520,7 +522,7 @@ class Playlist(SpotifyEntityModel):
             auto_accept_updates=auto_accept_updates,
         )
 
-    async def unwatch(self, playlist: "Playlist") -> None:
+    async def unwatch(self, playlist: Playlist) -> None:
         await self.updates.filter(source_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
         await self.configs_as_watching.filter(watched_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
 
@@ -535,7 +537,7 @@ class Playlist(SpotifyEntityModel):
         ]
 
     @property
-    def pending_updates(self) -> models.QuerySet["PlaylistUpdate"]:
+    def pending_updates(self) -> models.QuerySet[PlaylistUpdate]:
         return self.updates.filter(is_overridden_by=None, is_accepted=None)  # pyright: ignore[reportAttributeAccessIssue]
 
 
@@ -647,7 +649,7 @@ class PlaylistUpdate(BaseModel):
     @classmethod
     async def find_or_create_for_playlist(
         cls, target_playlist: Playlist, source_playlist: Playlist, new_track_ids: list[str]
-    ) -> tuple["PlaylistUpdate", bool]:
+    ) -> tuple[PlaylistUpdate, bool]:
         update_hash = generate_playlist_update_hash(tracks_added=new_track_ids)
         logger.debug(f"PlaylistUpdate hash: {update_hash}")
 
@@ -693,7 +695,7 @@ class PlaylistUpdate(BaseModel):
     @classmethod
     async def find_or_create_for_artist(
         cls, target_playlist: Playlist, source_artist: Artist, new_album_ids: list[str]
-    ) -> tuple["PlaylistUpdate", bool]:
+    ) -> tuple[PlaylistUpdate, bool]:
         update_hash = generate_playlist_update_hash(albums_added=new_album_ids)
         logger.debug(f"PlaylistUpdate hash: {update_hash}")
 

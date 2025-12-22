@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
 
 RUN apt-get update && apt-get install \
     --no-install-recommends --no-install-suggests -y \
@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY . ./
 
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
+FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS runtime
 
 LABEL org.opencontainers.image.source=https://github.com/ch00k/mottle
 

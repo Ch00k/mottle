@@ -1,8 +1,7 @@
 import inspect
 import logging
 import re
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote
 
 import sentry_sdk
@@ -13,10 +12,14 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django_htmx.http import trigger_client_event
 
-from .middleware import MottleHttpRequest
 from .models import Artist, EventArtist, EventUpdate, Playlist
 from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .middleware import MottleHttpRequest
 
 logger = logging.getLogger(__name__)
 

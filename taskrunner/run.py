@@ -2,7 +2,6 @@ import logging
 import signal
 import sys
 import time
-from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
@@ -12,6 +11,7 @@ from prometheus_client import CollectorRegistry, multiprocess, start_http_server
 from taskrunner.schedules import event_updates, playlist_updates
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from threading import Thread
     from wsgiref.simple_server import WSGIServer
 
