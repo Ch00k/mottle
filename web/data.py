@@ -228,5 +228,5 @@ class PlaylistData(SpotifyEntityData):
             owner_name=playlist.owner.display_name,
             owner_url=get_spotify_url(playlist.owner),
             snapshot_id=playlist.snapshot_id,
-            num_tracks=playlist.tracks.total,
+            num_tracks=playlist.items.total,  # pyright: ignore[reportAttributeAccessIssue]
         )

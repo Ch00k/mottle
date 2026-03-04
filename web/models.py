@@ -452,7 +452,7 @@ class Playlist(SpotifyEntityModel):
 
         user, created = await SpotifyUser.objects.aupdate_or_create(
             spotify_id=spotify_user.id,
-            defaults={"display_name": spotify_user.display_name, "email": spotify_user.email},
+            defaults={"display_name": spotify_user.display_name},
         )
         if created:
             logger.debug(f"Created user: {user}")
@@ -494,7 +494,7 @@ class Playlist(SpotifyEntityModel):
 
         user, created = await SpotifyUser.objects.aupdate_or_create(
             spotify_id=spotify_user.id,
-            defaults={"display_name": spotify_user.display_name, "email": spotify_user.email},
+            defaults={"display_name": spotify_user.display_name},
         )
         if created:
             logger.debug(f"Created user: {user}")
