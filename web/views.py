@@ -155,7 +155,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
 
     spotify_user, created = await SpotifyUser.objects.aupdate_or_create(
         spotify_id=user.id,
-        defaults={"display_name": user.display_name, "email": user.email},
+        defaults={"display_name": user.display_name},
     )
     if created:
         logger.debug(f"Created new user: {spotify_user}")
@@ -302,7 +302,6 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     tracks = await request.spotify_client.get_tracks_in_albums(requested_album_ids)
 
     playlist = await request.spotify_client.create_playlist_with_tracks(
-        request.session["spotify_user_spotify_id"],
         name=name,
         track_uris=[track.uri for track in tracks],
         is_public=is_public,
@@ -694,7 +693,6 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
     #     cover_image_base64_data = None
 
     playlist = await request.spotify_client.create_playlist_with_tracks(
-        request.session["spotify_user_spotify_id"],
         name=f"Copy of {playlist_name}",
         track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
         is_public=True,  # TODO: How do we decide on the value?
@@ -727,7 +725,6 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
     if merge_type == "new":
         if target_playlist_name_new:
             target_playlist = await request.spotify_client.create_playlist(
-                request.session["spotify_user_spotify_id"],
                 target_playlist_name_new,
                 is_public=True,
             )
@@ -890,7 +887,6 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         if watching_playlist_id == "--- Create new ---":
             if watching_playlist_name_new:
                 watching_playlist = await request.spotify_client.create_playlist(
-                    request.session["spotify_user_spotify_id"],
                     watching_playlist_name_new,
                     is_public=True,
                 )

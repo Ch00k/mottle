@@ -58,19 +58,11 @@ class MottleSpotifyClient:
         return await get_all_offset_paging_items(func)  # pyright: ignore[reportReturnType]
 
     async def remove_user_saved_tracks(self, track_ids: list[str]) -> None:
+        uris = [f"spotify:track:{tid}" for tid in track_ids]
         try:
-            await self.spotify_client.saved_tracks_delete(track_ids)  # pyright: ignore[reportGeneralTypeIssues]
+            await self.spotify_client.library_delete(uris)  # pyright: ignore[reportGeneralTypeIssues,reportAttributeAccessIssue]
         except Exception as e:
             raise MottleException("Failed to remove saved tracks") from e
-
-    async def delete_current_user_saved_tracks(self, track_ids: list[str]) -> None:
-        try:
-            with chunked_off(self.spotify_client):
-                await perform_parallel_chunked_requests(
-                    self.spotify_client.saved_tracks_delete, track_ids, chunk_size=50
-                )
-        except Exception as e:
-            raise MottleException("Failed to delete saved tracks") from e
 
     async def find_artists(self, query: str) -> list[FullArtist]:
         try:
@@ -98,8 +90,8 @@ class MottleSpotifyClient:
 
     async def get_artists(self, artist_ids: list[str]) -> list[FullArtist]:
         try:
-            with chunked_off(self.spotify_client):
-                return await get_all_chunked(self.spotify_client.artists, artist_ids, chunk_size=50)
+            calls = [self.spotify_client.artist(aid) for aid in artist_ids]
+            return await gather_with_concurrency(20, *calls)  # pyright: ignore[reportGeneralTypeIssues,reportArgumentType]
         except Exception as e:
             raise MottleException("Failed to get artists") from e
 
@@ -140,13 +132,16 @@ class MottleSpotifyClient:
             raise MottleException("Failed to get album") from e
 
     async def get_albums(self, album_ids: list[str]) -> list[FullAlbum]:
-        albums: list[FullAlbum] = await get_all_chunked(self.spotify_client.albums, album_ids)
-        return albums
+        try:
+            calls = [self.spotify_client.album(aid) for aid in album_ids]
+            return await gather_with_concurrency(20, *calls)  # pyright: ignore[reportGeneralTypeIssues,reportArgumentType]
+        except Exception as e:
+            raise MottleException("Failed to get albums") from e
 
     async def get_tracks(self, track_ids: list[str]) -> list[FullTrack]:
         try:
-            with chunked_off(self.spotify_client):
-                return await get_all_chunked(self.spotify_client.tracks, track_ids, chunk_size=50)
+            calls = [self.spotify_client.track(tid) for tid in track_ids]
+            return await gather_with_concurrency(20, *calls)  # pyright: ignore[reportGeneralTypeIssues,reportArgumentType]
         except Exception as e:
             raise MottleException("Failed to get tracks") from e
 
@@ -192,10 +187,9 @@ class MottleSpotifyClient:
     #     except Exception as e:
     #         raise MottleException(f"Failed to remove tracks from playlist {playlist_id}") from e
 
-    async def create_playlist(self, current_user_id: str, name: str, is_public: bool = True) -> FullPlaylist:
+    async def create_playlist(self, name: str, is_public: bool = True) -> FullPlaylist:
         try:
-            playlist = await self.spotify_client.playlist_create(  # pyright: ignore[reportGeneralTypeIssues]
-                user_id=current_user_id,
+            playlist = await self.spotify_client.playlist_create(  # pyright: ignore[reportGeneralTypeIssues,reportCallIssue]
                 name=name,
                 public=is_public,
             )
@@ -212,7 +206,6 @@ class MottleSpotifyClient:
 
     async def create_playlist_with_tracks(
         self,
-        current_user_id: str,
         name: str,
         track_uris: list[str],
         is_public: bool = True,
@@ -224,8 +217,7 @@ class MottleSpotifyClient:
             raise MottleException("No tracks to add to playlist")
 
         try:
-            playlist = await self.spotify_client.playlist_create(  # pyright: ignore[reportGeneralTypeIssues]
-                user_id=current_user_id,
+            playlist = await self.spotify_client.playlist_create(  # pyright: ignore[reportGeneralTypeIssues,reportCallIssue]
                 name=name,
                 public=is_public,
             )

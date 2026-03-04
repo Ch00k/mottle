@@ -263,7 +263,6 @@ SPOTIFY_TOKEN_SCOPE = env.list(
         "playlist-modify-public",
         "user-follow-read",
         "user-follow-modify",
-        "user-read-email",
         "ugc-image-upload",
         "user-library-read",
         "user-library-modify",
