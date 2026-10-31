@@ -1,4 +1,5 @@
 import logging
+import re
 import unicodedata
 from typing import TYPE_CHECKING
 
@@ -15,24 +16,45 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Short names for the country names event sources send in another form. Bandsintown sends short names. Songkick sends
-# ISO 3166 names and abbreviates the United Kingdom and the United States.
+# Bandsintown sends short country names. Songkick sends ISO 3166 names, some of them since renamed, with every word
+# capitalised, and abbreviates the United Kingdom and the United States.
 COUNTRY_SHORT_NAMES = {
     "UK": "United Kingdom",
     "US": "United States",
+    "Bolivia, Plurinational State of": "Bolivia",
+    "Cape Verde": "Cabo Verde",
+    "Congo, the Democratic Republic of the": "DR Congo",
+    "Cote D'ivoire": "Côte d'Ivoire",
     "Czech Republic": "Czechia",
-    "Korea, Republic Of": "South Korea",
-    "Moldova, Republic Of": "Moldova",
-    "Russian Federation": "Russia",
+    "Iran, Islamic Republic of": "Iran",
+    "Korea, Democratic People's Republic of": "North Korea",
+    "Korea, Republic of": "South Korea",
+    "Lao People's Democratic Republic": "Laos",
+    "Macao": "Macau",
     "Macedonia": "North Macedonia",
-    "Isle Of Man": "Isle of Man",
+    "Moldova, Republic of": "Moldova",
+    "Palestine, State of": "Palestine",
+    "Russian Federation": "Russia",
+    "Swaziland": "Eswatini",
+    "Syrian Arab Republic": "Syria",
+    "Taiwan, Province of China": "Taiwan",
+    "Tanzania, United Republic of": "Tanzania",
+    "Turkey": "Türkiye",
+    "Venezuela, Bolivarian Republic of": "Venezuela",
+    "Viet Nam": "Vietnam",
+    "Virgin Islands, British": "British Virgin Islands",
+    "Virgin Islands, U.S.": "United States Virgin Islands",
 }
+
+# Words a country name keeps in lower case unless it starts with them
+LOWER_CASE_WORDS = re.compile(r"(?<=\s)(?:And|Of|The)\b")
 
 
 def get_normalized_country_name(country_name: str | None) -> str | None:
     if country_name is None:
         return None
 
+    country_name = LOWER_CASE_WORDS.sub(lambda match: match.group().lower(), country_name)
     return COUNTRY_SHORT_NAMES.get(country_name, country_name)
 
 

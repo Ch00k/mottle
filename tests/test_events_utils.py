@@ -13,17 +13,33 @@ from web.events.utils import get_normalized_country_name
         ("Moldova, Republic Of", "Moldova"),
         ("Russian Federation", "Russia"),
         ("Macedonia", "North Macedonia"),
-        ("Isle Of Man", "Isle of Man"),
+        ("Viet Nam", "Vietnam"),
+        ("Congo, The Democratic Republic Of The", "DR Congo"),
+        ("Cote D'ivoire", "Côte d'Ivoire"),
     ],
 )
 def test_songkick_country_names_are_shortened(sent: str, shown: str) -> None:
-    """The abbreviations and ISO 3166 names Songkick sends become the short names Bandsintown sends."""
+    """The abbreviations and ISO 3166 names Songkick sends become the short names Bandsintown sends.
+
+    Songkick capitalises every word, so the mapping must match whatever case the joining words come in.
+    """
     assert get_normalized_country_name(sent) == shown
 
 
-@pytest.mark.parametrize("name", ["Germany", "United Kingdom", "Czechia", "United Arab Emirates", "Viet Nam"])
+@pytest.mark.parametrize(
+    ("sent", "shown"),
+    [("Isle Of Man", "Isle of Man"), ("Bosnia And Herzegovina", "Bosnia and Herzegovina")],
+)
+def test_capitalised_joining_words_are_lowered(sent: str, shown: str) -> None:
+    """A name with no short form still loses Songkick's capitals on "And", "Of" and "The"."""
+    assert get_normalized_country_name(sent) == shown
+
+
+@pytest.mark.parametrize(
+    "name", ["Germany", "United Kingdom", "Czechia", "United Arab Emirates", "Congo", "The Gambia"]
+)
 def test_other_country_names_are_kept(name: str) -> None:
-    """A short name is kept as it is, and so is a name that has no known short form."""
+    """A short name is kept as it is, including one that starts with "The"."""
     assert get_normalized_country_name(name) == name
 
 
