@@ -9,8 +9,8 @@ from django.conf import settings
 
 from urlshortener.models import ShortURL
 from web.events import data
-from web.events.constants import BANDSINTOWN_BASE_URL, SONGKICK_BASE_URL
-from web.events.data import EventSourceArtist, Venue
+from web.events.constants import BANDSINTOWN_BASE_URL, MUSICBRAINZ_API_BASE_URL, SONGKICK_BASE_URL
+from web.events.data import EventSourceArtist, MusicBrainzArtist, Venue
 from web.events.enums import ArtistNameMatchAccuracy, EventDataSource, EventType
 from web.events.exceptions import BandsintownException, EventDataSourceException
 from web.events.http import AsyncRetryingClient
@@ -426,3 +426,75 @@ async def test_update_events_saves_events_then_reports_failed_source(monkeypatch
         await event_artist.update_events()
 
     assert [e.source_url async for e in event_artist.events.all()] == [f"{SONGKICK_BASE_URL}{CONCERT_PATH}"]
+
+
+MUSICBRAINZ_ARTIST_ID = "79239441-bfd5-4981-a70c-55c3f15c1287"
+SONGKICK_OLD_ARTIST_URL = f"{SONGKICK_BASE_URL}/artists/1-deep-purple-old"
+SONGKICK_ARTIST_URL = f"{SONGKICK_BASE_URL}/artists/1-deep-purple"
+BANDSINTOWN_ARTIST_URL = f"{BANDSINTOWN_BASE_URL}/a/738"
+
+
+def musicbrainz_site(request: httpx2.Request) -> httpx2.Response:
+    """Answers MusicBrainz's API: a Spotify URL relation lookup that finds nothing, a name search and an artist."""
+    path = request.url.path.removeprefix("/ws/2/")
+    if path == "url":
+        return httpx2.Response(200, json={"relations": []})
+    if path == "artist":
+        found = request.url.params["query"] == "Deep Purple"
+        return httpx2.Response(
+            200, json={"artists": [{"id": MUSICBRAINZ_ARTIST_ID, "name": "Deep Purple"}] if found else []}
+        )
+    if path == f"artist/{MUSICBRAINZ_ARTIST_ID}":
+        return httpx2.Response(
+            200,
+            json={
+                "name": "Deep Purple",
+                "relations": [
+                    {"type": "songkick", "url": {"resource": SONGKICK_OLD_ARTIST_URL}},
+                    {"type": "bandsintown", "url": {"resource": BANDSINTOWN_ARTIST_URL}},
+                ],
+            },
+        )
+    return httpx2.Response(404)
+
+
+@pytest.fixture
+def musicbrainz(monkeypatch: pytest.MonkeyPatch) -> None:
+    """MusicBrainz, a Songkick artist URL that redirects to the artist's current one, and a Bandsintown one that does
+    not."""
+
+    def event_sites(request: httpx2.Request) -> httpx2.Response:
+        if str(request.url) == SONGKICK_OLD_ARTIST_URL:
+            return httpx2.Response(301, headers={"Location": SONGKICK_ARTIST_URL})
+        return httpx2.Response(200, text="Deep Purple")
+
+    for name, transport, base_url in (
+        ("async_musicbrainz_client", httpx2.MockTransport(musicbrainz_site), MUSICBRAINZ_API_BASE_URL),
+        ("async_songkick_client", httpx2.MockTransport(event_sites), SONGKICK_BASE_URL),
+        ("async_bandsintown_client", httpx2.MockTransport(event_sites), BANDSINTOWN_BASE_URL),
+    ):
+        monkeypatch.setattr(data, name, AsyncRetryingClient(attempts=1, base_url=base_url, transport=transport))
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("musicbrainz")
+async def test_musicbrainz_finds_artist_by_name_with_event_source_urls() -> None:
+    """An artist MusicBrainz does not link to its Spotify page is found by name, with its event source URLs.
+
+    A Songkick URL that redirects is replaced by where it redirects to; a Bandsintown URL that does not is kept.
+    """
+    artist = await MusicBrainzArtist.find("spotify_artist_id", "Deep Purple")
+
+    assert artist == MusicBrainzArtist(
+        id=MUSICBRAINZ_ARTIST_ID,
+        names=["Deep Purple"],
+        songkick_url=SONGKICK_ARTIST_URL,
+        bandsintown_url=BANDSINTOWN_ARTIST_URL,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("musicbrainz")
+async def test_musicbrainz_finds_no_artist_for_unknown_name() -> None:
+    """A name MusicBrainz has no artist for finds nothing."""
+    assert await MusicBrainzArtist.find_by_name("Deep Purple Mk II") is None

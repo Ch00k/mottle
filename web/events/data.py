@@ -32,10 +32,12 @@ from .exceptions import (
     SongkickException,
 )
 from .http import (
-    asend_get_request,
     async_bandsintown_client,
     async_musicbrainz_client,
     async_songkick_client,
+    get_json,
+    get_redirect_location,
+    get_xpath,
 )
 from .utils import (
     find_best_artist_name_match_advanced,
@@ -67,16 +69,9 @@ class MusicBrainzArtist:
     @staticmethod
     async def find_by_spotify_url(url: str) -> MusicBrainzArtist | None:
         try:
-            resp = await asend_get_request(
-                async_musicbrainz_client, "url", params={"resource": url, "inc": "artist-rels"}
-            )
+            data = await get_json(async_musicbrainz_client, "url", params={"resource": url, "inc": "artist-rels"})
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by Spotify URL '{url}': {e}") from e
-
-        try:
-            data = resp.json()
-        except Exception as e:
-            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         relations = data.get("relations", [])
         if not relations:
@@ -103,16 +98,9 @@ class MusicBrainzArtist:
         logger.info(f"Searching for artist '{artist_name}' in MusicBrainz")
 
         try:
-            resp = await asend_get_request(
-                async_musicbrainz_client, "artist", params={"query": artist_name, "limit": 100}
-            )
+            data = await get_json(async_musicbrainz_client, "artist", params={"query": artist_name, "limit": 100})
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by name '{artist_name}': {e}") from e
-
-        try:
-            data = resp.json()
-        except Exception as e:
-            raise MusicBrainzException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         artists = data.get("artists", [])
 
@@ -143,16 +131,9 @@ class MusicBrainzArtist:
     @staticmethod
     async def from_artist_id(artist_id: str) -> MusicBrainzArtist:
         try:
-            resp = await asend_get_request(
-                async_musicbrainz_client, f"artist/{artist_id}", params={"inc": "aliases+url-rels"}
-            )
+            data = await get_json(async_musicbrainz_client, f"artist/{artist_id}", params={"inc": "aliases+url-rels"})
         except HTTPClientException as e:
             raise MusicBrainzException(f"Failed to fetch artist by ID '{artist_id}': {e}") from e
-
-        try:
-            data = resp.json()
-        except Exception as e:
-            raise HTTPClientException(f"Failed to parse JSON '{resp.text}': {e}") from e
 
         songkick_url = None
         bandsintown_url = None
@@ -168,17 +149,15 @@ class MusicBrainzArtist:
         if songkick_url:
             # Get the final URL
             try:
-                _, _, songkick_url, _ = await asend_get_request(
-                    async_songkick_client, songkick_url, redirect_url=True, raise_for_lte_300=False
-                )
+                songkick_url = await get_redirect_location(async_songkick_client, songkick_url) or songkick_url
             except HTTPClientException as e:
                 raise SongkickException(f"Failed to get final Songkick URL: {e}") from e
 
         if bandsintown_url:
             # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
             try:
-                _, _, bandsintown_url, _ = await asend_get_request(
-                    async_bandsintown_client, bandsintown_url, redirect_url=True, raise_for_lte_300=False
+                bandsintown_url = (
+                    await get_redirect_location(async_bandsintown_client, bandsintown_url) or bandsintown_url
                 )
             except HTTPClientException as e:
                 raise BandsintownException(f"Failed to get final Bandsintown URL: {e}") from e
@@ -304,9 +283,7 @@ class EventSourceArtist:
 
         url_path = f"artists/{artist_id}/calendar"
         try:
-            _, _, artist_url, _ = await asend_get_request(
-                async_songkick_client, url_path, redirect_url=True, raise_for_lte_300=False
-            )
+            artist_url = await get_redirect_location(async_songkick_client, url_path)
         except HTTPClientException as e:
             raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}") from e
 
@@ -367,20 +344,20 @@ class EventSourceArtist:
 
     async def fetch_songkick_events(self, songkick_url: str, events: dict[str, Event]) -> None:
         try:
-            _, events_xpath, __, calendar_url = await asend_get_request(
-                async_songkick_client, songkick_url, xpath=SONGKICK_EVENTS_XPATH, follow_redirects=True
+            events_xpath, calendar_url = await get_xpath(
+                async_songkick_client, songkick_url, SONGKICK_EVENTS_XPATH, follow_redirects=True
             )
         except HTTPClientException as exc:
             raise SongkickException(f"Failed to fetch events from Songkick: {exc}") from exc
 
         # Songkick moves an artist's calendar when it merges or renames the artist, but a redirect to any other page
         # would point the artist at a page with no events for good
-        if not SONGKICK_ARTIST_CALENDAR_URL_REGEX.match(str(calendar_url)):
+        if not SONGKICK_ARTIST_CALENDAR_URL_REGEX.match(calendar_url):
             raise SongkickException(
                 f"Songkick redirected {songkick_url} to {calendar_url}, which is not an artist calendar"
             )
 
-        self.songkick_url = str(calendar_url)
+        self.songkick_url = calendar_url
 
         event_jsons = [json.loads(event) for event in events_xpath]
 
@@ -448,9 +425,7 @@ async def find_artist_in_songkick(
         # https://github.com/encode/httpx/discussions/3360
         artist_name = artist_name.replace('"', "%22")
 
-    search_results, _, __, __ = await asend_get_request(
-        async_songkick_client, f"api/universal_search?query={artist_name}", parse_json=True
-    )
+    search_results = await get_json(async_songkick_client, f"api/universal_search?query={artist_name}")
 
     artists = [
         (str(a["document"]["primary_key_id"]), a["document"]["name"])
@@ -475,9 +450,7 @@ async def find_artist_in_bandsintown(
     artist_name: str, use_advanced_heuristics: bool = False
 ) -> tuple[str | None, ArtistNameMatchAccuracy]:
     try:
-        search_results, _, __, __ = await asend_get_request(
-            async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
-        )
+        search_results = await get_json(async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}")
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to search Bandsintown for '{artist_name}': {e}") from e
 
@@ -539,12 +512,12 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
     xpath = SONGKICK_LIVE_STREAM_XPATH if event_type == EventType.live_stream else SONGKICK_TICKETS_XPATH
 
-    _, urls, __, __ = await asend_get_request(async_songkick_client, event_url, xpath=xpath)
+    urls, _ = await get_xpath(async_songkick_client, event_url, xpath)
 
     urls = [u.split("?")[0] for u in urls]
 
     if settings.RESOLVE_SONGKICK_URLS:
-        calls = [asend_get_request(async_songkick_client, u, redirect_url=True, raise_for_lte_300=False) for u in urls]
+        calls = [get_redirect_location(async_songkick_client, u) for u in urls]
         results = await asyncio.gather(*calls, return_exceptions=True)
 
         result_urls = []
@@ -555,9 +528,8 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
             elif isinstance(r, BaseException):
                 logger.error(f"Unexpected error while fetching URL: {r}", exc_info=r)
                 capture_exception(r)
-            else:  # noqa: PLR5501
-                if r[2] is not None:
-                    result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
+            elif r is not None:
+                result_urls.append((await ShortURL.shorten(r)).full_short_url)
     else:
         urls = [urljoin(SONGKICK_BASE_URL, u) for u in urls]
         result_urls = [(await ShortURL.shorten(u)).full_short_url for u in urls]
@@ -583,9 +555,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
     date = datetime.fromisoformat(event_data["startDate"]).date()
 
     try:
-        _, script_tag, _, _ = await asend_get_request(
-            async_bandsintown_client, event_url, xpath=BANDSINTOWN_WINDOW_DATA_XPATH
-        )
+        script_tag, _ = await get_xpath(async_bandsintown_client, event_url, BANDSINTOWN_WINDOW_DATA_XPATH)
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data for event {event_url}: {e}") from e
     else:
@@ -693,9 +663,7 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
 async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str, Any]]:
     try:
-        _, scripts, __, __ = await asend_get_request(
-            async_bandsintown_client, bandsintown_url, xpath=BANDSINTOWN_JSON_LD_XPATH
-        )
+        scripts, _ = await get_xpath(async_bandsintown_client, bandsintown_url, BANDSINTOWN_JSON_LD_XPATH)
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}") from e
 
