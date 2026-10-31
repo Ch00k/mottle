@@ -632,26 +632,30 @@ class PlaylistUpdate(BaseModel):
         cls, target_playlist: Playlist, source_playlist: Playlist, new_track_ids: list[str]
     ) -> tuple[PlaylistUpdate, bool]:
         return await cls.find_or_create(
-            target_playlist, {"source_playlist": source_playlist}, {"tracks_added": list(new_track_ids)}
+            target_playlist, source_playlist=source_playlist, tracks_added=list(new_track_ids)
         )
 
     @classmethod
     async def find_or_create_for_artist(
         cls, target_playlist: Playlist, source_artist: Artist, new_album_ids: list[str]
     ) -> tuple[PlaylistUpdate, bool]:
-        return await cls.find_or_create(
-            target_playlist, {"source_artist": source_artist}, {"albums_added": list(new_album_ids)}
-        )
+        return await cls.find_or_create(target_playlist, source_artist=source_artist, albums_added=list(new_album_ids))
 
     @classmethod
     async def find_or_create(
-        cls, target_playlist: Playlist, source: dict[str, Playlist | Artist], added: dict[str, list[str]]
+        cls,
+        target_playlist: Playlist,
+        *,
+        source_playlist: Playlist | None = None,
+        source_artist: Artist | None = None,
+        tracks_added: list[str] | None = None,
+        albums_added: list[str] | None = None,
     ) -> tuple[PlaylistUpdate, bool]:
         """Return the target playlist's update adding what was added at the source, and whether it was just created.
 
         A new update overrides the source's pending one, which it supersedes.
         """
-        update_hash = generate_playlist_update_hash(**added)
+        update_hash = generate_playlist_update_hash(tracks_added=tracks_added, albums_added=albums_added)
         logger.debug(f"PlaylistUpdate hash: {update_hash}")
 
         logger.info(
@@ -664,7 +668,10 @@ class PlaylistUpdate(BaseModel):
             logger.info("Checking if PlaylistUpdate with the same target_playlist and source already exists")
             try:
                 outdated_update = await PlaylistUpdate.objects.aget(
-                    target_playlist=target_playlist, is_overridden_by=None, **source
+                    target_playlist=target_playlist,
+                    source_playlist=source_playlist,
+                    source_artist=source_artist,
+                    is_overridden_by=None,
                 )
             except PlaylistUpdate.DoesNotExist:
                 logger.info("PlaylistUpdate with the same target_playlist and source does not exist")
@@ -673,7 +680,13 @@ class PlaylistUpdate(BaseModel):
                 logger.info(f"PlaylistUpdate with the same target_playlist and source exists: {outdated_update}")
 
             update = await PlaylistUpdate.objects.acreate(
-                target_playlist=target_playlist, is_notified_of=False, is_accepted=None, **source, **added
+                target_playlist=target_playlist,
+                source_playlist=source_playlist,
+                source_artist=source_artist,
+                is_notified_of=False,
+                is_accepted=None,
+                tracks_added=tracks_added,
+                albums_added=albums_added,
             )
             logger.info(f"Created new PlaylistUpdate: {update}")
 
