@@ -29,6 +29,8 @@ dependencies = [
   "django-hosts==7.0.0",
   "tekore==6.2.0",
   "croniter==6.2.4",
+  "curl-cffi==0.17.0",
+  "httpx2==2.16.0",
 ]
 
 [dependency-groups]

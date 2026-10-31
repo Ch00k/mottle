@@ -8,8 +8,9 @@ Reference: https://developer.spotify.com/documentation/web-api/references/change
   and playlist creation calls returned 200 and 201. The changes did not reach mottle's app (in extended quota mode) by
   then.
 - Playlists now come with both `tracks` and `items`. tekore 6.2 requires both, and mottle uses it.
-- The migration is drafted in [#78](https://github.com/Ch00k/mottle/pull/78), unmerged: it calls endpoints and fields
-  the production app may not have yet, so merge it only once Spotify enforces the changes for this app.
+- A first draft of the migration, [#78](https://github.com/Ch00k/mottle/pull/78), was closed unmerged: it conflicted
+  with later refactors and called APIs tekore 6.2 does not have. The migration is to be redone against `main` once
+  Spotify enforces the changes for this app.
 
 ## Summary of API Changes
 

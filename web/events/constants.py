@@ -19,5 +19,6 @@ SONGKICK_TICKETS_XPATH = "//a[contains(@class, 'buy-ticket-link')]/@data-ticket-
 SONGKICK_LIVE_STREAM_XPATH = "//div[contains(@class, 'live-stream-link')]/a/@href"
 
 BANDSINTOWN_WINDOW_DATA_XPATH = "//head/script[contains(text(),'window.__data=')]/text()"
+BANDSINTOWN_JSON_LD_XPATH = "//head/script[@type='application/ld+json']/text()"
 
 ALNUM_TABLE = str.maketrans("", "", string.punctuation + string.whitespace)

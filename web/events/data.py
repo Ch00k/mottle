@@ -13,6 +13,7 @@ from urlshortener.models import ShortURL
 
 from .constants import (
     BANDSINTOWN_BASE_URL,
+    BANDSINTOWN_JSON_LD_XPATH,
     BANDSINTOWN_WINDOW_DATA_XPATH,
     SONGKICK_ARTIST_CALENDAR_URL_REGEX,
     SONGKICK_BASE_URL,
@@ -473,9 +474,12 @@ async def find_artist_in_songkick(
 async def find_artist_in_bandsintown(
     artist_name: str, use_advanced_heuristics: bool = False
 ) -> tuple[str | None, ArtistNameMatchAccuracy]:
-    search_results, _, __, __ = await asend_get_request(
-        async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
-    )
+    try:
+        search_results, _, __, __ = await asend_get_request(
+            async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
+        )
+    except HTTPClientException as e:
+        raise BandsintownException(f"Failed to search Bandsintown for '{artist_name}': {e}") from e
 
     artists = [(str(a["id"]), a["name"]) for a in search_results["artists"]]
 
@@ -576,8 +580,6 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
 
 async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
     event_url = event_data["url"].split("?")[0]
-    location = event_data["location"]
-    is_streaming_event = event_data["location"]["@type"] == "VirtualLocation"
     date = datetime.fromisoformat(event_data["startDate"]).date()
 
     try:
@@ -602,6 +604,14 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
             data = json.loads(window_data)
         except Exception as e:
             raise BandsintownException(f"Failed to parse 'window.__data' from {event_url}: {e}") from e
+
+    # The artist page's event data leaves out the venue's address, which only the event page has
+    try:
+        location = data["jsonLdContainer"]["eventJsonLd"]["location"]
+    except KeyError as e:
+        raise BandsintownException(f"jsonLdContainer.eventJsonLd.location not found on {event_url}") from e
+
+    is_streaming_event = location["@type"] == "VirtualLocation"
 
     tickets_urls = []
     stream_urls = []
@@ -683,28 +693,31 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
 async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str, Any]]:
     try:
-        _, script_tag, __, __ = await asend_get_request(
-            async_bandsintown_client, bandsintown_url, xpath=BANDSINTOWN_WINDOW_DATA_XPATH
+        _, scripts, __, __ = await asend_get_request(
+            async_bandsintown_client, bandsintown_url, xpath=BANDSINTOWN_JSON_LD_XPATH
         )
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}") from e
 
-    if not script_tag:
-        raise BandsintownException(f"'{bandsintown_url}' page has no 'window.__data=' element")
-
-    if len(script_tag) > 1:
-        raise BandsintownException(f"Multiple 'window.__data=' elements found on {bandsintown_url}")
-
     try:
-        window_data = script_tag[0].split("window.__data=")[1]
+        json_lds = [json.loads(script) for script in scripts]
     except Exception as e:
-        raise BandsintownException(f"Failed to extract 'window.__data' from {bandsintown_url}: {e}") from e
+        raise BandsintownException(f"Failed to parse JSON-LD on {bandsintown_url}: {e}") from e
 
-    try:
-        data = json.loads(window_data)
-    except Exception as e:
-        raise BandsintownException(f"Failed to parse 'window.__data' on {bandsintown_url}: {e}") from e
+    # The artist's upcoming events are the only list among the JSON-LD in the page's head, and it is empty when there
+    # are none
+    event_lists = [json_ld for json_ld in json_lds if isinstance(json_ld, list)]
+    if len(event_lists) != 1:
+        raise BandsintownException(
+            f"Expected one list of events in the JSON-LD on {bandsintown_url}, found {len(event_lists)}"
+        )
 
-    events_data: list[dict[str, Any]] = data["jsonLdContainer"]["eventsJsonLd"]
+    events = event_lists[0]
 
-    return events_data
+    types = [event.get("@type") if isinstance(event, dict) else type(event).__name__ for event in events]
+    if any(t != "MusicEvent" for t in types):
+        raise BandsintownException(
+            f"Expected only MusicEvent items in the list of events on {bandsintown_url}: {types}"
+        )
+
+    return events
