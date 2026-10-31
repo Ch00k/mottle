@@ -178,14 +178,11 @@ LOGGING: dict[str, Any] = {
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
-        "uvicorn": {
+        # uvicorn's server messages. Its access log stays with uvicorn, which logs it unless told not to.
+        "uvicorn.error": {
             "level": "INFO",
             "handlers": [LOG_FORMAT],
             "propagate": False,
-        },
-        # Logs each request at INFO, which WARNING leaves out
-        "uvicorn.access": {
-            "level": "WARNING",
         },
     },
 }
