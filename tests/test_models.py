@@ -6,6 +6,7 @@ import uuid
 from unittest.mock import patch
 
 import pytest
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db import IntegrityError
@@ -238,17 +239,20 @@ class TestSpotifyAuth(TestCase):
         assert auth.refresh_token == "refresh_token"
 
     async def test_maybe_refresh_leaves_event_loop_running(self) -> None:
-        """The event loop goes on running other tasks while Spotify answers a refresh.
+        """The event loop and the database thread go on running other work while Spotify answers a refresh.
 
         The stand-in for Spotify's answer waits until a task on the event loop signals it. A refresh sent on the event
-        loop would keep that task from running until the wait timed out.
+        loop would keep that task from running until the wait timed out. It also records the thread it runs in, which
+        must not be asgiref's shared sync thread, where the ORM's queries run.
         """
         auth = await create_spotify_auth(
             expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=30)
         )
         event_loop_ran = threading.Event()
+        refresh_thread_ids = []
 
         def refresh(_: Token) -> Token:
+            refresh_thread_ids.append(threading.get_ident())
             if not event_loop_ran.wait(timeout=5):
                 raise TimeoutError("The event loop did not run while the token was refreshed")
             return refreshed_token()
@@ -259,8 +263,10 @@ class TestSpotifyAuth(TestCase):
         with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=refresh):
             await asyncio.gather(auth.maybe_refresh(), signal_event_loop_ran())
 
+        database_thread_id = await sync_to_async(threading.get_ident)()
         await auth.arefresh_from_db()
         assert auth.access_token == "refreshed_access_token"
+        assert database_thread_id not in refresh_thread_ids
 
 
 async def create_spotify_auth(expires_at: datetime.datetime) -> SpotifyAuth:
@@ -301,15 +307,18 @@ class TestSpotifyAuthRequest(TestCase):
         request_user_token.assert_called_once_with("code_1")
 
     async def test_request_token_leaves_event_loop_running(self) -> None:
-        """The event loop goes on running other tasks while Spotify answers the code exchange.
+        """The event loop and the database thread go on running other work while Spotify answers the code exchange.
 
         The stand-in for Spotify's answer waits until a task on the event loop signals it. An exchange sent on the event
-        loop would keep that task from running until the wait timed out.
+        loop would keep that task from running until the wait timed out. It also records the thread it runs in, which
+        must not be asgiref's shared sync thread, where the ORM's queries run.
         """
         auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
         event_loop_ran = threading.Event()
+        exchange_thread_ids = []
 
         def request_user_token(_: str) -> Token:
+            exchange_thread_ids.append(threading.get_ident())
             if not event_loop_ran.wait(timeout=5):
                 raise TimeoutError("The event loop did not run while the code was exchanged")
             return refreshed_token()
@@ -320,7 +329,9 @@ class TestSpotifyAuthRequest(TestCase):
         with patch.object(settings.SPOTIFY_CREDEINTIALS, "request_user_token", side_effect=request_user_token):
             token, _ = await asyncio.gather(auth_request.request_token("code_1"), signal_event_loop_ran())
 
+        database_thread_id = await sync_to_async(threading.get_ident)()
         assert token.access_token == "refreshed_access_token"
+        assert database_thread_id not in exchange_thread_ids
 
     async def test_request_token_failure(self) -> None:
         """A code Spotify refuses raises MottleException."""
