@@ -36,6 +36,11 @@ echo "New version: $NEW_VERSION"
 # Update .env with new version
 echo "Updating .env..."
 sed -i "s/^APP_VERSION=.*/APP_VERSION=$NEW_VERSION/" .env
+if ! grep -qx "APP_VERSION=$NEW_VERSION" .env; then
+    echo "Error: failed to set APP_VERSION in .env"
+    git restore pyproject.toml uv.lock .env
+    exit 1
+fi
 
 read -p "Create release $NEW_VERSION? [y/N] " -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
