@@ -60,16 +60,19 @@ class CurlCffiTransport(httpx2.AsyncBaseTransport):
                     impersonate=self.impersonate,
                     quote=False,
                 )
-        except curl_exceptions.ProxyError as e:
-            raise httpx2.ProxyError(str(e), request=request) from e
-        except curl_exceptions.ConnectTimeout as e:
-            raise httpx2.ConnectTimeout(str(e), request=request) from e
-        except curl_exceptions.Timeout as e:
-            raise httpx2.ReadTimeout(str(e), request=request) from e
-        except curl_exceptions.ConnectionError as e:
-            raise httpx2.ConnectError(str(e), request=request) from e
         except curl_exceptions.RequestException as e:
-            raise httpx2.TransportError(str(e), request=request) from e
+            # curl's messages leave out the URL, which the retry logs need to name the failed request
+            message = f"{e} ({request.method} {request.url})"
+
+            if isinstance(e, curl_exceptions.ProxyError):
+                raise httpx2.ProxyError(message, request=request) from e
+            if isinstance(e, curl_exceptions.ConnectTimeout):
+                raise httpx2.ConnectTimeout(message, request=request) from e
+            if isinstance(e, curl_exceptions.Timeout):
+                raise httpx2.ReadTimeout(message, request=request) from e
+            if isinstance(e, curl_exceptions.ConnectionError):
+                raise httpx2.ConnectError(message, request=request) from e
+            raise httpx2.TransportError(message, request=request) from e
 
         return httpx2.Response(
             response.status_code,
@@ -84,19 +87,28 @@ class CurlCffiTransport(httpx2.AsyncBaseTransport):
 
 
 class AsyncRetryingClient(httpx2.AsyncClient):
-    """Retries a request that fails to reach the site or gets an error response, waiting longer before each retry.
+    """Retries a request that fails to reach the site or gets a response saying to try again later.
 
-    A 404 is returned as it is, since asking again will not change it.
+    Those are a 429, a 5xx and the client's `retry_statuses`. Any other response is returned as it is, as asking again
+    would get the same answer. Each client sets how long it waits before a retry: the wait starts at `wait_initial` and
+    doubles up to `wait_max`.
     """
 
     def __init__(
-        self, *args: Any, attempts: int = 10, wait_initial: float = 1.0, wait_max: float = 10.0, **kwargs: Any
+        self,
+        *args: Any,
+        attempts: int = 10,
+        wait_initial: float = 1.0,
+        wait_max: float = 10.0,
+        retry_statuses: frozenset[int] = frozenset(),
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
 
         self.attempts = attempts
         self.wait_initial = wait_initial
         self.wait_max = wait_max
+        self.retry_statuses = retry_statuses | {httpx2.codes.TOO_MANY_REQUESTS}
 
     async def send(self, request: httpx2.Request, *args: Any, **kwargs: Any) -> httpx2.Response:
         async for attempt in stamina.retry_context(
@@ -105,12 +117,13 @@ class AsyncRetryingClient(httpx2.AsyncClient):
             timeout=None,
             wait_initial=self.wait_initial,
             wait_max=self.wait_max,
+            # Up to as much again at random, which keeps a client that does not wait from waiting at all
             wait_jitter=self.wait_initial,
         ):
             with attempt:
                 response = await super().send(request, *args, **kwargs)
 
-                if response.is_error and response.status_code != httpx2.codes.NOT_FOUND:
+                if response.is_server_error or response.status_code in self.retry_statuses:
                     response.raise_for_status()
 
                 return response
@@ -132,10 +145,12 @@ async_songkick_client = AsyncRetryingClient(
 )
 
 async_bandsintown_client = AsyncRetryingClient(
-    # About one attempt in five gets past Cloudflare. Each attempt comes from a new proxy IP, so it can go at once.
+    # Cloudflare refuses about four attempts in five with a 403. Each attempt comes from a new proxy IP, so it can go
+    # at once.
     attempts=20,
     wait_initial=0,
     wait_max=0,
+    retry_statuses=frozenset({httpx2.codes.FORBIDDEN}),
     timeout=httpx2.Timeout(BANDSINTOWN_API_REQUEST_TIMEOUT),
     base_url=BANDSINTOWN_BASE_URL,
     transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),

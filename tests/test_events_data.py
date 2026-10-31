@@ -180,6 +180,7 @@ async def test_fetch_events_keeps_songkick_events_when_bandsintown_fails(
         attempts=2,
         wait_initial=0,
         wait_max=0,
+        retry_statuses=frozenset({403}),
         base_url=BANDSINTOWN_BASE_URL,
         transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
     )

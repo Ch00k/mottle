@@ -41,6 +41,12 @@ class SiteHandler(BaseHTTPRequestHandler):
         elif self.path == "/slow":
             time.sleep(2)
             self.send_body(b"Too late")
+        elif self.path == "/slow-once":
+            if len(self.site.client_ports) == 1:
+                time.sleep(2)
+            self.send_body(b"Deep Purple")
+        elif self.path == "/bad-request":
+            self.send_body(b"", status=400)
         elif self.path == "/refused-twice":
             refused = len(self.site.client_ports) <= 2
             self.send_body(b"Just a moment..." if refused else b"Deep Purple", status=403 if refused else 200)
@@ -175,7 +181,13 @@ async def test_retrying_client_retries_refusals_on_new_connections(
 
     Each retry is logged as a warning naming the refusal and the refused URL.
     """
-    client = AsyncRetryingClient(wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport())
+    client = AsyncRetryingClient(
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
+        base_url=site.url,
+        transport=CurlCffiTransport(),
+    )
 
     with caplog.at_level(logging.WARNING, logger="stamina"):
         response = await client.get("/refused-twice")
@@ -195,7 +207,12 @@ async def test_retrying_client_raises_last_error_when_attempts_run_out(
 ) -> None:
     """A request refused on every attempt raises the last refusal once the attempts run out."""
     client = AsyncRetryingClient(
-        attempts=2, wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport()
+        attempts=2,
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
+        base_url=site.url,
+        transport=CurlCffiTransport(),
     )
 
     with caplog.at_level(logging.WARNING, logger="stamina"), pytest.raises(httpx2.HTTPStatusError, match="403"):
@@ -206,11 +223,32 @@ async def test_retrying_client_raises_last_error_when_attempts_run_out(
 
 
 @pytest.mark.asyncio
-async def test_retrying_client_returns_not_found_without_retrying(site: Site) -> None:
-    """A 404 is returned at once, since asking again will not change it."""
+@pytest.mark.parametrize(("path", "status"), [("/missing", 404), ("/bad-request", 400), ("/refused-twice", 403)])
+async def test_retrying_client_returns_other_errors_without_retrying(site: Site, path: str, status: int) -> None:
+    """An error response other than a 429, a 5xx or the client's own retry statuses is returned at once.
+
+    Asking again would get the same answer, so retrying would only delay the failure.
+    """
     client = AsyncRetryingClient(wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport())
 
-    response = await client.get("/missing")
+    response = await client.get(path)
 
-    assert response.status_code == 404
+    assert response.status_code == status
     assert len(site.client_ports) == 1
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_retries_timeout_and_logs_its_url(site: Site, caplog: pytest.LogCaptureFixture) -> None:
+    """A request that times out is retried, and the retry's warning names the request that timed out."""
+    client = AsyncRetryingClient(
+        wait_initial=0, wait_max=0, timeout=0.5, base_url=site.url, transport=CurlCffiTransport()
+    )
+
+    with caplog.at_level(logging.WARNING, logger="stamina"):
+        response = await client.get("/slow-once")
+
+    assert response.text == "Deep Purple"
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"]
+    caused_by = getattr(caplog.records[0], "stamina.caused_by")
+    assert caused_by.startswith("ReadTimeout(")
+    assert f"GET {site.url}/slow-once" in caused_by

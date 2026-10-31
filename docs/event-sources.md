@@ -59,9 +59,10 @@ The clients for all three sites (`web/events/http.py`) send their requests with 
 Bandsintown clients impersonate Chrome, sending its User-Agent and Accept headers. The MusicBrainz client sends
 mottle's own User-Agent, which MusicBrainz's API asks for.
 
-Each client retries, with stamina, a request that fails to connect and any error response but a 404. The MusicBrainz
-and Songkick clients wait before each retry, starting at about a second and doubling up to ten, as their errors are
-mostly rate limits. The Bandsintown client retries at once, as only a new exit IP helps there.
+Each client retries, with stamina, a request that fails to reach the site and a 429 or 5xx response; the Bandsintown
+client also retries Cloudflare's 403. Any other error response fails at once, as asking again would get the same
+answer. The MusicBrainz and Songkick clients wait before each retry, starting at about a second and doubling up to ten.
+The Bandsintown client retries at once, as only a new exit IP helps there.
 
 Every request opens a new connection. The proxy assigns an exit IP per connection: a client that kept its
 connections open sent all its retries from one IP, which made retrying after a refusal useless.
