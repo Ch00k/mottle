@@ -17,7 +17,7 @@
                 <div class="flex gap-3">
                     <div class="flex-1 relative">
                         <div class="absolute inset-y-0 left-0 pl-3 icon-text pointer-events-none">
-                            {% include 'web/icons/tw_search.html' with class="h-5 w-5 text-gray-400" %}
+                            {% include "web/icons/tw_search.html" with class="h-5 w-5 text-gray-400" %}
                         </div>
                         <input type="search"
                                id="query"
@@ -28,7 +28,7 @@
                                hx-trigger="input changed delay:500ms, search">
                     </div>
                     <button type="submit" class="btn-lg btn-primary shadow-sm icon-text">
-                        {% include 'web/icons/tw_search.html' with class="h-4 w-4 mr-2" %}
+                        {% include "web/icons/tw_search.html" with class="h-4 w-4 mr-2" %}
                         Search
                     </button>
                 </div>
@@ -36,5 +36,5 @@
         </div>
     </div>
     <!-- Search Results Container -->
-    {% include 'web/parts/search_results.html' %}
+    {% include "web/parts/search_results.html" %}
 {% endblock content %}

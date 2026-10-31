@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <div class="modal-header-layout">
                     <h3 class="modal-title">Duplicate Tracks</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
                 </div>
             </div>
             <!-- Content -->
@@ -26,7 +26,7 @@
                                         hx-confirm="Are you sure you want to remove all duplicate tracks?"
                                         _="on htmx:afterRequest trigger closeModal"
                                         class="modal-button-delete">
-                                    {% include 'web/icons/tw_trash.html' with class="modal-icon modal-icon-mr" %}
+                                    {% include "web/icons/tw_trash.html" with class="modal-icon modal-icon-mr" %}
                                     Remove All
                                 </button>
                             {% endif %}
@@ -41,7 +41,7 @@
                             <div class="modal-header-layout">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-6 h-6 flex items-center justify-center">
-                                        {% include 'web/icons/tw_chevron_down.html' with class="modal-chevron duplicates-chevron" %}
+                                        {% include "web/icons/tw_chevron_down.html" with class="modal-chevron duplicates-chevron" %}
                                     </div>
                                     <div>
                                         <h2 class="text-lg font-semibold text-gray-900">
@@ -123,7 +123,7 @@
                     </div>
                 {% else %}
                     <div class="px-6 py-12 text-center">
-                        {% include 'web/icons/tw_duplicate.html' with class="mx-auto h-12 w-12 text-gray-400" %}
+                        {% include "web/icons/tw_duplicate.html" with class="mx-auto h-12 w-12 text-gray-400" %}
                         <h3 class="mt-4 text-lg font-medium text-gray-900">No duplicates found</h3>
                         <p class="mt-2 text-gray-500">This playlist doesn't contain any duplicate tracks.</p>
                     </div>

@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <div class="modal-header-layout">
                     <h3 class="modal-title">Merge Playlist</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
                 </div>
             </div>
             <!-- Content -->
@@ -41,7 +41,8 @@
                                            value="existing"
                                            class="form-radio"
                                            onchange="toggleMergeType('existing')">
-                                    <label for="merge-existing" class="form-radio-label">Merge into existing playlist</label>
+                                    <label for="merge-existing"
+                                           class="form-radio-label">Merge into existing playlist</label>
                                 </div>
                                 <div class="flex items-center">
                                     <input type="radio"
@@ -91,7 +92,8 @@
                                        id="auto-accept"
                                        name="auto-accept"
                                        class="form-checkbox">
-                                <label for="auto-accept" class="form-checkbox-label">Automatically add new tracks</label>
+                                <label for="auto-accept"
+                                       class="form-checkbox-label">Automatically add new tracks</label>
                             </div>
                         </div>
                     </div>
@@ -102,7 +104,7 @@
                                 hx-swap="delete"
                                 hx-indicator="#spinner"
                                 class="modal-button-create">
-                            {% include 'web/icons/tw_duplicate.html' with class="modal-icon" %}
+                            {% include "web/icons/tw_duplicate.html" with class="modal-icon" %}
                             <span class="modal-icon-mr">Merge</span>
                         </button>
                     </div>

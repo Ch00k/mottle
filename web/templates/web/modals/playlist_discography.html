@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <div class="modal-header-layout">
                     <h3 class="modal-title">Create {{ artist.name }} Discography</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
                 </div>
             </div>
             <!-- Content -->
@@ -40,7 +40,8 @@
                                                class="form-input-text">
                                     </div>
                                     <div>
-                                        <label for="playlist-description" class="form-label">Description (optional)</label>
+                                        <label for="playlist-description"
+                                               class="form-label">Description (optional)</label>
                                         <input type="text"
                                                name="description"
                                                id="playlist-description"
@@ -105,7 +106,7 @@
                                    onclick="toggleAllAlbums()"
                                    class="text-sm text-gray-500 hover:text-gray-700 transition-colors form-checkbox-wrapper">
                                     <span id="toggleAllIcon" class="transform transition-transform mr-1">
-                                        {% include 'web/icons/tw_chevron_down.html' with class="h-3 w-3" %}
+                                        {% include "web/icons/tw_chevron_down.html" with class="h-3 w-3" %}
                                     </span>
                                     <span id="toggleAllText">Expand all</span>
                                 </a>
@@ -130,7 +131,7 @@
                                 <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform albums-chevron" %}
+                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform albums-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
                                                onclick="event.stopPropagation()">
@@ -215,7 +216,7 @@
                                 <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform singles-chevron" %}
+                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform singles-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
                                                onclick="event.stopPropagation()">
@@ -300,7 +301,7 @@
                                 <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform compilations-chevron" %}
+                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform compilations-chevron" %}
                                         </div>
                                         <label class="flex items-center space-x-3 cursor-pointer"
                                                onclick="event.stopPropagation()">

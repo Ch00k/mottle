@@ -36,9 +36,7 @@
         <link href="{% static 'web/style.css' %}" rel="stylesheet">
         <!-- Preload Critical Resources -->
         <link rel="preload" href="{% static 'web/script.js' %}" as="script">
-        <title>
-            {% block title %}mottle{% endblock %}
-        </title>
+        <title>{% block title %}mottle{% endblock %}</title>
         {% block head %}{% endblock %}
     </head>
     <body hx-ext="head-support"
@@ -80,28 +78,23 @@
             {% include "web/parts/footer.html" %}
         </footer>
         <!-- Scripts -->
-        <script src="https://unpkg.com/htmx.org@2.0.4"
-                integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+        <script src="https://unpkg.com/htmx.org@2.0.11/dist/htmx.min.js"
+                integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg"
                 crossorigin="anonymous"
                 defer></script>
-        <script src="https://unpkg.com/hyperscript.org@0.9.14" defer></script>
+        <script src="https://unpkg.com/hyperscript.org@0.9.14/dist/_hyperscript.min.js"
+                integrity="sha384-NzchC8z9HmP/Ed8cheGl9XuSrFSkDNHPiDl+ujbHE0F0I7tWC4rUnwPXP+7IvVZv"
+                crossorigin="anonymous"
+                defer></script>
         <!-- Leaflet CSS & JS (only load when needed) -->
         {% block maps_resources %}
-            <link rel="stylesheet"
-                  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-                  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-                  crossorigin="" />
-            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-                    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-                    crossorigin=""
-                    defer></script>
-            <link rel="stylesheet"
-                  href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-            <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"
-                    defer></script>
+            {% include "web/parts/leaflet.html" %}
         {% endblock %}
         <!-- HTMX Extensions -->
-        <script src="https://unpkg.com/htmx-toaster/dist/htmx-toaster.min.js" defer></script>
+        <script src="https://unpkg.com/htmx-toaster@0.0.20/dist/htmx-toaster.min.js"
+                integrity="sha384-Kwt+p/oQ/8Ii44CuacRU5TNOiFbXvqE5+6ZeptILOpN8Kfl8kzlE6LakGLkOm1AF"
+                crossorigin="anonymous"
+                defer></script>
         <!-- App Scripts -->
         <script>
         // HTMX Loading States

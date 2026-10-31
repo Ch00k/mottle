@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <div class="modal-header-layout">
                     <h3 class="modal-title">Playlist Updates</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
                 </div>
             </div>
             <!-- Content -->
@@ -23,7 +23,7 @@
                                    onclick="toggleAll()"
                                    class="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center">
                                     <span id="toggleAllIcon" class="transform transition-transform mr-1">
-                                        {% include 'web/icons/tw_chevron_down.html' with class="h-3 w-3" %}
+                                        {% include "web/icons/tw_chevron_down.html" with class="h-3 w-3" %}
                                     </span>
                                     <span id="toggleAllText">Expand all</span>
                                 </a>
@@ -35,7 +35,7 @@
                                         hx-indicator="#spinner"
                                         _="on htmx:afterRequest trigger closeModal"
                                         class="modal-button-accept">
-                                    {% include 'web/icons/tw_checkmark.html' with class="modal-icon modal-icon-mr" %}
+                                    {% include "web/icons/tw_checkmark.html" with class="modal-icon modal-icon-mr" %}
                                     Accept All
                                 </button>
                             </div>
@@ -51,7 +51,7 @@
                                 <div class="modal-header-layout">
                                     <div class="flex items-center space-x-3">
                                         <div class="w-6 h-6 flex items-center justify-center">
-                                            {% include 'web/icons/tw_chevron_down.html' with class="h-4 w-4 text-gray-400 transform transition-transform update-chevron" %}
+                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform update-chevron" %}
                                         </div>
                                         <div>
                                             <h2 class="text-lg font-semibold text-gray-900">
@@ -86,7 +86,7 @@
                                                 onclick="event.stopPropagation()"
                                                 _="on htmx:afterRequest trigger closeModal"
                                                 class="modal-button-accept-small w-20 justify-center">
-                                            {% include 'web/icons/tw_checkmark.html' with class="modal-icon modal-icon-mr-sm" %}
+                                            {% include "web/icons/tw_checkmark.html" with class="modal-icon modal-icon-mr-sm" %}
                                             Accept
                                         </button>
                                     </div>
@@ -142,7 +142,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="px-6 py-12 text-center">
-                        {% include 'web/icons/tw_music_notes.html' with class="mx-auto h-12 w-12 text-gray-400" %}
+                        {% include "web/icons/tw_music_notes.html" with class="mx-auto h-12 w-12 text-gray-400" %}
                         <h3 class="mt-4 text-lg font-medium text-gray-900">No updates found</h3>
                         <p class="mt-2 text-gray-500">There are no new tracks to add to your playlist.</p>
                     </div>

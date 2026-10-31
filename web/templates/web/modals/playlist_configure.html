@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <div class="modal-header-layout">
                     <h3 class="modal-title">Playlist Configuration</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include 'web/icons/tw_close.html' %}</button>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
                 </div>
             </div>
             <!-- Content -->
@@ -30,7 +30,7 @@
                             <!-- Regenerate Overlay -->
                             <div class="absolute inset-0 rounded-lg transition-all duration-200 flex items-center justify-center pointer-events-none invisible group-hover:visible group-hover:bg-black group-hover:bg-opacity-60">
                                 <div class="text-white text-center">
-                                    {% include 'web/icons/tw_refresh.html' with class="w-5 h-5 mx-auto mb-1" %}
+                                    {% include "web/icons/tw_refresh.html" with class="w-5 h-5 mx-auto mb-1" %}
                                     <div class="text-xs font-medium">Regenerate</div>
                                 </div>
                             </div>
@@ -43,7 +43,7 @@
                                         hx-get="{% url 'rename_playlist' playlist.id %}"
                                         hx-target="#playlist-name-container"
                                         hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
-                                    {% include 'web/icons/tw_edit.html' with class="modal-icon-sm" %}
+                                    {% include "web/icons/tw_edit.html" with class="modal-icon-sm" %}
                                     <span class="modal-icon-mr-sm">Rename</span>
                                 </button>
                             </div>
@@ -85,7 +85,7 @@
                                                         hx-swap="outerHTML"
                                                         hx-indicator="#spinner"
                                                         title="Stop watching">
-                                                    {% include 'web/icons/tw_trash.html' with class="modal-icon" %}
+                                                    {% include "web/icons/tw_trash.html" with class="modal-icon" %}
                                                 </button>
                                             </div>
                                         </div>
@@ -95,7 +95,7 @@
                         </div>
                     {% else %}
                         <div class="text-center py-4 bg-gray-50 rounded-lg">
-                            {% include 'web/icons/tw_empty_playlists.html' with class="mx-auto h-6 w-6 text-gray-400" %}
+                            {% include "web/icons/tw_empty_playlists.html" with class="mx-auto h-6 w-6 text-gray-400" %}
                             <p class="text-xs text-gray-500 mt-2">No playlists watched</p>
                         </div>
                     {% endif %}
@@ -130,7 +130,7 @@
                         </div>
                     {% else %}
                         <div class="text-center py-4 bg-gray-50 rounded-lg">
-                            {% include 'web/icons/tw_user.html' with class="mx-auto h-6 w-6 text-gray-400" %}
+                            {% include "web/icons/tw_user.html" with class="mx-auto h-6 w-6 text-gray-400" %}
                             <p class="text-xs text-gray-500 mt-2">No artists watched</p>
                         </div>
                     {% endif %}
