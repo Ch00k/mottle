@@ -16,6 +16,7 @@ from .constants import (
     BANDSINTOWN_JSON_LD_XPATH,
     BANDSINTOWN_WINDOW_DATA_XPATH,
     SONGKICK_ARTIST_CALENDAR_URL_REGEX,
+    SONGKICK_ARTIST_URL_REGEX,
     SONGKICK_BASE_URL,
     SONGKICK_EVENT_URL_REGEX,
     SONGKICK_EVENTS_XPATH,
@@ -146,12 +147,19 @@ class MusicBrainzArtist:
                 bandsintown_url = url["url"]["resource"]
                 logger.debug(f"Found Bandsintown URL: {bandsintown_url}")
 
+        # A link that does not lead to the artist's events is dropped, which leaves that source to the name search
         if songkick_url:
-            # Get the final URL
-            try:
-                songkick_url = await get_redirect_location(async_songkick_client, songkick_url) or songkick_url
-            except HTTPClientException as e:
-                raise SongkickException(f"Failed to get final Songkick URL: {e}") from e
+            # MusicBrainz links to the artist's page, and the events are read from the artist's calendar
+            match = SONGKICK_ARTIST_URL_REGEX.match(songkick_url)
+            if match is None:
+                logger.warning(f"MusicBrainz artist {artist_id} links to a Songkick page of no artist: {songkick_url}")
+                songkick_url = None
+            else:
+                try:
+                    songkick_url = await get_songkick_calendar_url(match.group(1))
+                except HTTPClientException as e:
+                    logger.warning(f"Failed to find the Songkick calendar of MusicBrainz artist {artist_id}: {e}")
+                    songkick_url = None
 
         if bandsintown_url:
             # Sometimes the URL we find in MusicBrainz is not the final URL, e.g. https://www.bandsintown.com/a/738
@@ -160,7 +168,8 @@ class MusicBrainzArtist:
                     await get_redirect_location(async_bandsintown_client, bandsintown_url) or bandsintown_url
                 )
             except HTTPClientException as e:
-                raise BandsintownException(f"Failed to get final Bandsintown URL: {e}") from e
+                logger.warning(f"Failed to follow the Bandsintown URL of MusicBrainz artist {artist_id}: {e}")
+                bandsintown_url = None
 
         if all((songkick_url, bandsintown_url)):
             artist_names = [data["name"]]
@@ -281,14 +290,10 @@ class EventSourceArtist:
         else:
             raise SongkickException(f"Artist '{self.name}' not found in Songkick using any of the names")
 
-        url_path = f"artists/{artist_id}/calendar"
         try:
-            artist_url = await get_redirect_location(async_songkick_client, url_path)
+            artist_url = await get_songkick_calendar_url(artist_id)
         except HTTPClientException as e:
             raise SongkickException(f"Failed to fetch artist URL for '{self.name}': {e}") from e
-
-        # In case there was no redirect (unlikely though)
-        artist_url = artist_url or f"{SONGKICK_BASE_URL}/{url_path}"
 
         logger.info(f"Found artist '{self.name}' in Songkick: {artist_url}")
 
@@ -416,6 +421,12 @@ class EventSourceArtist:
                 logger.error(r, exc_info=r)
             else:
                 events[r.url] = r
+
+
+async def get_songkick_calendar_url(artist_id: str) -> str:
+    """Return the URL of the Songkick artist's calendar, which redirects from one that has only the artist's ID."""
+    url_path = f"artists/{artist_id}/calendar"
+    return await get_redirect_location(async_songkick_client, url_path) or f"{SONGKICK_BASE_URL}/{url_path}"
 
 
 async def find_artist_in_songkick(

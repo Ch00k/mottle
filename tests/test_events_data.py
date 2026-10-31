@@ -429,68 +429,112 @@ async def test_update_events_saves_events_then_reports_failed_source(monkeypatch
 
 
 MUSICBRAINZ_ARTIST_ID = "79239441-bfd5-4981-a70c-55c3f15c1287"
-SONGKICK_OLD_ARTIST_URL = f"{SONGKICK_BASE_URL}/artists/1-deep-purple-old"
-SONGKICK_ARTIST_URL = f"{SONGKICK_BASE_URL}/artists/1-deep-purple"
-BANDSINTOWN_ARTIST_URL = f"{BANDSINTOWN_BASE_URL}/a/738"
+MUSICBRAINZ_STALE_ARTIST_ID = "b2f1b5a4-6a0e-4c1c-9b8e-2f8d7c3e4a51"
+BANDSINTOWN_REDIRECTING_PATH = "/a/738"
+BANDSINTOWN_REMOVED_PATH = "/a/404"
+
+
+def musicbrainz_artist(name: str, bandsintown_path: str) -> dict:
+    return {
+        "name": name,
+        "aliases": [{"name": "DP", "primary": True}],
+        "relations": [
+            {"type": "songkick", "url": {"resource": "https://www.songkick.com/artists/99952-deep-purple"}},
+            {"type": "bandsintown", "url": {"resource": f"{BANDSINTOWN_BASE_URL}{bandsintown_path}"}},
+        ],
+    }
 
 
 def musicbrainz_site(request: httpx2.Request) -> httpx2.Response:
-    """Answers MusicBrainz's API: a Spotify URL relation lookup that finds nothing, a name search and an artist."""
+    """Answers MusicBrainz's API: a Spotify URL lookup that finds nothing, a name search and two artists.
+
+    Both artists link to Deep Purple's Songkick page. One links to a Bandsintown URL that redirects to the artist, the
+    other to one Bandsintown has removed.
+    """
     path = request.url.path.removeprefix("/ws/2/")
     if path == "url":
         return httpx2.Response(200, json={"relations": []})
     if path == "artist":
         found = request.url.params["query"] == "Deep Purple"
-        return httpx2.Response(
-            200, json={"artists": [{"id": MUSICBRAINZ_ARTIST_ID, "name": "Deep Purple"}] if found else []}
-        )
+        artists = [{"id": MUSICBRAINZ_ARTIST_ID, "name": "Deep Purple"}] if found else []
+        return httpx2.Response(200, json={"artists": artists})
     if path == f"artist/{MUSICBRAINZ_ARTIST_ID}":
-        return httpx2.Response(
-            200,
-            json={
-                "name": "Deep Purple",
-                "relations": [
-                    {"type": "songkick", "url": {"resource": SONGKICK_OLD_ARTIST_URL}},
-                    {"type": "bandsintown", "url": {"resource": BANDSINTOWN_ARTIST_URL}},
-                ],
-            },
-        )
+        return httpx2.Response(200, json=musicbrainz_artist("Deep Purple", BANDSINTOWN_REDIRECTING_PATH))
+    if path == f"artist/{MUSICBRAINZ_STALE_ARTIST_ID}":
+        return httpx2.Response(200, json=musicbrainz_artist("Deep Purple", BANDSINTOWN_REMOVED_PATH))
     return httpx2.Response(404)
+
+
+def songkick_site_with_artist_ids(request: httpx2.Request) -> httpx2.Response:
+    """The saved Songkick pages, where a calendar URL with only the artist's ID redirects to the artist's calendar."""
+    if request.url.path == "/artists/99952/calendar":
+        return httpx2.Response(301, headers={"Location": f"{SONGKICK_BASE_URL}{CALENDAR_PATH}"})
+    return songkick_site(request)
+
+
+def bandsintown_site_with_redirect(request: httpx2.Request) -> httpx2.Response:
+    if request.url.path == BANDSINTOWN_REDIRECTING_PATH:
+        return httpx2.Response(301, headers={"Location": f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}"})
+    return bandsintown_site(request)
 
 
 @pytest.fixture
 def musicbrainz(monkeypatch: pytest.MonkeyPatch) -> None:
-    """MusicBrainz, a Songkick artist URL that redirects to the artist's current one, and a Bandsintown one that does
-    not."""
-
-    def event_sites(request: httpx2.Request) -> httpx2.Response:
-        if str(request.url) == SONGKICK_OLD_ARTIST_URL:
-            return httpx2.Response(301, headers={"Location": SONGKICK_ARTIST_URL})
-        return httpx2.Response(200, text="Deep Purple")
-
     for name, transport, base_url in (
         ("async_musicbrainz_client", httpx2.MockTransport(musicbrainz_site), MUSICBRAINZ_API_BASE_URL),
-        ("async_songkick_client", httpx2.MockTransport(event_sites), SONGKICK_BASE_URL),
-        ("async_bandsintown_client", httpx2.MockTransport(event_sites), BANDSINTOWN_BASE_URL),
+        ("async_songkick_client", httpx2.MockTransport(songkick_site_with_artist_ids), SONGKICK_BASE_URL),
+        ("async_bandsintown_client", httpx2.MockTransport(bandsintown_site_with_redirect), BANDSINTOWN_BASE_URL),
     ):
         monkeypatch.setattr(data, name, AsyncRetryingClient(attempts=1, base_url=base_url, transport=transport))
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("musicbrainz")
-async def test_musicbrainz_finds_artist_by_name_with_event_source_urls() -> None:
-    """An artist MusicBrainz does not link to its Spotify page is found by name, with its event source URLs.
+async def test_musicbrainz_artist_found_by_name_leads_to_its_events() -> None:
+    """An artist MusicBrainz does not link to its Spotify page is found by name, and its links lead to its events.
 
-    A Songkick URL that redirects is replaced by where it redirects to; a Bandsintown URL that does not is kept.
+    MusicBrainz links to the artist's Songkick page, which becomes the artist's calendar, and to a Bandsintown URL
+    that redirects, which becomes where it redirects to. Events are then read from both.
     """
-    artist = await MusicBrainzArtist.find("spotify_artist_id", "Deep Purple")
+    musicbrainz_artist = await MusicBrainzArtist.find("spotify_artist_id", "Deep Purple")
 
-    assert artist == MusicBrainzArtist(
+    assert musicbrainz_artist == MusicBrainzArtist(
         id=MUSICBRAINZ_ARTIST_ID,
         names=["Deep Purple"],
-        songkick_url=SONGKICK_ARTIST_URL,
-        bandsintown_url=BANDSINTOWN_ARTIST_URL,
+        songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
+        bandsintown_url=f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}",
     )
+
+    artist = EventSourceArtist(
+        name="Deep Purple",
+        songkick_url=musicbrainz_artist.songkick_url,
+        bandsintown_url=musicbrainz_artist.bandsintown_url,
+    )
+    await artist.fetch_events()
+
+    assert artist.failed_sources == []
+    assert {event.source for event in artist.events} == {EventDataSource.songkick, EventDataSource.bandsintown}
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("musicbrainz")
+async def test_musicbrainz_artist_keeps_match_without_stale_link(caplog: pytest.LogCaptureFixture) -> None:
+    """A link MusicBrainz has to a removed Bandsintown page is dropped, and the rest of the match is kept.
+
+    With one source missing, the artist's names and aliases come along for the name search to find it.
+    """
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        musicbrainz_artist = await MusicBrainzArtist.from_artist_id(MUSICBRAINZ_STALE_ARTIST_ID)
+
+    assert musicbrainz_artist == MusicBrainzArtist(
+        id=MUSICBRAINZ_STALE_ARTIST_ID,
+        names=["Deep Purple", "DP"],
+        songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
+        bandsintown_url=None,
+    )
+    assert [r.getMessage().split(":")[0] for r in caplog.records] == [
+        f"Failed to follow the Bandsintown URL of MusicBrainz artist {MUSICBRAINZ_STALE_ARTIST_ID}"
+    ]
 
 
 @pytest.mark.asyncio
