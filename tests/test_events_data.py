@@ -12,7 +12,7 @@ from web.events import data
 from web.events.constants import BANDSINTOWN_BASE_URL, SONGKICK_BASE_URL
 from web.events.data import EventSourceArtist, Venue
 from web.events.enums import ArtistNameMatchAccuracy, EventDataSource, EventType
-from web.events.exceptions import EventDataSourceException
+from web.events.exceptions import BandsintownException, EventDataSourceException
 from web.events.http import AsyncRetryingClient
 from web.models import Artist, EventArtist
 
@@ -281,6 +281,44 @@ async def test_fetch_events_fails_bandsintown_without_a_list_of_events(caplog: p
     assert [r.getMessage() for r in errors] == [
         f"Expected one list of events in the JSON-LD on {bandsintown_url}, found 0"
     ]
+
+
+@pytest.mark.asyncio
+async def test_find_in_bandsintown_tries_every_name_when_search_is_refused(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A search Bandsintown refuses moves on to the artist's next name, and fails once every name has been tried.
+
+    Each refused search is logged as an error naming the name searched for.
+    """
+    monkeypatch.setattr(
+        data,
+        "async_bandsintown_client",
+        AsyncRetryingClient(
+            name="bandsintown",
+            retries=1,
+            base_url=BANDSINTOWN_BASE_URL,
+            transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
+        ),
+    )
+    artist = EventSourceArtist(name="Deep Purple", alternative_names=["Deep Purple Mk II"])
+
+    with pytest.raises(
+        BandsintownException, match=r"^Artist 'Deep Purple' not found in Bandsintown using any of the names$"
+    ):
+        await artist.find_in_bandsintown()
+
+    assert artist.bandsintown_url is None
+    errors = [r.getMessage() for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
+    assert len(errors) == 2
+    assert errors[0].startswith(
+        "Failed to search for artist in Bandsintown by name 'Deep Purple': "
+        "Failed to search Bandsintown for 'Deep Purple': "
+    )
+    assert errors[1].startswith(
+        "Failed to search for artist in Bandsintown by name 'Deep Purple Mk II': "
+        "Failed to search Bandsintown for 'Deep Purple Mk II': "
+    )
 
 
 @pytest.mark.asyncio

@@ -474,9 +474,12 @@ async def find_artist_in_songkick(
 async def find_artist_in_bandsintown(
     artist_name: str, use_advanced_heuristics: bool = False
 ) -> tuple[str | None, ArtistNameMatchAccuracy]:
-    search_results, _, __, __ = await asend_get_request(
-        async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
-    )
+    try:
+        search_results, _, __, __ = await asend_get_request(
+            async_bandsintown_client, f"searchSuggestions?searchTerm={artist_name}", parse_json=True
+        )
+    except HTTPClientException as e:
+        raise BandsintownException(f"Failed to search Bandsintown for '{artist_name}': {e}") from e
 
     artists = [(str(a["id"]), a["name"]) for a in search_results["artists"]]
 
