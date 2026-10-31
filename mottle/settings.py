@@ -74,7 +74,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "web.context_processors.app_version",
-                "web.context_processors.global_template_vars",
             ],
         },
     },

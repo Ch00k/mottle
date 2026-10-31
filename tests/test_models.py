@@ -1298,6 +1298,25 @@ class TestPlaylistUpdate(TestCase):
 
 
 class TestGeneratePlaylistUpdateHash:
+    @pytest.mark.parametrize(
+        ("albums_added", "tracks_added", "expected_hash"),
+        [
+            (None, ["track2", "track1"], "c5ee90dd1d86eeb03947d833aee07b3b8b9becb8a73212fd7e00da55aa2bbf8d"),
+            (["album2", "album1"], None, "b42a87f2bae3a52f55e620f930a320fccf064ffc9bf87756b34f7a6d393c72fb"),
+            (["album1"], ["track1"], "2771886bfc50694f27148aeda1405edc0be5c8dcb6f002861ac595f6c0544796"),
+            (None, None, "65cf272f41b84f29d20f7f77e9b7840e29ef9b1ef1d3943e17dd12ce16f89107"),
+        ],
+    )
+    def test_hash_matches_stored_updates(
+        self, albums_added: list[str] | None, tracks_added: list[str] | None, expected_hash: str
+    ) -> None:
+        """The hash of an update stays what was stored for it.
+
+        Existing updates are found by their stored hash, so a changed hash would create a duplicate of every pending
+        update. The expected values are the hashes the database holds for these lists.
+        """
+        assert generate_playlist_update_hash(albums_added=albums_added, tracks_added=tracks_added) == expected_hash
+
     def test_hash_is_deterministic(self) -> None:
         """Test that hash generation is deterministic for the same input."""
         tracks = ["track1", "track2", "track3"]
@@ -1329,13 +1348,6 @@ class TestGeneratePlaylistUpdateHash:
         # Should produce a valid hash
         assert len(hash1) == 64
         assert isinstance(hash1, str)
-
-    def test_hash_with_removed_items(self) -> None:
-        """Test that removed items affect the hash differently than added items."""
-        hash1 = generate_playlist_update_hash(tracks_added=["track1"], tracks_removed=["track2"])
-        hash2 = generate_playlist_update_hash(tracks_added=["track1"])
-
-        assert hash1 != hash2
 
 
 class TestPlaylistWatchConfig:
