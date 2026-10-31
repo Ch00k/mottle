@@ -1,5 +1,4 @@
 from pathlib import Path
-from socket import gethostbyname, gethostname
 from typing import Any
 
 import sentry_sdk
@@ -16,7 +15,6 @@ SECRET_KEY = env.str("SECRET_KEY", "very-secret-key")
 DEBUG = env.bool("DJANGO_DEBUG", False)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", ["127.0.0.1"])  # ["127.0.0.1", "localhost", "mottle.it", "www.mottle.it"]
-ALLOWED_HOSTS.append(gethostbyname(gethostname()))  # Needed for Prometheus scraping to work
 
 CSRF_TRUSTED_ORIGINS: list[str] = env.list(
     "CSRF_TRUSTED_ORIGINS", ["https://mottle.it"]
@@ -38,13 +36,11 @@ INSTALLED_APPS = [
     "urlshortener",
     "django_hosts",
     "django_htmx",
-    "django_prometheus",
     "django_q",
     "django.contrib.gis",
 ]
 
 MIDDLEWARE = [
-    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django_hosts.middleware.HostsRequestMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -56,7 +52,6 @@ MIDDLEWARE = [
     "web.middleware.SpotifyAuthMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "django_hosts.middleware.HostsResponseMiddleware",
-    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 URLSHORTENER_BASE_URL = env.str("URLSHORTENER_BASE_URL", "https://mottle.it")
@@ -67,7 +62,7 @@ ROOT_URLCONF = "mottle.urls"
 DEFAULT_HOST = "default"
 
 LOGIN_URL = "/login/"
-AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/", "/metrics", "/changelog/"]
+AUTH_EXEMPT_PATHS = [LOGIN_URL, "/", "/logout/", "/callback/", "/changelog/"]
 
 TEMPLATES = [
     {
@@ -106,7 +101,7 @@ DATABASES = {
         },
     },
     "tasks": {
-        "ENGINE": "django_prometheus.db.backends.sqlite3",
+        "ENGINE": "django.db.backends.sqlite3",
         "NAME": env.path("DATABASE_FILE_TASKS", BASE_DIR / "tasks.sqlite3"),
     },
 }
@@ -284,14 +279,20 @@ PLAYLIST_ADD_TRACKS_PARALLELIZED = env.bool("PLAYLIST_ADD_TRACKS_PARALLELIZED", 
 MAIL_FROM_EMAIL = env.str("MAIL_FROM_EMAIL", "me@e.mail")
 MAIL_FROM_NAME = env.str("MAIL_FROM_NAME", "Me")
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = env.str("EMAIL_HOST", "localhost")
-EMAIL_PORT = env.int("EMAIL_PORT", 587)
-EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", True)
-EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", False)
-EMAIL_HOST_USER = env.str("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD", "")
-EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", 15)
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": env.str("EMAIL_HOST", "localhost"),
+            "port": env.int("EMAIL_PORT", 587),
+            "use_tls": env.bool("EMAIL_USE_TLS", True),
+            "use_ssl": env.bool("EMAIL_USE_SSL", False),
+            "username": env.str("EMAIL_HOST_USER", ""),
+            "password": env.str("EMAIL_HOST_PASSWORD", ""),
+            "timeout": env.int("EMAIL_TIMEOUT", 15),
+        },
+    },
+}
 
 OPENAI_API_KEY = env.str("OPENAI_API_KEY", "openai-api-key")
 OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_dump")

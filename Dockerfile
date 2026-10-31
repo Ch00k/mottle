@@ -30,8 +30,6 @@ COPY --from=builder /app /app
 
 WORKDIR /app
 
-RUN mkdir -p /tmp/prometheus_multiproc_dir
-
 ENV PATH=/app/.venv/bin:${PATH} \
     PYTHONPATH=/app \
     PYTHONUNBUFFERED=1
