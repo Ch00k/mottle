@@ -186,5 +186,5 @@ async def test_retrying_client_retries_refusals_on_new_connections(
     assert client.requests_throttled == 2
     assert len(set(site.client_ports)) == 3
     assert [r.getMessage() for r in caplog.records] == [
-        f"Received 403 response (Just a moment...) while requesting {site.url}/refused-twice. Retrying...",
+        f"Received 403 response while requesting {site.url}/refused-twice. Retrying...",
     ] * 2

@@ -712,4 +712,12 @@ async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str
             f"Expected one list of events in the JSON-LD on {bandsintown_url}, found {len(event_lists)}"
         )
 
-    return [event for event in event_lists[0] if event.get("@type") == "MusicEvent"]
+    events = event_lists[0]
+
+    types = [event.get("@type") if isinstance(event, dict) else type(event).__name__ for event in events]
+    if any(t != "MusicEvent" for t in types):
+        raise BandsintownException(
+            f"Expected only MusicEvent items in the list of events on {bandsintown_url}: {types}"
+        )
+
+    return events

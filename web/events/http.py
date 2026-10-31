@@ -191,10 +191,7 @@ class AsyncRetryingClient(httpx2.AsyncClient):
             if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
                 return response
 
-            logger.warning(
-                f"Received {response.status_code} response ({response.text}) "
-                f"while requesting {request.url}. Retrying..."
-            )
+            logger.warning(f"Received {response.status_code} response while requesting {request.url}. Retrying...")
             retries -= 1
 
         self.requests_retries_exhausted += 1

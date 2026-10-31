@@ -70,6 +70,10 @@ def bandsintown_site(request: httpx2.Request) -> httpx2.Response:
         artist = (DATA_DIR / "bandsintown_artist.html").read_text()
         return httpx2.Response(200, text=artist.replace('<script type="application/ld+json">[', "<script>[", 1))
 
+    if request.url.path == "/a/4-deep-purple-festival":
+        artist = (DATA_DIR / "bandsintown_artist.html").read_text()
+        return httpx2.Response(200, text=artist.replace('"@type": "MusicEvent"', '"@type": "Festival"', 1))
+
     page = pages.get(request.url.path)
     if page is None:
         return httpx2.Response(404)
@@ -280,6 +284,27 @@ async def test_fetch_events_fails_bandsintown_without_a_list_of_events(caplog: p
     errors = [r for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
     assert [r.getMessage() for r in errors] == [
         f"Expected one list of events in the JSON-LD on {bandsintown_url}, found 0"
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("bandsintown")
+async def test_fetch_events_fails_bandsintown_on_items_other_than_events(caplog: pytest.LogCaptureFixture) -> None:
+    """A list of events holding anything but MusicEvent items fails the source, so a change of type is noticed.
+
+    Dropping such items would make the artist look as if it had no upcoming events. The failure is logged as an error
+    naming the page and the types found.
+    """
+    bandsintown_url = f"{BANDSINTOWN_BASE_URL}/a/4-deep-purple-festival"
+    artist = EventSourceArtist(name="Deep Purple", bandsintown_url=bandsintown_url)
+
+    await artist.fetch_events()
+
+    assert artist.events == []
+    assert artist.failed_sources == [EventDataSource.bandsintown]
+    errors = [r for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
+    assert [r.getMessage() for r in errors] == [
+        f"Expected only MusicEvent items in the list of events on {bandsintown_url}: ['Festival']"
     ]
 
 
