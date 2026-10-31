@@ -23,12 +23,12 @@ dependencies = [
   "django-dirtyfields==1.9.9",
   "unidecode==1.4.0",
   "json-log-formatter==1.2.1",
-  "daphne==4.2.3",
   "django-hosts==7.0.0",
   "tekore==6.2.0",
   "curl-cffi==0.17.0",
   "httpx2==2.16.0",
   "stamina==26.1.0",
+  "uvicorn==0.54.0",
 ]
 
 [dependency-groups]

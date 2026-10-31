@@ -28,7 +28,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 APP_VERSION = env.str("APP_VERSION", "dev")
 
 INSTALLED_APPS = [
-    "daphne",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -179,10 +178,14 @@ LOGGING: dict[str, Any] = {
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
-        "django.channels.server": {
-            "level": "WARNING",
+        "uvicorn": {
+            "level": "INFO",
             "handlers": [LOG_FORMAT],
             "propagate": False,
+        },
+        # Logs each request at INFO, which WARNING leaves out
+        "uvicorn.access": {
+            "level": "WARNING",
         },
     },
 }
