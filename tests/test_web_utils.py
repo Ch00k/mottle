@@ -1,19 +1,27 @@
 import asyncio
+import json
+from functools import partial
+from pathlib import Path
 from unittest.mock import Mock
 
+import httpx
 import pytest
-from tekore import Spotify
+from tekore import AsyncSender, Spotify
 from tekore.model import AlbumType, SimpleAlbum
 
 from web.utils import (
     MottleException,
+    MottleSpotifyClient,
     chunked_off,
     gather_with_concurrency,
     get_all_chunked,
+    get_qualname,
     list_has,
     perform_parallel_chunked_requests,
     perform_parallel_requests,
 )
+
+DATA_DIR = Path(__file__).parent / "data"
 
 
 class TestListHas:
@@ -189,3 +197,67 @@ class TestMottleException:
 
         assert isinstance(exc.__cause__, ValueError)
         assert str(exc.__cause__) == "Original error"
+
+
+SPOTIFY_RESPONSES = {
+    "/v1/search": "spotify_search.json",
+    "/v1/playlists/test_playlist_id/tracks": "spotify_playlist_items.json",
+}
+
+
+def spotify_api(request: httpx.Request) -> httpx.Response:
+    """Answer the Spotify Web API with responses saved from it, a search with the result types it asks for."""
+    data = json.loads((DATA_DIR / SPOTIFY_RESPONSES[request.url.path]).read_text())
+
+    if request.url.path == "/v1/search":
+        types = request.url.params["type"].split(",")
+        data = {f"{t}s": data[f"{t}s"] for t in types}
+
+    return httpx.Response(200, json=data)
+
+
+@pytest.fixture
+def spotify_client() -> MottleSpotifyClient:
+    client = MottleSpotifyClient("test_access_token")
+    client.spotify_client = Spotify(
+        "test_access_token", sender=AsyncSender(httpx.AsyncClient(transport=httpx.MockTransport(spotify_api)))
+    )
+    return client
+
+
+@pytest.mark.asyncio
+class TestMottleSpotifyClient:
+    async def test_find_playlists_skips_null_results(self, spotify_client: MottleSpotifyClient) -> None:
+        """Spotify's search results hold null in place of some playlists, which are left out."""
+        playlists = await spotify_client.find_playlists("deep purple")
+
+        assert [p.name for p in playlists] == ["Deep Purple - Greatest Hits"]
+
+    async def test_find_artists_and_playlists_skips_null_playlists(self, spotify_client: MottleSpotifyClient) -> None:
+        """Searching artists and playlists together also leaves out the null playlists."""
+        artists, playlists = await spotify_client.find_artists_and_playlists("deep purple")
+
+        assert [a.name for a in artists] == ["Deep Purple", "Purple Disco Machine"]
+        assert [p.name for p in playlists] == ["Deep Purple - Greatest Hits"]
+
+    async def test_find_duplicate_tracks_in_playlist(self, spotify_client: MottleSpotifyClient) -> None:
+        """A track the playlist holds more than once is reported once, with the number of times it appears."""
+        duplicates = await spotify_client.find_duplicate_tracks_in_playlist("test_playlist_id")
+
+        assert [(track.name, count) for track, count in duplicates] == [("Like a Rolling Stone", 2)]
+
+
+class TestGetQualname:
+    def test_function(self) -> None:
+        """A function is named by its qualified name."""
+        assert get_qualname(list_has) == "list_has"
+
+    def test_partial(self) -> None:
+        """A partial is named by the function it wraps."""
+        assert get_qualname(partial(list_has, [])) == "list_has"
+
+    def test_callable_without_qualname(self) -> None:
+        """A callable object without a qualified name is named by its repr."""
+        mock = Mock()
+
+        assert get_qualname(mock) == repr(mock)
