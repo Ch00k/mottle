@@ -200,7 +200,6 @@ async def acheck_artists_for_event_updates(
     compile_notifications: bool = True,
     send_notifications: bool = True,
     force_refetch: bool = False,
-    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     start_time = timeit.default_timer()
@@ -220,38 +219,25 @@ async def acheck_artists_for_event_updates(
 
     logger.info(f"Artists to process: {num_artists}")
 
-    if concurrent_execution:
-        calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
+    calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
 
-        concurrency_limit = concurrency_limit or settings.EVENTS_FETCH_CONCURRENCY_LIMIT
+    concurrency_limit = concurrency_limit or settings.EVENTS_FETCH_CONCURRENCY_LIMIT
 
-        if concurrency_limit:
-            results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
-        else:
-            results = await asyncio.gather(*calls, return_exceptions=True)
-
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Failed to process artist: {result}", exc_info=result)
-                fail_count += 1
-            elif isinstance(result, EventArtist):
-                logger.debug(f"Processed artist: {result}")
-                success_count += 1
-                num_events += await result.events.acount()
-                async for event in result.events.all():
-                    num_urls += len(event.stream_urls or []) + len(event.tickets_urls or [])
+    if concurrency_limit:
+        results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
     else:
-        async for artist in artists:
-            logger.info(f"Processing artist {artist}")
+        results = await asyncio.gather(*calls, return_exceptions=True)
 
-            try:
-                await artist.update_events(force_refetch=force_refetch)
-            except Exception as e:
-                logger.error(f"Failed to update events for artist {artist}: {e}")
-                fail_count += 1
-                continue
-            else:
-                success_count += 1
+    for result in results:
+        if isinstance(result, Exception):
+            logger.error(f"Failed to process artist: {result}", exc_info=result)
+            fail_count += 1
+        elif isinstance(result, EventArtist):
+            logger.debug(f"Processed artist: {result}")
+            success_count += 1
+            num_events += await result.events.acount()
+            async for event in result.events.all():
+                num_urls += len(event.stream_urls or []) + len(event.tickets_urls or [])
 
     if compile_notifications:
         # TODO: Only do it if there are updates
@@ -334,42 +320,6 @@ async def acheck_artists_for_event_updates(
         f"success: {success_count}, fail: {fail_count}, events: {num_events}, URLs: {num_urls}, "
         f"average {avg_per_artist} seconds per artist"
     )
-
-
-def check_artists_for_event_updates(
-    artist_spotify_ids: list[str] | None = None,
-    compile_notifications: bool = True,
-    send_notifications: bool = True,
-    force_refetch: bool = False,
-    concurrent_execution: bool = True,
-    concurrency_limit: int | None = None,
-) -> None:
-    asyncio.run(
-        acheck_artists_for_event_updates(
-            artist_spotify_ids=artist_spotify_ids,
-            compile_notifications=compile_notifications,
-            send_notifications=send_notifications,
-            force_refetch=force_refetch,
-            concurrent_execution=concurrent_execution,
-            concurrency_limit=concurrency_limit,
-        )
-    )
-
-
-# def _get_users_with_event_updates() -> QuerySet[SpotifyUser]:
-#     return SpotifyUser.objects.filter(~Q(watched_event_artists=None)).prefetch_related(
-#         Prefetch(
-#             "watched_event_artists",
-#             queryset=EventArtist.objects.filter(~Q(events=None)).prefetch_related(
-#                 Prefetch(
-#                     "events",
-#                     queryset=Event.objects.prefetch_related(
-#                         Prefetch("updates", queryset=EventUpdate.objects.filter(is_notified_of=False))
-#                     ),
-#                 )
-#             ),
-#         )
-#     )
 
 
 async def upload_cover_image(
@@ -508,7 +458,6 @@ async def atrack_artists_events(
     artists_data: dict[str, str],
     spotify_user_id: str,
     force_reevaluate: bool = False,
-    concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
     start_time = timeit.default_timer()
@@ -522,56 +471,33 @@ async def atrack_artists_events(
     no_sk = 0
     no_bt = 0
 
-    if concurrent_execution:
-        calls = [
-            track_artist_events(artist_spotify_id, artist_name, spotify_user_id, force_reevaluate=force_reevaluate)
-            for artist_spotify_id, artist_name in artists_data.items()
-            if artist_name
-        ]
+    calls = [
+        track_artist_events(artist_spotify_id, artist_name, spotify_user_id, force_reevaluate=force_reevaluate)
+        for artist_spotify_id, artist_name in artists_data.items()
+        if artist_name
+    ]
 
-        concurrency_limit = concurrency_limit or settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT
+    concurrency_limit = concurrency_limit or settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT
 
-        if concurrency_limit:
-            results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
-        else:
-            results = await asyncio.gather(*calls, return_exceptions=True)
-
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Failed to process artist: {result}", exc_info=result)
-                fail_count += 1
-            elif isinstance(result, EventArtist):
-                logger.debug(f"Processed artist: {result}")
-                success_count += 1
-
-                if result.musicbrainz_id is None:
-                    no_mb += 1
-                if result.songkick_url is None:
-                    no_sk += 1
-                if result.bandsintown_url is None:
-                    no_bt += 1
+    if concurrency_limit:
+        results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
     else:
-        for artist_spotify_id, artist_name in artists_data.items():
-            if not artist_name:
-                logger.error(f"Artist name is empty for Spotify ID {artist_spotify_id}")
-                continue
+        results = await asyncio.gather(*calls, return_exceptions=True)
 
-            try:
-                event_artist = await track_artist_events(
-                    artist_spotify_id, artist_name, spotify_user_id, force_reevaluate=force_reevaluate
-                )
-            except Exception as e:
-                logger.exception(f"Failed to process artist {artist_name} (Spotify ID {artist_spotify_id}): {e}")
-                fail_count += 1
-            else:
-                success_count += 1
+    for result in results:
+        if isinstance(result, Exception):
+            logger.error(f"Failed to process artist: {result}", exc_info=result)
+            fail_count += 1
+        elif isinstance(result, EventArtist):
+            logger.debug(f"Processed artist: {result}")
+            success_count += 1
 
-                if event_artist.musicbrainz_id is None:
-                    no_mb += 1
-                if event_artist.songkick_url is None:
-                    no_sk += 1
-                if event_artist.bandsintown_url is None:
-                    no_bt += 1
+            if result.musicbrainz_id is None:
+                no_mb += 1
+            if result.songkick_url is None:
+                no_sk += 1
+            if result.bandsintown_url is None:
+                no_bt += 1
 
     elapsed_time = timeit.default_timer() - start_time
     avg_per_artist = elapsed_time / number_of_artists if number_of_artists else 0
@@ -579,22 +505,4 @@ async def atrack_artists_events(
         f"Processed {number_of_artists} artists in {elapsed_time} seconds, "
         f"success: {success_count}, fail: {fail_count}, no MB: {no_mb}, no SK: {no_sk}, no BT: {no_bt}, "
         f"average {avg_per_artist} seconds per artist"
-    )
-
-
-def track_artists_events(
-    artists_data: dict[str, str],
-    spotify_user_id: str,
-    force_reevaluate: bool = False,
-    concurrent_execution: bool = True,
-    concurrency_limit: int | None = None,
-) -> None:
-    asyncio.run(
-        atrack_artists_events(
-            artists_data,
-            spotify_user_id,
-            force_reevaluate=force_reevaluate,
-            concurrent_execution=concurrent_execution,
-            concurrency_limit=concurrency_limit,
-        )
     )

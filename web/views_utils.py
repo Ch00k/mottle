@@ -177,21 +177,6 @@ class AlbumMetadata(SpotifyEntityMetadata):
         self._track_image_url = get_smallest_image(entity.images)
 
 
-# def get_duplicates_message(items: Collection) -> str:
-#     num_duplicates = len(items)
-
-#     if not num_duplicates:
-#         message = "No duplicates found"
-#     elif num_duplicates == 1:
-#         message = "1 track has duplicates"
-#     elif num_duplicates % 10 == 1:
-#         message = f"{len(items)} track has duplicates"
-#     else:
-#         message = f"{len(items)} tracks have duplicates"
-
-#     return message
-
-
 async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: str, template_path: str) -> HttpResponse:
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist_name = await playlist_metadata.name

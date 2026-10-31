@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from functools import partial
 from typing import Any, cast
@@ -10,7 +11,7 @@ from tekore.model import FullPlaylistTrack
 from web.data import TrackData
 from web.models import SpotifyUser
 from web.spotify import get_client_token
-from web.tasks import track_artists_events
+from web.tasks import atrack_artists_events
 from web.utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -81,10 +82,11 @@ class Command(BaseCommand):
                     for artist in track.artists:
                         artists[artist.id] = artist.name
 
-        track_artists_events(
-            artists_data=artists,
-            spotify_user_id=user_id,
-            force_reevaluate=force_reevaluate,
-            concurrent_execution=True,
-            concurrency_limit=concurrency_limit,
+        asyncio.run(
+            atrack_artists_events(
+                artists_data=artists,
+                spotify_user_id=user_id,
+                force_reevaluate=force_reevaluate,
+                concurrency_limit=concurrency_limit,
+            )
         )

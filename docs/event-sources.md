@@ -1,6 +1,6 @@
 # Event sources
 
-The daily event check (the `get_event_updates` job in `crontab`, `web.tasks.check_artists_for_event_updates`)
+The daily event check (the `get_event_updates` job in `crontab`, `web.tasks.acheck_artists_for_event_updates`)
 collects each tracked artist's upcoming concerts from two websites and emails users about new or changed ones near their
 location. Neither site has a public API mottle can use, so both are read from their HTML, and a change to their markup
 stops events from arriving without any error: the pages still load, they just yield nothing.
