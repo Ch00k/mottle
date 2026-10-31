@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 import time
 from typing import TYPE_CHECKING
 
@@ -19,13 +18,8 @@ from tekore import (
     UserAuth,
 )
 
-from .metrics import SPOTIFY_API_RESPONSE_TIME_SECONDS, SPOTIFY_API_RESPONSES
-
 if TYPE_CHECKING:
     from collections.abc import Coroutine
-
-SPOTIFY_ID_PATTERN = r"[a-zA-Z0-9]{22}"
-SPOTIFY_ID_PLACEHOLDER = "<sid>"
 
 logger = logging.getLogger(__name__)
 
@@ -66,15 +60,10 @@ class MottleRetryingSender(RetryingSender):
         delay_seconds = 1
 
         while tries > 0:
-            with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
-                r = self.sender.send(request)
+            r = self.sender.send(request)
 
             # A synchronous sender returns the response itself
             assert isinstance(r, Response)
-
-            if r.status_code >= 400:
-                metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
-                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()
 
             if r.status_code == 401 and tries > 1:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
@@ -100,13 +89,8 @@ class MottleRetryingSender(RetryingSender):
         delay_seconds = 1
 
         while tries > 0:
-            with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
-                # tekore types send as returning a response or a coroutine; the async sender returns a coroutine
-                r = await self.sender.send(request)  # ty: ignore[invalid-await]
-
-            if r.status_code >= 400:
-                metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
-                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()
+            # tekore types send as returning a response or a coroutine; the async sender returns a coroutine
+            r = await self.sender.send(request)  # ty: ignore[invalid-await]
 
             if r.status_code == 401 and tries > 1:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")

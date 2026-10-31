@@ -1,19 +1,15 @@
 import logging
 import signal
-import sys
 import time
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django_q.cluster import Cluster
-from prometheus_client import CollectorRegistry, multiprocess, start_http_server
 
 from taskrunner.schedules import event_updates, playlist_updates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from threading import Thread
-    from wsgiref.simple_server import WSGIServer
 
 
 logger = logging.getLogger(__name__)
@@ -23,23 +19,13 @@ class MottleCluster(Cluster):
     def __init__(self, *args: Any, **kwargs: dict) -> None:
         super().__init__(*args, **kwargs)
         self.schedules: list = []
-        self.prometheus_registry = CollectorRegistry()
-        multiprocess.MultiProcessCollector(self.prometheus_registry)
-
-        self.metrics_server: WSGIServer | None = None
-        self.metrics_server_thread: Thread | None = None
 
         signal.signal(signal.SIGHUP, self.sig_handler)
 
     def add_schedules(self, *funcs: Callable[..., None]) -> None:
         self.schedules = list(funcs)
 
-    def run(self, metrics_server_host: str, metrics_server_port: int) -> None:
-        self.metrics_server, self.metrics_server_thread = start_http_server(
-            port=metrics_server_port, addr=metrics_server_host, registry=self.prometheus_registry
-        )
-        logger.info(f"Metrics server started at {metrics_server_host}:{metrics_server_port}")
-
+    def run(self) -> None:
         if settings.SCHEDULER_ENABLED:
             if self.schedules:
                 for func in self.schedules:
@@ -55,24 +41,11 @@ class MottleCluster(Cluster):
         while self.stop_event is not None and not self.stop_event.is_set():
             time.sleep(0.1)
 
-    def sig_handler(self, signum: int, frame: Any) -> None:
-        logger.info("Shutting down metrics server...")
-        if self.metrics_server is not None:
-            self.metrics_server.shutdown()
-
-        if self.metrics_server_thread is not None:
-            self.metrics_server_thread.join()
-
-        super().sig_handler(signum, frame)
-
 
 def main() -> None:
-    metrics_server_host = sys.argv[1]
-    metrics_server_port = int(sys.argv[2])
-
     q = MottleCluster()
     q.add_schedules(playlist_updates, event_updates)
-    q.run(metrics_server_host, metrics_server_port)
+    q.run()
 
 
 if __name__ == "__main__":

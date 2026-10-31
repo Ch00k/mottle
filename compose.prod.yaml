@@ -32,7 +32,6 @@ x-env: &env
   SENTRY_DSN: ${SENTRY_DSN}
   SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT}
   PROXY_URL: ${PROXY_URL}
-  PROMETHEUS_MULTIPROC_DIR: ${PROMETHEUS_MULTIPROC_DIR:-/tmp/prometheus_multiproc_dir}
 
 name: mottle
 
@@ -75,12 +74,10 @@ services:
     environment:
       <<: *env
       Q_CLUSTER_NAME: default
-    command: python /app/taskrunner/run.py 0.0.0.0 10002
+    command: python /app/taskrunner/run.py
     volumes:
       - ./database:/database
       - ./images_dump:/images_dump
-    ports:
-      - 127.0.0.1:10002:10002
     restart: unless-stopped
     depends_on:
       migrate:
@@ -91,12 +88,10 @@ services:
     environment:
       <<: *env
       Q_CLUSTER_NAME: long_running
-    command: python /app/taskrunner/run.py 0.0.0.0 10003
+    command: python /app/taskrunner/run.py
     volumes:
       - ./database:/database
       - ./images_dump:/images_dump
-    ports:
-      - 127.0.0.1:10003:10003
     restart: unless-stopped
     depends_on:
       migrate:

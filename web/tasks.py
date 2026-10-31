@@ -15,8 +15,6 @@ from django.core.mail import send_mail
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
-from web.metrics import TASK_RUNTIME_SECONDS
-
 from .events.data import EventSourceArtist, MusicBrainzArtist
 from .events.enums import ArtistNameMatchAccuracy, EventType
 from .events.exceptions import MusicBrainzException
@@ -198,8 +196,7 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
 
 
 def check_playlists_for_updates(send_notifications: bool = True) -> None:
-    with TASK_RUNTIME_SECONDS.labels("get_playlist_updates").time():
-        asyncio.run(acheck_playlists_for_updates(send_notifications=send_notifications))
+    asyncio.run(acheck_playlists_for_updates(send_notifications=send_notifications))
 
 
 async def acheck_artists_for_event_updates(
@@ -351,17 +348,16 @@ def check_artists_for_event_updates(
     concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
-    with TASK_RUNTIME_SECONDS.labels("get_event_updates").time():
-        asyncio.run(
-            acheck_artists_for_event_updates(
-                artist_spotify_ids=artist_spotify_ids,
-                compile_notifications=compile_notifications,
-                send_notifications=send_notifications,
-                force_refetch=force_refetch,
-                concurrent_execution=concurrent_execution,
-                concurrency_limit=concurrency_limit,
-            )
+    asyncio.run(
+        acheck_artists_for_event_updates(
+            artist_spotify_ids=artist_spotify_ids,
+            compile_notifications=compile_notifications,
+            send_notifications=send_notifications,
+            force_refetch=force_refetch,
+            concurrent_execution=concurrent_execution,
+            concurrency_limit=concurrency_limit,
         )
+    )
 
 
 # def _get_users_with_event_updates() -> QuerySet[SpotifyUser]:
@@ -582,13 +578,12 @@ def track_artists_events(
     concurrent_execution: bool = True,
     concurrency_limit: int | None = None,
 ) -> None:
-    with TASK_RUNTIME_SECONDS.labels("track_artists_events").time():
-        asyncio.run(
-            atrack_artists_events(
-                artists_data,
-                spotify_user_id,
-                force_reevaluate=force_reevaluate,
-                concurrent_execution=concurrent_execution,
-                concurrency_limit=concurrency_limit,
-            )
+    asyncio.run(
+        atrack_artists_events(
+            artists_data,
+            spotify_user_id,
+            force_reevaluate=force_reevaluate,
+            concurrent_execution=concurrent_execution,
+            concurrency_limit=concurrency_limit,
         )
+    )

@@ -46,12 +46,10 @@ class SpotifyAuthMiddleware:
             logger.debug(f"Request host: {request.host.name}. Skipping {self.__class__.__name__} middleware")
             return await self.get_response(request)
 
-        if request.path_info != "/metrics":
-            logger.debug(f"Request path: {request.path_info}")
+        logger.debug(f"Request path: {request.path_info}")
 
         if request.path_info in settings.AUTH_EXEMPT_PATHS:
-            if request.path_info != "/metrics":
-                logger.debug(f"Skipping {self.__class__.__name__} middleware")
+            logger.debug(f"Skipping {self.__class__.__name__} middleware")
             return await self.get_response(request)
 
         spotify_user_id = await sync_to_async(request.session.get)("spotify_user_id")
