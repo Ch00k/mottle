@@ -204,14 +204,41 @@ ROUTES: list[tuple[str, str, Callable[[httpx.Request, re.Match], Any]]] = [
 ]
 
 
+def followed_playlists_page(request: httpx.Request, total: int) -> dict[str, Any]:
+    """Answer with the page of `total` followed playlists the request's offset and limit ask for."""
+    offset = int(request.url.params["offset"])
+    limit = int(request.url.params["limit"])
+    playlist_ids = [f"playlist_{i}" for i in range(offset, min(offset + limit, total))]
+
+    return {
+        "href": f"{API_URL}/me/playlists",
+        "items": [simple_playlist(i) for i in playlist_ids],
+        "limit": limit,
+        "next": None,
+        "offset": offset,
+        "previous": None,
+        "total": total,
+    }
+
+
+def followed_playlists(total: int) -> list[tuple[str, str, Callable[[httpx.Request, re.Match], Any]]]:
+    return [("GET", r"/v1/me/playlists", lambda r, _: followed_playlists_page(r, total))]
+
+
 class SpotifyAPI:
     """Answers the Spotify Web API with objects named after the IDs asked for, and records the requests it gets.
 
-    A request `fails` picks is answered with a 404.
+    A request `fails` picks is answered with a 404, and the first of `routes` and the default ones that matches a
+    request answers it.
     """
 
-    def __init__(self, fails: Callable[[httpx.Request], bool] = lambda _: False) -> None:
+    def __init__(
+        self,
+        fails: Callable[[httpx.Request], bool] = lambda _: False,
+        routes: list[tuple[str, str, Callable[[httpx.Request, re.Match], Any]]] | None = None,
+    ) -> None:
         self.fails = fails
+        self.routes = (routes or []) + ROUTES
         self.requests: list[httpx.Request] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -220,7 +247,7 @@ class SpotifyAPI:
         if self.fails(request):
             return httpx.Response(404, json={"error": {"status": 404, "message": "Not found"}})
 
-        for method, path, answer in ROUTES:
+        for method, path, answer in self.routes:
             if request.method == method and (match := re.fullmatch(path, request.url.path)):
                 data = answer(request, match)
                 return httpx.Response(200) if data is None else httpx.Response(200, json=data)
@@ -424,6 +451,35 @@ class TestResults:
 
 
 @pytest.mark.asyncio
+class TestOffsetPaging:
+    async def test_pages_after_the_first_are_asked_for_together(self) -> None:
+        """Every page after the first is asked for by its offset, and the items are returned in order."""
+        api = SpotifyAPI(routes=followed_playlists(120))
+
+        playlists = await make_client(api).get_current_user_playlists()
+
+        assert [p.id for p in playlists] == [f"playlist_{i}" for i in range(120)]
+        offsets = [r.url.params["offset"] for r in api.requested("GET", r"/v1/me/playlists")]
+        assert sorted(offsets) == ["0", "100", "50"]
+
+    async def test_no_items(self) -> None:
+        """An empty first page is the only one asked for."""
+        api = SpotifyAPI(routes=followed_playlists(0))
+
+        playlists = await make_client(api).get_current_user_playlists()
+
+        assert playlists == []
+        assert len(api.requests) == 1
+
+    async def test_failing_later_page(self) -> None:
+        """A page after the first that Spotify refuses fails the call."""
+        api = SpotifyAPI(fails=lambda r: r.url.params.get("offset") == "50", routes=followed_playlists(120))
+
+        with pytest.raises(MottleException, match=r"^Failed to get items$"):
+            await make_client(api).get_current_user_playlists()
+
+
+@pytest.mark.asyncio
 class TestCreatePlaylistWithTracks:
     async def test_creates_playlist_and_adds_tracks(self, client: MottleSpotifyClient, api: SpotifyAPI) -> None:
         """The playlist is created, then the tracks are added to it in order, and the created playlist is returned."""
@@ -468,10 +524,7 @@ CALLS_AND_ERRORS: list[tuple[Callable[[MottleSpotifyClient], Awaitable[Any]], st
     (lambda c: c.get_current_user(), "Failed to get current user"),
     (lambda c: c.get_current_user_saved_tracks(), "Failed to get items"),
     (lambda c: c.remove_user_saved_tracks(["track_1"]), "Failed to remove saved tracks"),
-    (
-        lambda c: c.find_artists_and_playlists("query"),
-        "Failed to search for artists and playlists with query {query}",
-    ),
+    (lambda c: c.find_artists_and_playlists("query"), "Failed to search for artists and playlists with query query"),
     (lambda c: c.get_artists(["artist_1"]), "Failed to get artists"),
     (lambda c: c.get_artist("artist_1"), "Failed to get artist artist_1"),
     (lambda c: c.get_artist_albums("artist_1"), "Failed to get items"),
