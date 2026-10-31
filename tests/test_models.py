@@ -1130,6 +1130,27 @@ class TestPlaylistUpdate(TestCase):
 
         assert not update.is_auto_acceptable
 
+    def test_is_auto_acceptable_per_watched_artist(self) -> None:
+        """An artist update follows the config of its own artist when the playlist watches several artists.
+
+        Matching the config on the watched playlist alone matched every artist config of the playlist, and with more
+        than one it raised MultipleObjectsReturned.
+        """
+        spotify_user = SpotifyUser.objects.create(spotify_id="user_two_artists")
+        watching = Playlist.objects.create(spotify_id="watching_two_artists", spotify_user=spotify_user)
+        updates = {}
+        for spotify_id, auto_accept_updates in (("artist_auto", True), ("artist_manual", False)):
+            artist = Artist.objects.create(spotify_id=spotify_id)
+            PlaylistWatchConfig.objects.create(
+                watching_playlist=watching, watched_artist=artist, auto_accept_updates=auto_accept_updates
+            )
+            updates[spotify_id] = PlaylistUpdate.objects.create(
+                target_playlist=watching, source_artist=artist, albums_added=[f"{spotify_id}_album"]
+            )
+
+        assert updates["artist_auto"].is_auto_acceptable
+        assert not updates["artist_manual"].is_auto_acceptable
+
     async def test_accept_marks_as_accepted(self) -> None:
         """Test that accept() marks update status as accepted."""
         spotify_user = await SpotifyUser.objects.acreate(

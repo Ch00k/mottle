@@ -135,7 +135,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     try:
         spotify_auth_request = await SpotifyAuthRequest.objects.aget(state=state)
         logger.debug(spotify_auth_request)
-    except SpotifyAuth.DoesNotExist:
+    except SpotifyAuthRequest.DoesNotExist:
         logger.debug(f"SpotifyAuthRequest with state {state} does not exist")
         return HttpResponseBadRequest("Invalid request")
 
@@ -408,7 +408,7 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
             track_ids = [track.id for track in tracks]
             watched_artist_tracks = await request.spotify_client.get_tracks(track_ids)
             tracks = [TrackData.from_tekore_model(track) for track in watched_artist_tracks]
-            updates.append((update.id, watched_artist_data, watched_artist_tracks))
+            updates.append((update.id, watched_artist_data, tracks))
         else:
             # XXX: This should never happen
             logger.error(f"PlaylistUpdate {update.id} has no source_playlist or source_artist")

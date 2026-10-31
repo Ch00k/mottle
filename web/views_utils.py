@@ -290,7 +290,7 @@ async def compile_playlist_updates_email(
                 }
 
                 tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
-                for track_data in tracks_data[: num_to_show - 1]:
+                for track_data in tracks_data[:num_to_show]:
                     artists_str = ", ".join([a.name for a in track_data.artists])
                     update_info["tracks"].append(
                         {
@@ -310,7 +310,7 @@ async def compile_playlist_updates_email(
                 }
 
                 albums_data = await spotify_client.get_albums(update["update"].albums_added)
-                for album_data in albums_data[: num_to_show - 1]:
+                for album_data in albums_data[:num_to_show]:
                     update_info["albums"].append(
                         {
                             "name": album_data.name,
