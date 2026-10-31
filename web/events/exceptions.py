@@ -2,10 +2,6 @@ class HTTPClientException(Exception):
     pass
 
 
-class RetriesExhaustedException(Exception):
-    pass
-
-
 class MusicBrainzException(Exception):
     pass
 

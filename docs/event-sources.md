@@ -45,7 +45,7 @@ decides it, as measured in October 2026:
   or without impersonation.
 
 So the Bandsintown client impersonates Chrome, sends each request on a new connection through the rotating proxy, and
-retries a 403 (`throttle_response_code`) up to 20 times, each from a different IP. With one attempt in five or six
+makes up to 20 attempts without waiting between them, each from a different IP. With one attempt in five or six
 getting through, all twenty fail about one time in fifty; the page is requested again on the next day's run.
 Cookies Cloudflare sets make no difference.
 
@@ -58,6 +58,10 @@ The clients for all three sites (`web/events/http.py`) send their requests with 
 `CurlCffiTransport`, and through `PROXY_URL` when it is set; an empty value means no proxy. The Songkick and
 Bandsintown clients impersonate Chrome, sending its User-Agent and Accept headers. The MusicBrainz client sends
 mottle's own User-Agent, which MusicBrainz's API asks for.
+
+Each client retries, with stamina, a request that fails to connect and any error response but a 404. The MusicBrainz
+and Songkick clients wait before each retry, starting at about a second and doubling up to ten, as their errors are
+mostly rate limits. The Bandsintown client retries at once, as only a new exit IP helps there.
 
 Every request opens a new connection. The proxy assigns an exit IP per connection: a client that kept its
 connections open sent all its retries from one IP, which made retrying after a refusal useless.

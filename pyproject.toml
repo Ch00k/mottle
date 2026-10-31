@@ -28,6 +28,7 @@ dependencies = [
   "tekore==6.2.0",
   "curl-cffi==0.17.0",
   "httpx2==2.16.0",
+  "stamina==26.1.0",
 ]
 
 [dependency-groups]

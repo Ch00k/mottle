@@ -173,18 +173,44 @@ async def test_retrying_client_retries_refusals_on_new_connections(
 ) -> None:
     """Refused requests are retried, each on a new connection, until one is let through.
 
-    Each refusal is logged as a warning naming the refused URL.
+    Each retry is logged as a warning naming the refusal and the refused URL.
     """
-    client = AsyncRetryingClient(
-        name="site", throttle_response_code=403, base_url=site.url, transport=CurlCffiTransport()
-    )
+    client = AsyncRetryingClient(wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport())
 
-    with caplog.at_level(logging.WARNING, logger="web.events.http"):
+    with caplog.at_level(logging.WARNING, logger="stamina"):
         response = await client.get("/refused-twice")
 
     assert response.text == "Deep Purple"
-    assert client.requests_throttled == 2
     assert len(set(site.client_ports)) == 3
-    assert [r.getMessage() for r in caplog.records] == [
-        f"Received 403 response while requesting {site.url}/refused-twice. Retrying...",
-    ] * 2
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"] * 2
+    for record in caplog.records:
+        caused_by = getattr(record, "stamina.caused_by")
+        assert "403 Forbidden" in caused_by
+        assert f"{site.url}/refused-twice" in caused_by
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_raises_last_error_when_attempts_run_out(
+    site: Site, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A request refused on every attempt raises the last refusal once the attempts run out."""
+    client = AsyncRetryingClient(
+        attempts=2, wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport()
+    )
+
+    with caplog.at_level(logging.WARNING, logger="stamina"), pytest.raises(httpx2.HTTPStatusError, match="403"):
+        await client.get("/refused-twice")
+
+    assert len(site.client_ports) == 2
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"]
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_returns_not_found_without_retrying(site: Site) -> None:
+    """A 404 is returned at once, since asking again will not change it."""
+    client = AsyncRetryingClient(wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport())
+
+    response = await client.get("/missing")
+
+    assert response.status_code == 404
+    assert len(site.client_ports) == 1
