@@ -56,6 +56,64 @@ class TestSpotifyEntityData:
             _ = entity == 123
 
 
+def make_entity(cls: type[SpotifyEntityData], entity_id: str, name: str) -> SpotifyEntityData:
+    """Return an entity of the class with the ID and name, and placeholders for the fields the class requires."""
+    if cls is TrackData:
+        return TrackData(id=entity_id, name=name, url="url", duration="1:00", album=None)
+
+    if cls is PlaylistData:
+        return PlaylistData(
+            id=entity_id,
+            name=name,
+            url="url",
+            image_url_small=None,
+            image_url_large=None,
+            owner_id="owner",
+            owner_name=None,
+            owner_url=None,
+            snapshot_id="snapshot",
+            num_tracks=0,
+        )
+
+    return cls(id=entity_id, name=name, url="url")
+
+
+@pytest.mark.parametrize("cls", [AlbumData, ArtistData, TrackData, PlaylistData])
+class TestEntityDataSubclasses:
+    """Each kind of entity compares, hashes and sorts as SpotifyEntityData does, whatever its other fields hold."""
+
+    def test_equality_and_hash_based_on_id(self, cls: type[SpotifyEntityData]) -> None:
+        """Entities with the same ID are equal and hash alike, and ones with different IDs are not equal."""
+        entity = make_entity(cls, "123", "Name")
+        same_id = make_entity(cls, "123", "Other Name")
+        other_id = make_entity(cls, "456", "Name")
+
+        assert entity == same_id
+        assert hash(entity) == hash(same_id)
+        assert entity != other_id
+        assert {entity, same_id, other_id} == {entity, other_id}
+
+    def test_ordering_by_name_case_insensitive(self, cls: type[SpotifyEntityData]) -> None:
+        """Entities sort by name, ignoring case."""
+        zebra = make_entity(cls, "1", "Zebra")
+        aardvark = make_entity(cls, "2", "aardvark")
+        monkey = make_entity(cls, "3", "Monkey")
+
+        assert aardvark < monkey < zebra
+        assert zebra > monkey >= aardvark
+        assert sorted([zebra, aardvark, monkey]) == [aardvark, monkey, zebra]
+
+    def test_comparison_with_wrong_type_raises_error(self, cls: type[SpotifyEntityData]) -> None:
+        """Comparing an entity with something that is not one raises a TypeError."""
+        entity = make_entity(cls, "123", "Test")
+
+        with pytest.raises(TypeError, match="Cannot compare"):
+            _ = entity < "not an entity"
+
+        with pytest.raises(TypeError, match="Cannot compare"):
+            _ = entity == 123
+
+
 class TestAlbumData:
     def test_from_tekore_model(self) -> None:
         """Test creating AlbumData from a Tekore SimpleAlbum."""
