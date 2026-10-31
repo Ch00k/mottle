@@ -1,8 +1,12 @@
+import asyncio
 import datetime
 import json
+import threading
 import uuid
+from unittest.mock import patch
 
 import pytest
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db import IntegrityError
@@ -24,12 +28,14 @@ from web.models import (
     PlaylistUpdate,
     PlaylistWatchConfig,
     SpotifyAuth,
+    SpotifyAuthRequest,
     SpotifyUser,
     User,
     decrypt_value,
     encrypt_value,
     generate_playlist_update_hash,
 )
+from web.utils import MottleException
 
 pytestmark = pytest.mark.django_db
 
@@ -182,6 +188,174 @@ class TestSpotifyAuth(TestCase):
         assert auth.access_token == "new_access_token"
         assert auth.access_token != original_access
         assert auth.refresh_token == "new_refresh_token"
+
+    async def test_maybe_refresh_keeps_token_far_from_expiry(self) -> None:
+        """A token that expires in an hour is left as it is, without asking Spotify for a new one."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(hours=1)
+        )
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh") as refresh:
+            await auth.maybe_refresh()
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "access_token"
+        assert auth.refresh_token == "refresh_token"
+        refresh.assert_not_called()
+
+    async def test_maybe_refresh_replaces_expiring_token(self) -> None:
+        """A token about to expire is refreshed with its refresh token, and the token Spotify issues is saved."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=30)
+        )
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", return_value=refreshed_token()) as refresh:
+            await auth.maybe_refresh()
+
+        refresh.assert_called_once()
+        sent_token = refresh.call_args.args[0]
+        assert sent_token.access_token == "access_token"
+        assert sent_token.refresh_token == "refresh_token"
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "refreshed_access_token"
+        assert auth.refresh_token == "refreshed_refresh_token"
+        assert auth.expires_in > 3500
+
+    async def test_maybe_refresh_failure_keeps_token(self) -> None:
+        """A refresh Spotify refuses raises MottleException and leaves the saved token as it was."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(hours=1)
+        )
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=RuntimeError("invalid_grant")),
+            pytest.raises(MottleException, match="Failed to refresh token"),
+        ):
+            await auth.maybe_refresh()
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "access_token"
+        assert auth.refresh_token == "refresh_token"
+
+    async def test_maybe_refresh_leaves_event_loop_running(self) -> None:
+        """The event loop and the database thread go on running other work while Spotify answers a refresh.
+
+        The stand-in for Spotify's answer waits until a task on the event loop signals it. A refresh sent on the event
+        loop would keep that task from running until the wait timed out. It also records the thread it runs in, which
+        must not be asgiref's shared sync thread, where the ORM's queries run.
+        """
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=30)
+        )
+        event_loop_ran = threading.Event()
+        refresh_thread_ids = []
+
+        def refresh(_: Token) -> Token:
+            refresh_thread_ids.append(threading.get_ident())
+            if not event_loop_ran.wait(timeout=5):
+                raise TimeoutError("The event loop did not run while the token was refreshed")
+            return refreshed_token()
+
+        async def signal_event_loop_ran() -> None:
+            event_loop_ran.set()
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=refresh):
+            await asyncio.gather(auth.maybe_refresh(), signal_event_loop_ran())
+
+        database_thread_id = await sync_to_async(threading.get_ident)()
+        await auth.arefresh_from_db()
+        assert auth.access_token == "refreshed_access_token"
+        assert database_thread_id not in refresh_thread_ids
+
+
+async def create_spotify_auth(expires_at: datetime.datetime) -> SpotifyAuth:
+    spotify_user = await SpotifyUser.objects.acreate(spotify_id="user_refresh", display_name="Refresh User")
+    return await SpotifyAuth.objects.acreate(
+        spotify_user=spotify_user,
+        access_token="access_token",
+        refresh_token="refresh_token",
+        expires_at=expires_at,
+        token_scope=["user-read-private"],
+    )
+
+
+def refreshed_token() -> Token:
+    return Token(
+        token_info={
+            "token_type": "Bearer",
+            "access_token": "refreshed_access_token",
+            "refresh_token": "refreshed_refresh_token",
+            "expires_in": 3600,
+        },
+        uses_pkce=False,
+    )
+
+
+@pytest.mark.asyncio
+class TestSpotifyAuthRequest(TestCase):
+    async def test_request_token_exchanges_code(self) -> None:
+        """The authorisation code from Spotify's callback is exchanged for the user's token."""
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+
+        with patch.object(
+            settings.SPOTIFY_CREDEINTIALS, "request_user_token", return_value=refreshed_token()
+        ) as request_user_token:
+            token = await auth_request.request_token("code_1")
+
+        assert token.access_token == "refreshed_access_token"
+        request_user_token.assert_called_once_with("code_1")
+
+    async def test_request_token_leaves_event_loop_running(self) -> None:
+        """The event loop and the database thread go on running other work while Spotify answers the code exchange.
+
+        The stand-in for Spotify's answer waits until a task on the event loop signals it. An exchange sent on the event
+        loop would keep that task from running until the wait timed out. It also records the thread it runs in, which
+        must not be asgiref's shared sync thread, where the ORM's queries run.
+        """
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+        event_loop_ran = threading.Event()
+        exchange_thread_ids = []
+
+        def request_user_token(_: str) -> Token:
+            exchange_thread_ids.append(threading.get_ident())
+            if not event_loop_ran.wait(timeout=5):
+                raise TimeoutError("The event loop did not run while the code was exchanged")
+            return refreshed_token()
+
+        async def signal_event_loop_ran() -> None:
+            event_loop_ran.set()
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "request_user_token", side_effect=request_user_token):
+            token, _ = await asyncio.gather(auth_request.request_token("code_1"), signal_event_loop_ran())
+
+        database_thread_id = await sync_to_async(threading.get_ident)()
+        assert token.access_token == "refreshed_access_token"
+        assert database_thread_id not in exchange_thread_ids
+
+    async def test_request_token_failure(self) -> None:
+        """A code Spotify refuses raises MottleException."""
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+
+        with (
+            patch.object(
+                settings.SPOTIFY_CREDEINTIALS, "request_user_token", side_effect=RuntimeError("invalid_grant")
+            ),
+            pytest.raises(MottleException, match="Failed to authenticate"),
+        ):
+            await auth_request.request_token("code_1")
+
+    async def test_request_token_without_state(self) -> None:
+        """A request with no state is refused before Spotify is asked for a token."""
+        auth_request = SpotifyAuthRequest(state=None)
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "request_user_token") as request_user_token,
+            pytest.raises(MottleException, match="state is None"),
+        ):
+            await auth_request.request_token("code_1")
+
+        request_user_token.assert_not_called()
 
 
 @pytest.mark.asyncio
