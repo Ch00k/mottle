@@ -892,8 +892,9 @@ class TestArtistEvents(SignedInTestCase):
 
 @pytest.mark.asyncio
 class TestEventDetails(SignedInTestCase):
-    async def test_names_the_artist(self) -> None:
-        """The event modal names the event's artist."""
+    """The event modal names the artist, says when and where the event is, and links to its tickets or stream."""
+
+    async def get_modal(self, **event_fields: object) -> lh.HtmlElement:
         artist = await Artist.objects.acreate(spotify_id="artist1")
         event_artist = await EventArtist.objects.acreate(
             artist=artist, songkick_name_match_accuracy=0, bandsintown_name_match_accuracy=0
@@ -902,17 +903,59 @@ class TestEventDetails(SignedInTestCase):
             artist=event_artist,
             source="songkick",
             source_url="https://www.songkick.com/concerts/1",
-            type=EventType.concert,
             date=date(2100, 1, 1),
-            venue="The Venue",
+            **event_fields,
         )
         self.spotify.get_artist = AsyncMock(return_value=make_artist("artist1", "The Artist"))
 
         response = await self.async_client.get(f"/event/{event.id}/")
 
         assert response.status_code == 200
-        assert "<h2>The Artist</h2>" in response.content.decode()
         self.spotify.get_artist.assert_awaited_once_with("artist1")
+        return lh.fromstring(response.content)
+
+    async def test_concert(self) -> None:
+        """A concert's modal gives its venue and place, a link to each ticket seller, and a map at the venue."""
+        modal = await self.get_modal(
+            type=EventType.concert,
+            venue="The Venue",
+            city="Berlin",
+            country="Germany",
+            geolocation=Point(13.4, 52.5, srid=settings.GEODJANGO_SRID),
+            tickets_urls=["https://s.example/a", "https://s.example/b"],
+        )
+
+        assert modal.xpath("//h3[@class='modal-title']/text()") == ["The Artist"]
+        text = " ".join(modal.text_content().split())
+        assert "Jan. 1, 2100 The Venue Berlin, Germany" in text
+        links = modal.xpath("//a[@target='_blank']")
+        assert [a.get("href") for a in links] == ["https://s.example/a", "https://s.example/b"]
+        assert [" ".join(a.text_content().split()) for a in links] == ["Tickets Buy tickets 1", "Tickets Buy tickets 2"]
+        assert modal.xpath("//input[@id='latitude']/@value") == ["52.5"]
+        assert modal.xpath("//input[@id='longitude']/@value") == ["13.4"]
+        assert modal.xpath("//div[@id='map']")
+
+    async def test_concert_without_tickets_or_place(self) -> None:
+        """A concert with no tickets yet says so, and one without a venue, place or location shows none of them."""
+        modal = await self.get_modal(type=EventType.concert)
+
+        text = " ".join(modal.text_content().split())
+        assert "Not available yet" in text
+        assert "None" not in text
+        assert not modal.xpath("//a[@target='_blank']")
+        assert not modal.xpath("//div[@id='map']")
+
+    async def test_live_stream(self) -> None:
+        """A live stream's modal links to the stream, with no venue, place or map."""
+        modal = await self.get_modal(type=EventType.live_stream, stream_urls=["https://s.example/stream"])
+
+        text = " ".join(modal.text_content().split())
+        assert "Jan. 1, 2100 Live stream" in text
+        assert "None" not in text
+        links = modal.xpath("//a[@target='_blank']")
+        assert [a.get("href") for a in links] == ["https://s.example/stream"]
+        assert " ".join(links[0].text_content().split()) == "Live stream Watch"
+        assert not modal.xpath("//div[@id='map']")
 
 
 @pytest.mark.asyncio

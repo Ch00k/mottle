@@ -1,41 +1,76 @@
 {% load static %}
-{% block maps_resources %}
-    {% include "web/parts/leaflet.html" %}
-{% endblock %}
-<div id="modal" _="on closeModal remove me">
-    <div class="modal-underlay" _="on click trigger closeModal"></div>
-    <div class="modal-content">
-        <h2>{{ artist }}</h2>
-        {{ event.date }} in {{ event.venue }}, {{ event.city }}, {{ event.country }}
-        <div>
-            {% if event.type == "live_stream" %}
-                <b>Live stream</b>
-                {% for u in event.stream_urls %}
-                    <a href="{{ u }}">{% include "web/icons/video.html" with title="Live stream" %}</a>
-                {% empty %}
-                    not available yet
-                {% endfor %}
-            {% else %}
-                <b>Tickets</b>
-                {% for u in event.tickets_urls %}
-                    <a href="{{ u }}">{% include "web/icons/ticket.html" %}</a>
-                {% empty %}
-                    not available yet
-                {% endfor %}
-            {% endif %}
+<div id="modal" _="on closeModal remove me" class="modal-overlay">
+    <div class="modal-container">
+        <!-- Background overlay -->
+        <div class="modal-backdrop" _="on click trigger closeModal"></div>
+        <!-- Modal panel -->
+        <div class="modal-panel-sm">
+            <!-- Header -->
+            <div class="modal-header">
+                <div class="modal-header-layout">
+                    <h3 class="modal-title">{{ artist }}</h3>
+                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
+                </div>
+            </div>
+            <!-- Content -->
+            <div class="modal-content-spaced">
+                <!-- When and where -->
+                <div class="form-section-background">
+                    <div class="text-lg font-medium text-gray-900">{{ event.date }}</div>
+                    {% if event.type == "live_stream" %}
+                        <div class="text-sm text-gray-600">Live stream</div>
+                    {% else %}
+                        {% if event.venue %}<div class="text-gray-900">{{ event.venue }}</div>{% endif %}
+                        {% if event.city or event.country %}
+                            <div class="text-sm text-gray-600">
+                                {{ event.city|default_if_none:"" }}{% if event.city and event.country %},{% endif %}
+                                {{ event.country|default_if_none:"" }}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <!-- Links -->
+                <div class="form-section-background">
+                    {% if event.type == "live_stream" %}
+                        <h4 class="modal-section-title">Live stream</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for u in event.stream_urls %}
+                                <a href="{{ u }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-md transition-colors">
+                                    {% include "web/icons/video.html" with title="Live stream" %}
+                                    Watch{% if event.stream_urls|length > 1 %} {{ forloop.counter }}{% endif %}
+                                </a>
+                            {% empty %}
+                                <p class="text-sm text-gray-600">Not available yet</p>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <h4 class="modal-section-title">Tickets</h4>
+                        <div class="flex flex-wrap gap-2">
+                            {% for u in event.tickets_urls %}
+                                <a href="{{ u }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-md transition-colors">
+                                    {% include "web/icons/ticket.html" %}
+                                    Buy tickets{% if event.tickets_urls|length > 1 %} {{ forloop.counter }}{% endif %}
+                                </a>
+                            {% empty %}
+                                <p class="text-sm text-gray-600">Not available yet</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                {% if event.type != "live_stream" and event.geolocation %}
+                    <!-- Map -->
+                    <div id="map" class="w-full h-64 rounded-lg"></div>
+                    <input type="hidden" id="latitude" value="{{ event.geolocation.y }}">
+                    <input type="hidden" id="longitude" value="{{ event.geolocation.x }}">
+                    <script defer src="{% static 'web/map_event_location.js' %}"></script>
+                {% endif %}
+            </div>
         </div>
-        <br>
-        {% if event.type != "live_stream" %}
-            <div id="map"></div>
-            <input type="hidden"
-                   id="latitude"
-                   name="latitude"
-                   value="{{ event.geolocation.y | default_if_none:'' }}">
-            <input type="hidden"
-                   id="longitude"
-                   name="longitude"
-                   value="{{ event.geolocation.x | default_if_none:'' }}">
-            <script defer src="{% static 'web/map_event_location.js' %}"></script>
-        {% endif %}
     </div>
 </div>
