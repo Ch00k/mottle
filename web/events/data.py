@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import urljoin
 
 from django.conf import settings
 from sentry_sdk import capture_exception, capture_message
@@ -13,6 +14,7 @@ from urlshortener.models import ShortURL
 from .constants import (
     BANDSINTOWN_BASE_URL,
     BANDSINTOWN_WINDOW_DATA_XPATH,
+    SONGKICK_ARTIST_CALENDAR_URL_REGEX,
     SONGKICK_BASE_URL,
     SONGKICK_EVENT_URL_REGEX,
     SONGKICK_EVENTS_XPATH,
@@ -226,6 +228,7 @@ class EventSourceArtist:
     songkick_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     bandsintown_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     events: list[Event] = field(default_factory=list)
+    failed_sources: list[EventDataSource] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -344,18 +347,20 @@ class EventSourceArtist:
     async def fetch_events(self) -> None:
         events = {e.url: e for e in self.events}
 
-        # A source that fails leaves the events read from the other one in place
+        # A source that fails, including on markup it cannot parse, leaves the events read from the other one in place
         if self.songkick_url is not None:
             try:
                 await self.fetch_songkick_events(self.songkick_url, events)
-            except SongkickException as e:
+            except Exception as e:
                 logger.exception(e)
+                self.failed_sources.append(EventDataSource.songkick)
 
         if self.bandsintown_url is not None:
             try:
                 await self.fetch_bandsintown_events(self.bandsintown_url, events)
-            except BandsintownException as e:
+            except Exception as e:
                 logger.exception(e)
+                self.failed_sources.append(EventDataSource.bandsintown)
 
         self.events = list(events.values())
 
@@ -367,7 +372,13 @@ class EventSourceArtist:
         except HTTPClientException as exc:
             raise SongkickException(f"Failed to fetch events from Songkick: {exc}") from exc
 
-        # Songkick moves an artist's calendar when it merges or renames the artist
+        # Songkick moves an artist's calendar when it merges or renames the artist, but a redirect to any other page
+        # would point the artist at a page with no events for good
+        if not SONGKICK_ARTIST_CALENDAR_URL_REGEX.match(str(calendar_url)):
+            raise SongkickException(
+                f"Songkick redirected {songkick_url} to {calendar_url}, which is not an artist calendar"
+            )
+
         self.songkick_url = str(calendar_url)
 
         event_jsons = [json.loads(event) for event in events_xpath]
@@ -544,7 +555,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
                 if r[2] is not None:
                     result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
     else:
-        urls = [f"{SONGKICK_BASE_URL}/{u}" for u in urls]
+        urls = [urljoin(SONGKICK_BASE_URL, u) for u in urls]
         result_urls = [(await ShortURL.shorten(u)).full_short_url for u in urls]
 
     if event_type == EventType.live_stream:
