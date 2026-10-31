@@ -4,7 +4,6 @@ import uuid
 from base64 import b64decode, b64encode
 from io import BytesIO
 
-import tiktoken
 from django.conf import settings
 from openai import OpenAI
 from PIL import Image
@@ -16,16 +15,6 @@ logger = logging.getLogger(__name__)
 
 GPT_MODEL = "gpt-4o"
 IMAGE_MODEL = "dall-e-3"
-TIKTOKEN_ENCODING = tiktoken.encoding_for_model(GPT_MODEL)
-TOKENS_PER_MESSAGE = 3
-TOKENS_PER_REPLY = 3
-
-
-# https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken#6-counting-tokens-for-chat-completions-api-calls
-def message_to_num_tokens(message: str) -> int:
-    num_tokens = len(TIKTOKEN_ENCODING.encode(message))
-    num_tokens += TOKENS_PER_MESSAGE + TOKENS_PER_REPLY
-    return num_tokens
 
 
 def generate_image_prompt(playlist_title: str) -> str:
@@ -37,10 +26,7 @@ def generate_image_prompt(playlist_title: str) -> str:
         "In your output include only the prompt itself."
     )
 
-    message_size = len(message)
-    message_tokens = message_to_num_tokens(message)
-
-    logger.debug(f"Input message size: {message_size} chars, {message_tokens} tokens")
+    logger.debug(f"Input message size: {len(message)} chars")
 
     completion = client.chat.completions.create(model=GPT_MODEL, messages=[{"role": "user", "content": message}], n=1)
 
@@ -48,10 +34,7 @@ def generate_image_prompt(playlist_title: str) -> str:
     if not result:
         raise ValueError("Failed to generate prompt")
 
-    response_size = len(result)
-    response_tokens = message_to_num_tokens(result)
-
-    logger.debug(f"Output message size: {response_size} chars, {response_tokens} tokens")
+    logger.debug(f"Output message size: {len(result)} chars, token usage: {completion.usage}")
 
     return result
 
