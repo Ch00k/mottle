@@ -10,7 +10,6 @@ import pytest
 from PIL import Image
 
 from web.images import (
-    calculate_base64_size,
     convert_image_to_jpg,
     create_cover_image,
     get_openai_client,
@@ -86,14 +85,6 @@ def test_resize_image() -> None:
     image = Image.open(BytesIO(resized))
     assert image.format == "PNG"
     assert image.size == (640, 640)
-
-
-@pytest.mark.parametrize("length", range(10))
-def test_calculate_base64_size(length: int) -> None:
-    """The size is the length of the data once base64 encoded, padding included."""
-    data = b"x" * length
-
-    assert calculate_base64_size(data) == len(b64encode(data))
 
 
 def test_convert_image_to_jpg_keeps_default_quality_under_limit() -> None:
