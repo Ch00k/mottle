@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from typing import TYPE_CHECKING, Any
@@ -451,6 +452,26 @@ class TestResults:
 
 
 @pytest.mark.asyncio
+class TestChunking:
+    async def test_concurrent_calls_keep_their_own_chunking(self, client: MottleSpotifyClient, api: SpotifyAPI) -> None:
+        """A call that turns tekore's chunking off leaves it on for a call running at the same time.
+
+        Artists are split into requests of 50 IDs by the client, with tekore's chunking off. Albums rely on tekore to
+        split each request into ones of at most 20 IDs, which Spotify requires. Run together on one client, each keeps
+        its own setting.
+        """
+        artist_ids = [f"artist_{i}" for i in range(60)]
+        album_ids = [f"album_{i}" for i in range(45)]
+
+        artists, albums = await asyncio.gather(client.get_artists(artist_ids), client.get_albums(album_ids))
+
+        assert [a.id for a in artists] == artist_ids
+        assert [a.id for a in albums] == album_ids
+        assert sorted(len(ids_param(r)) for r in api.requested("GET", r"/v1/artists")) == [10, 50]
+        assert sorted(len(ids_param(r)) for r in api.requested("GET", r"/v1/albums")) == [5, 20, 20]
+
+
+@pytest.mark.asyncio
 class TestOffsetPaging:
     async def test_pages_after_the_first_are_asked_for_together(self) -> None:
         """Every page after the first is asked for by its offset, and the items are returned in order."""
@@ -545,7 +566,7 @@ CALLS_AND_ERRORS: list[tuple[Callable[[MottleSpotifyClient], Awaitable[Any]], st
     (lambda c: c.create_playlist("user_1", "new_playlist"), "Failed to create playlist"),
     (lambda c: c.upload_playlist_cover_image("playlist_1", "aW1hZ2U="), "Failed to upload cover image to playlist"),
     (lambda c: c.get_current_user_playlists(), "Failed to get items"),
-    (lambda c: c.get_current_user_followed_artists(), "Failed to get items"),
+    (lambda c: c.get_current_user_followed_artists(), "Failed to get followed artists"),
     (lambda c: c.get_playlist("playlist_1"), "Failed to get playlist playlist_1"),
     (
         lambda c: c.change_playlist_details("playlist_1", name="Renamed"),

@@ -155,7 +155,7 @@ class MottleSpotifyClient:
         return await get_all_offset_paging_items(self.spotify_client.followed_playlists)
 
     async def get_current_user_followed_artists(self) -> list[FullArtist]:
-        with raising_mottle_exception("Failed to get items"):
+        with raising_mottle_exception("Failed to get followed artists"):
             first_page = await self.spotify_client.followed_artists()
             # tekore types all_items as a sync generator; an async client returns an async one
             return [a async for a in self.spotify_client.all_items(first_page)]  # ty: ignore[not-iterable]
