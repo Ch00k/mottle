@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx2
 import stamina
@@ -157,52 +157,56 @@ async_bandsintown_client = AsyncRetryingClient(
 )
 
 
-async def asend_get_request(
+async def send_get_request(
     client: AsyncRetryingClient,
     url: str,
     params: dict[str, Any] | None = None,
-    parse_json: bool = False,
-    xpath: str | None = None,
-    redirect_url: bool = False,
-    raise_for_lte_300: bool = True,
     follow_redirects: bool = False,
-) -> Any:  # TODO
-    ret_json = None
-    ret_xpath = None
-    ret_redirect_url = None
-    ret_url = None
+    accept_redirect: bool = False,
+) -> httpx2.Response:
+    """Return the response to a GET request, raising HTTPClientException for an unsuccessful one.
 
+    A redirect counts as unsuccessful, unless `accept_redirect` is set.
+    """
     try:
         response = await client.get(url, params=params, follow_redirects=follow_redirects)
 
-        if raise_for_lte_300:
+        if not (response.is_success or (accept_redirect and response.is_redirect)):
             response.raise_for_status()
-        else:  # noqa: PLR5501
-            if response.is_error:
-                response.raise_for_status()
     except Exception as e:
         raise HTTPClientException(f"Failed to send GET request to {url}: {e}") from e
 
-    if parse_json:
-        try:
-            ret_json = response.json()
-        except Exception as e:
-            raise HTTPClientException(f"Failed to parse JSON data from {url}: {e}") from e
+    return response
 
-    if xpath:
-        try:
-            html = lh.fromstring(response.text)
-        except Exception as e:
-            raise HTTPClientException(f"Failed to parse HTML data from {url}: {e}") from e
 
-        try:
-            ret_xpath = html.xpath(xpath)
-        except Exception as e:
-            raise HTTPClientException(f"Failed to extract data from {url}: {e}") from e
+async def get_json(client: AsyncRetryingClient, url: str, params: dict[str, Any] | None = None) -> Any:
+    response = await send_get_request(client, url, params=params)
 
-    if redirect_url and response.has_redirect_location:
-        ret_redirect_url = response.headers["Location"]
+    try:
+        return response.json()
+    except Exception as e:
+        raise HTTPClientException(f"Failed to parse JSON data from {url}: {e}") from e
 
-    ret_url = response.url
 
-    return ret_json, ret_xpath, ret_redirect_url, ret_url
+async def get_xpath(
+    client: AsyncRetryingClient, url: str, xpath: str, follow_redirects: bool = False
+) -> tuple[list[Any], str]:
+    """Return what the XPath expression selects on the page at the URL, and the URL the page was read from."""
+    response = await send_get_request(client, url, follow_redirects=follow_redirects)
+
+    try:
+        html = lh.fromstring(response.text)
+    except Exception as e:
+        raise HTTPClientException(f"Failed to parse HTML data from {url}: {e}") from e
+
+    try:
+        # The expressions select nodes or strings, which come as a list
+        return cast("list[Any]", html.xpath(xpath)), str(response.url)
+    except Exception as e:
+        raise HTTPClientException(f"Failed to extract data from {url}: {e}") from e
+
+
+async def get_redirect_location(client: AsyncRetryingClient, url: str) -> str | None:
+    """Return the URL the URL redirects to, or None if it does not redirect."""
+    response = await send_get_request(client, url, accept_redirect=True)
+    return response.headers["Location"] if response.has_redirect_location else None
