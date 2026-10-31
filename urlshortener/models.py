@@ -47,11 +47,8 @@ def uuid_to_hash(uuid_obj: uuid.UUID, length: int = HASH_LENGTH) -> str:
 
     logger.debug(f"Converting UUID {uuid_obj} to hash")
 
-    # This is why str() is used:
-    # hash(uuid.UUID('00000000-0000-0000-0000-000000000001')) -> 1
-    # hash(str(uuid.UUID('00000000-0000-0000-0000-000000000001'))) -> -8140488190291822392
-
-    hash_value = abs(hash(str(uuid_obj)))
+    # The UUID's own integer, as opposed to hash(), which Python salts differently in every process
+    hash_value = uuid_obj.int
     result: list[str] = []
 
     while hash_value > 0 and len(result) < length:
