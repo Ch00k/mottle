@@ -308,8 +308,8 @@ async def acheck_artists_for_event_updates(
                 continue
 
             if not user.event_notifications:
-                logger.warning("Playlist notifications disabled for user {spotify_user}")
-                return
+                logger.warning(f"Event notifications disabled for user {spotify_user}")
+                continue
 
             if spotify_user.email is None:
                 logger.warning(f"No email for user {spotify_user}")
@@ -332,7 +332,7 @@ async def acheck_artists_for_event_updates(
                 await EventUpdate.objects.filter(id__in=[u.id for u in all_updates]).aupdate(is_notified_of=True)
 
     elapsed_time = timeit.default_timer() - start_time
-    avg_per_artist = elapsed_time / num_artists
+    avg_per_artist = elapsed_time / num_artists if num_artists else 0
     logger.debug(
         f"Processed {num_artists} artists in {elapsed_time} seconds, "
         f"success: {success_count}, fail: {fail_count}, events: {num_events}, URLs: {num_urls}, "
@@ -563,7 +563,7 @@ async def atrack_artists_events(
                     no_bt += 1
 
     elapsed_time = timeit.default_timer() - start_time
-    avg_per_artist = elapsed_time / number_of_artists
+    avg_per_artist = elapsed_time / number_of_artists if number_of_artists else 0
     logger.debug(
         f"Processed {number_of_artists} artists in {elapsed_time} seconds, "
         f"success: {success_count}, fail: {fail_count}, no MB: {no_mb}, no SK: {no_sk}, no BT: {no_bt}, "
