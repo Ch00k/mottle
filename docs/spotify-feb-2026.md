@@ -63,11 +63,11 @@ Replaced with:
 
 #### 1. Batch endpoints removed (`GET /artists`, `GET /albums`, `GET /tracks`)
 
-All three are used in `web/utils.py` via `get_all_chunked` -> `perform_parallel_chunked_requests` -> `asyncio.gather`:
+All three are used in `MottleSpotifyClient` (`web/utils.py`) via `get_all_chunked` -> `perform_parallel_chunked_requests` -> `asyncio.gather`:
 
-- `get_artists()` (line 99): fetches artists in chunks of 50. Called in `views.py:1111` for the events page.
-- `get_albums()` (line 142): fetches albums in default chunk size. Called in `views_utils.py:312` for playlist update notifications.
-- `get_tracks()` (line 146): fetches tracks in chunks of 50. Called in `views_utils.py:292`, `views.py:402`, `views.py:409` for displaying track details in updates.
+- `get_artists()`: fetches artists in chunks of 50. Called in the `user_events` view for the events page.
+- `get_albums()`: fetches albums in default chunk size. Called in `compile_playlist_updates_email` (`web/views_utils.py`) for playlist update notifications.
+- `get_tracks()`: fetches tracks in chunks of 50. Called in `compile_playlist_updates_email` and the `playlist_updates` view for displaying track details in updates.
 
 **Migration**: Replace batch calls with concurrent individual calls (`artist()`, `album()`, `track()`) using `asyncio.gather` with a concurrency semaphore to respect rate limits (~15-20 concurrent requests). Call sites in views/views_utils do not need to change.
 
@@ -75,30 +75,30 @@ All three are used in `web/utils.py` via `get_all_chunked` -> `perform_parallel_
 
 #### 2. `POST /users/{user_id}/playlists` removed
 
-Used in `web/utils.py:197,227` via `playlist_create(user_id=current_user_id, ...)`.
+Used in `MottleSpotifyClient.create_playlist` and `create_playlist_with_tracks` via `playlist_create(user_id=current_user_id, ...)`.
 
 **Migration**: Use `POST /me/playlists` (drop the `user_id` parameter). Tekore likely supports this already or will in an update.
 
 #### 3. `DELETE /me/tracks` removed
 
-Used in `web/utils.py:62,70` via `saved_tracks_delete(track_ids)`.
+Used in `MottleSpotifyClient.remove_user_saved_tracks` and `delete_current_user_saved_tracks` via `saved_tracks_delete(track_ids)`.
 
 **Migration**: Use `DELETE /me/library` with Spotify URIs instead of track IDs.
 
 #### 4. Playlist `tracks` field renamed to `items`
 
-Used in `web/data.py:231` accessing `playlist.tracks.total`.
+Used in `PlaylistData.from_tekore_model` (`web/data.py`) and `PlaylistMetadata._fetch_additional_data` (`web/views_utils.py`), both accessing `tracks.total`.
 
 **Migration**: Update field access to use `items` instead of `tracks`. This likely depends on a Tekore library update to reflect the new response shape.
 
 #### 5. User `email` field removed
 
 Used in:
-- `web/models.py:150` (SpotifyUser model stores email)
-- `web/views.py:158,180` (reads email during auth, stores in session)
-- `web/tasks.py:171-185,317-331` (sends notification emails)
+- `SpotifyUser.email`, set by `Playlist.watch_playlist` and `Playlist.watch_artist` (`web/models.py`)
+- the `callback` view (reads email during auth, stores in session)
+- `check_user_playlists_for_updates` and `acheck_artists_for_event_updates` (`web/tasks.py`, send notification emails)
 
-The `user-read-email` scope (in `mottle/settings.py:266`) becomes useless.
+The `user-read-email` scope (in `SPOTIFY_TOKEN_SCOPE`, `mottle/settings.py`) becomes useless.
 
 **Migration**: No direct replacement. Mottle will need to collect email addresses directly from users (e.g., during signup or in settings) rather than pulling them from Spotify.
 
@@ -114,27 +114,27 @@ Mottle loads all Spotify data upfront with no pagination anywhere. Every view fe
 
 ### Display-only views (all data loaded just to render a list)
 
-| View | Location | What it loads |
+| View | View function | What it loads |
 |------|----------|---------------|
-| Saved tracks | `views.py:1132` | All user saved tracks |
-| Playlist items | `views.py:479` | All tracks in a playlist (up to 10,000) |
-| Discography modal | `views.py:258` | All albums/singles/compilations for an artist |
-| User playlists | `views.py:362` | All user playlists |
-| Playlist update details | `views.py:402,409` | New tracks for review |
-| Events page | `views.py:1111` | Artist details for events |
+| Saved tracks | `saved_tracks` | All user saved tracks |
+| Playlist items | `playlist_items` | All tracks in a playlist (up to 10,000) |
+| Discography modal | `albums` | All albums/singles/compilations for an artist |
+| User playlists | `playlists` | All user playlists |
+| Playlist update details | `playlist_updates` | New tracks for review |
+| Events page | `user_events` | Artist details for events |
 
 ### Compute/write views (need full dataset before they can act)
 
-| View | Location | What it loads | Why |
+| View | View function | What it loads | Why |
 |------|----------|---------------|-----|
-| Discography playlist creation | `views.py:302` | All tracks from selected albums | Spotify API needs all URIs to create playlist |
-| Playlist copying | `views.py:675` | All tracks in source playlist | Same reason |
-| Duplicate detection | `views.py:637` | All tracks in playlist | Must scan full playlist to find duplicates |
-| Playlist merging | `views.py:748` | All source playlist tracks | Needs all URIs |
+| Discography playlist creation | `albums` | All tracks from selected albums | Spotify API needs all URIs to create playlist |
+| Playlist copying | `copy_playlist` | All tracks in source playlist | Same reason |
+| Duplicate detection | `deduplicate_playlist` | All tracks in playlist | Must scan full playlist to find duplicates |
+| Playlist merging | `merge_playlist` | All source playlist tracks | Needs all URIs |
 
 ### Known inefficiency
 
-`views.py:407-409` double-fetches tracks: first as `SimpleTrack` via `get_tracks_in_albums()`, then extracts IDs and re-fetches as `FullTrack` via `get_tracks()`.
+The `playlist_updates` view double-fetches tracks: first as `SimpleTrack` via `get_tracks_in_albums()`, then extracts IDs and re-fetches as `FullTrack` via `get_tracks()`.
 
 ## Mitigation Strategy
 
@@ -163,7 +163,7 @@ After the deprecation, replace with concurrent individual calls (`artist()`, `al
 
 ## Tekore Dependency
 
-Mottle uses Tekore v6.1.0 as its Spotify client library. Several of these changes (batch endpoint removal, playlist field rename, library endpoint consolidation) will require Tekore to release a compatible update. Monitor https://github.com/felix-hilden/tekore for a release addressing the February 2026 API changes.
+Mottle uses Tekore 6.2 as its Spotify client library. 6.2 models the playlist `items` field alongside `tracks`, but still calls `POST /users/{user_id}/playlists`, the batch endpoints and the per-type library endpoints, so the rest of these changes still need a Tekore release that covers them. Monitor https://github.com/felix-hilden/tekore for one.
 
 ## Rate Limit Context
 

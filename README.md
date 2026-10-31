@@ -14,7 +14,10 @@ mottle is currently in a closed beta. Ask for an invite via feedback[at]mottle.i
 
 - `make up` runs the app in Docker at <http://127.0.0.1:65534>, `make up-all` with the task runners.
 - `make test` runs the tests in Docker, which provides GDAL and SpatiaLite.
-- `make lint` formats and fixes what it can; `make check` verifies the lock file, formatting, lint and types without
-  changing anything.
+- `make lint` formats and fixes what it can; `make check` verifies the lock file, formatting, lint, types and the
+  stylesheet without changing anything.
+- `make css` and `make check` need the Tailwind CLI at the version `TAILWIND_VERSION` in the `Makefile` names: the
+  standalone binary from [its releases](https://github.com/tailwindlabs/tailwindcss/releases), as CI installs it, or
+  Homebrew's `tailwindcss` at that version.
 
 Notes on the event sources and on Spotify's API changes are in [docs](docs/).
