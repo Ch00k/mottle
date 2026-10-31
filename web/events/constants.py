@@ -12,9 +12,9 @@ BANDSINTOWN_API_REQUEST_TIMEOUT = 5
 
 SONGKICK_EVENT_URL_REGEX = re.compile(r"^https://www\.songkick\.com/(concerts|festivals|live-stream-concerts).*$")
 SONGKICK_EVENTS_XPATH = (
-    "//div[@id='calendar-summary' and contains(@class, 'upcoming')]/ol/li/div[@class='microformat']/script/text()"
+    "//div[@id='calendar-summary' and contains(@class, 'upcoming')]//div[@class='microformat']/script/text()"
 )
-SONGKICK_TICKETS_XPATH = "//a[contains(@class, 'buy-ticket-link')]/@href"
+SONGKICK_TICKETS_XPATH = "//a[contains(@class, 'buy-ticket-link')]/@data-ticket-path"
 SONGKICK_LIVE_STREAM_XPATH = "//div[contains(@class, 'live-stream-link')]/a/@href"
 
 BANDSINTOWN_WINDOW_DATA_XPATH = "//head/script[contains(text(),'window.__data=')]/text()"

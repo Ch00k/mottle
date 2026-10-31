@@ -300,6 +300,10 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         fetched_artist = await self.as_fetched_artist(with_events=not force_refetch)
         await fetched_artist.fetch_events()
 
+        if fetched_artist.songkick_url != self.songkick_url:
+            self.songkick_url = fetched_artist.songkick_url
+            await self.asave(update_fields=["songkick_url", "updated_at"])
+
         for event in fetched_artist.events:
             await Event.update_or_create_from_fetched_event(event, self)
 
