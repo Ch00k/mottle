@@ -1,7 +1,3 @@
-# https://github.com/typeddjango/django-stubs/pull/1887
-# pyright: reportCallIssue=false, reportArgumentType=false
-# mypy: disable-error-code="arg-type"
-
 from django.urls import include, path
 
 from . import views

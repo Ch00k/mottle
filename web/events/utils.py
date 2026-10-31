@@ -23,7 +23,7 @@ def get_normalized_country_name(country_name: str | None) -> str | None:
     if country_name is None:
         return None
 
-    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)  # pyright: ignore[reportArgumentType,reportAssignmentType]
+    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)
     return normalized_name
 
 

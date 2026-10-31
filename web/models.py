@@ -25,6 +25,7 @@ from .spotify import authenticate
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
+    from django.db.models.fields.related_descriptors import ManyRelatedManager, RelatedManager
     from tekore.model import PlaylistTrack
 
 TOKEN_EXPIRATION_THRESHOLD = 60
@@ -33,17 +34,17 @@ logger = logging.getLogger(__name__)
 
 
 class EventUpdateChangesJSONEncoder(DjangoJSONEncoder):
-    def default(self, obj: Any) -> Any:
-        if isinstance(obj, Point):
-            return obj.coords
-        return super().default(obj)
+    def default(self, o: Any) -> Any:
+        if isinstance(o, Point):
+            return o.coords
+        return super().default(o)
 
 
 class EventUpdateChangesJSONDecoder(json.JSONDecoder):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, object_hook=self.object_hook, **kwargs)
+        super().__init__(*args, object_hook=self.decode_object, **kwargs)
 
-    def object_hook(self, obj: Any) -> Any:
+    def decode_object(self, obj: Any) -> Any:
         if (geolocation := obj.get("geolocation")) is not None:
             x_old, y_old = geolocation["old"]
             x_new, y_new = geolocation["new"]
@@ -149,12 +150,17 @@ class SpotifyUser(SpotifyEntityModel):
     display_name = models.CharField(max_length=48, null=True)
     email = models.EmailField(null=True)
 
+    user: User
+    spotify_auth: SpotifyAuth
+    playlists: RelatedManager[Playlist]
+    watched_event_artists: ManyRelatedManager[EventArtist, Any]
+
     def __str__(self) -> str:
         return f"<SpotifyUser {self.id} spotify_id={self.spotify_id}>"
 
     async def get_spotipy_client(self) -> MottleSpotifyClient:
-        await self.spotify_auth.maybe_refresh()  # pyright: ignore[reportAttributeAccessIssue]
-        return MottleSpotifyClient(self.spotify_auth.access_token)  # pyright: ignore[reportAttributeAccessIssue]
+        await self.spotify_auth.maybe_refresh()
+        return MottleSpotifyClient(self.spotify_auth.access_token)
 
 
 class SpotifyAuthRequest(BaseModel):
@@ -241,6 +247,8 @@ class SpotifyAuth(BaseModel):
 
 
 class Artist(SpotifyEntityModel):
+    event_artist: EventArtist
+
     def __str__(self) -> str:
         return f"<Artist {self.id} spotify_id={self.spotify_id}>"
 
@@ -258,12 +266,14 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
     bandsintown_name_match_accuracy = models.IntegerField()
     watching_users = models.ManyToManyField(SpotifyUser, related_name="watched_event_artists")
 
+    events: RelatedManager[Event]
+
     def __str__(self) -> str:
         return f"<EventArtist {self.id}>"
 
     async def as_fetched_artist(self, with_events: bool = True) -> EventSourceArtist:
         # TODO: This is inefficient
-        events = [e.as_fetched_event() async for e in self.events.all()] if with_events else []  # pyright: ignore[reportAttributeAccessIssue]
+        events = [e.as_fetched_event() async for e in self.events.all()] if with_events else []
 
         return EventSourceArtist(
             name="dummy", songkick_url=self.songkick_url, bandsintown_url=self.bandsintown_url, events=events
@@ -285,7 +295,7 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
             bandsintown_name_match_accuracy=fetched_artist.bandsintown_match_accuracy,
         )
         # https://github.com/typeddjango/django-stubs/issues/997
-        await event_artist.watching_users.aset(watching_spotify_user_ids)  # type: ignore[arg-type]
+        await event_artist.watching_users.aset(watching_spotify_user_ids)  # ty: ignore[invalid-argument-type]
         return event_artist
 
     async def update_from_fetched_artist(self, musicbrainz_id: str | None, fetched_artist: EventSourceArtist) -> None:
@@ -347,6 +357,8 @@ class Event(DirtyFieldsMixin, BaseModel):
     geolocation = gis_models.PointField(null=True, geography=True, srid=settings.GEODJANGO_SRID)
     stream_urls = models.JSONField(null=True)
     tickets_urls = models.JSONField(null=True)
+
+    updates: RelatedManager[EventUpdate]
 
     def __str__(self) -> str:
         return f"<Event {self.id} date={self.date} artist={self.artist}>"
@@ -411,8 +423,8 @@ class Event(DirtyFieldsMixin, BaseModel):
             type=EventType(self.type),
             date=self.date,
             venue=venue,
-            stream_urls=self.stream_urls,  # type: ignore [arg-type]  # TODO: WTF!?
-            tickets_urls=self.tickets_urls,  # type: ignore [arg-type]  # TODO: WTF!?
+            stream_urls=self.stream_urls,
+            tickets_urls=self.tickets_urls,
         )
 
 
@@ -433,12 +445,15 @@ class EventUpdate(BaseModel):
 class Playlist(SpotifyEntityModel):
     spotify_user = models.ForeignKey(SpotifyUser, null=True, on_delete=models.CASCADE, related_name="playlists")
 
+    updates: RelatedManager[PlaylistUpdate]
+    configs_as_watching: RelatedManager[PlaylistWatchConfig]
+
     def __str__(self) -> str:
         return f"<Playlist {self.id} spotify_id={self.spotify_id}>"
 
     async def unfollow(self) -> None:
-        await self.updates.all().adelete()  # pyright: ignore[reportAttributeAccessIssue]
-        await self.configs_as_watching.all().adelete()  # pyright: ignore[reportAttributeAccessIssue]
+        await self.updates.all().adelete()
+        await self.configs_as_watching.all().adelete()
         self.spotify_user = None
         await self.asave()
         # TODO: Delete the playlist itself
@@ -527,8 +542,8 @@ class Playlist(SpotifyEntityModel):
         )
 
     async def unwatch(self, playlist: Playlist) -> None:
-        await self.updates.filter(source_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
-        await self.configs_as_watching.filter(watched_playlist=playlist).adelete()  # pyright: ignore[reportAttributeAccessIssue]
+        await self.updates.filter(source_playlist=playlist).adelete()
+        await self.configs_as_watching.filter(watched_playlist=playlist).adelete()
 
     async def get_tracks(self, spotify_client: MottleSpotifyClient) -> list[PlaylistTrack]:
         return await spotify_client.get_playlist_tracks(self.spotify_id)
@@ -542,7 +557,7 @@ class Playlist(SpotifyEntityModel):
 
     @property
     def pending_updates(self) -> models.QuerySet[PlaylistUpdate]:
-        return self.updates.filter(is_overridden_by=None, is_accepted=None)  # pyright: ignore[reportAttributeAccessIssue]
+        return self.updates.filter(is_overridden_by=None, is_accepted=None)
 
 
 class PlaylistWatchConfig(BaseModel):

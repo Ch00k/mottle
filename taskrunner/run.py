@@ -34,7 +34,7 @@ class MottleCluster(Cluster):
     def add_schedules(self, *funcs: Callable[..., None]) -> None:
         self.schedules = list(funcs)
 
-    def start(self, metrics_server_host: str, metrics_server_port: int) -> None:
+    def run(self, metrics_server_host: str, metrics_server_port: int) -> None:
         self.metrics_server, self.metrics_server_thread = start_http_server(
             port=metrics_server_port, addr=metrics_server_host, registry=self.prometheus_registry
         )
@@ -55,7 +55,7 @@ class MottleCluster(Cluster):
         while self.stop_event is not None and not self.stop_event.is_set():
             time.sleep(0.1)
 
-    def sig_handler(self, signum: int, _: Any) -> None:
+    def sig_handler(self, signum: int, frame: Any) -> None:
         logger.info("Shutting down metrics server...")
         if self.metrics_server is not None:
             self.metrics_server.shutdown()
@@ -63,7 +63,7 @@ class MottleCluster(Cluster):
         if self.metrics_server_thread is not None:
             self.metrics_server_thread.join()
 
-        super().sig_handler(signum, _)
+        super().sig_handler(signum, frame)
 
 
 def main() -> None:
@@ -72,7 +72,7 @@ def main() -> None:
 
     q = MottleCluster()
     q.add_schedules(playlist_updates, event_updates)
-    q.start(metrics_server_host, metrics_server_port)
+    q.run(metrics_server_host, metrics_server_port)
 
 
 if __name__ == "__main__":

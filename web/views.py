@@ -144,7 +144,7 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     spotify_client = MottleSpotifyClient(access_token=token.access_token)
 
     try:
-        user = await spotify_client.get_current_user()  # pyright: ignore[reportAttributeAccessIssue]
+        user = await spotify_client.get_current_user()
     except MottleException as e:
         logger.error(e)
         return HttpResponseServerError("Failed to get user")
@@ -395,12 +395,12 @@ async def playlist_updates(request: MottleHttpRequest, playlist_id: str) -> Http
 
         if watched_playlist is not None:
             watched_playlist_data = await request.spotify_client.get_playlist(watched_playlist.spotify_id)
-            watched_playlist_tracks = await request.spotify_client.get_tracks(update.tracks_added)  # type: ignore [arg-type]  # TODO: WTF!?
+            watched_playlist_tracks = await request.spotify_client.get_tracks(update.tracks_added)
             tracks = [TrackData.from_tekore_model(track) for track in watched_playlist_tracks]
             updates.append((update.id, watched_playlist_data, tracks))
         elif watched_artist is not None:
             watched_artist_data = await request.spotify_client.get_artist(watched_artist.spotify_id)
-            tracks = await request.spotify_client.get_tracks_in_albums(update.albums_added)  # type: ignore [arg-type]  # TODO: WTF!?
+            tracks = await request.spotify_client.get_tracks_in_albums(update.albums_added)
             track_ids = [track.id for track in tracks]
             watched_artist_tracks = await request.spotify_client.get_tracks(track_ids)
             tracks = [TrackData.from_tekore_model(track) for track in watched_artist_tracks]
@@ -934,7 +934,7 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     # https://stackoverflow.com/a/22294734
     # TODO: This is probably not needed anymore since we are using POST. A leftover from an appempt to use DELETE?
-    body = QueryDict(request.body)  # pyright: ignore[reportCallIssue]
+    body = QueryDict(request.body)
     watching_playlist_id = body.get("watching-playlist-id")
 
     if not watching_playlist_id:
@@ -1011,7 +1011,7 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
     event_artist = await track_artist_events(artist_id, artist.name, request.session["spotify_user_id"])
     await event_artist.update_events()
 
-    events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]  # pyright: ignore[reportAttributeAccessIssue]
+    events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]
     return render(request, "web/events.html", context={"artist": artist, "events": events})
 
 
@@ -1019,7 +1019,7 @@ async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpRespo
 @require_http_methods(["GET", "POST"])
 async def user_settings(request: MottleHttpRequest) -> HttpResponse:
     spotify_user = await SpotifyUser.objects.aget(spotify_id=request.session["spotify_user_spotify_id"])
-    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
+    user = await sync_to_async(lambda: spotify_user.user)()
 
     if request.method == "GET":
         if user.location:
@@ -1099,9 +1099,9 @@ async def user_events(request: MottleHttpRequest) -> HttpResponse:
             {"type": "error", "body": "Events are not available yet. Please check back later"},
         )
 
-    user = await sync_to_async(lambda: spotify_user.user)()  # pyright: ignore[reportAttributeAccessIssue]
+    user = await sync_to_async(lambda: spotify_user.user)()
 
-    events = await user.upcoming_events()  # pyright: ignore[reportAttributeAccessIssue]
+    events = await user.upcoming_events()
 
     artist_ids = [(await sync_to_async(lambda: a.artist)()).spotify_id for a in events]
     artists = await request.spotify_client.get_artists(artist_ids)

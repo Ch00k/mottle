@@ -761,7 +761,7 @@ class TestAlbumMetadata(TestCase):
         """Test that track image URL returns default image when not available."""
         request = create_mock_request()
         request.spotify_client.get_album = create_mock_album_getter(
-            {"test_album_id": {"name": "Test Album", "images": None}}  # type: ignore[dict-item]
+            {"test_album_id": {"name": "Test Album", "images": None}}
         )
 
         metadata = AlbumMetadata(request, "test_album_id")

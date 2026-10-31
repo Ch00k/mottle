@@ -1,5 +1,4 @@
 # ruff: noqa: ARG002,ANN001,ANN003,ANN201
-# type: ignore  # noqa: PGH003
 
 
 class DefaultRouter:

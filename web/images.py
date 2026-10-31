@@ -86,11 +86,10 @@ def generate_image(prompt: str) -> bytes:
             size="1024x1024",
         )
 
-    data = image.data[0].b64_json  # type: ignore[index]
-    if not data:
+    if not image.data or not image.data[0].b64_json:
         raise ValueError("Failed to generate image")
 
-    return b64decode(data)
+    return b64decode(image.data[0].b64_json)
 
 
 def resize_image(image_data: bytes, size: tuple[int, int]) -> bytes:

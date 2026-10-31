@@ -1,7 +1,8 @@
+import inspect
 import logging
 from typing import TYPE_CHECKING
 
-from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse
@@ -37,8 +38,8 @@ class SpotifyAuthMiddleware:
 
     def __init__(self, get_response: Callable[..., Awaitable[HttpResponse]]) -> None:
         self.get_response = get_response
-        if iscoroutinefunction(self.get_response):
-            markcoroutinefunction(self)
+        if inspect.iscoroutinefunction(self.get_response):
+            inspect.markcoroutinefunction(self)
 
     async def __call__(self, request: MottleHttpRequest) -> HttpResponse:
         if request.host.name == "urlshortener":

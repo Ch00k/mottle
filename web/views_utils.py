@@ -90,7 +90,7 @@ class SpotifyEntityMetadata:
 
             self._is_data_fetched = True
 
-    def _fetch_additional_data(self, _: Any) -> None:
+    def _fetch_additional_data(self, entity: Any) -> None:
         pass
 
     def _get_attr_from_header(self, attr_name: str) -> str:
@@ -148,12 +148,12 @@ class PlaylistMetadata(SpotifyEntityMetadata):
             await self._fetch_data()
         return int(self._num_tracks)
 
-    def _fetch_additional_data(self, playlist: Any) -> None:
-        self._owner_id = playlist.owner.id
-        self._owner_name = playlist.owner.display_name
-        self._owner_url = get_spotify_url(playlist.owner)
-        self._snapshot_id = playlist.snapshot_id
-        self._num_tracks = playlist.tracks.total
+    def _fetch_additional_data(self, entity: Any) -> None:
+        self._owner_id = entity.owner.id
+        self._owner_name = entity.owner.display_name
+        self._owner_url = get_spotify_url(entity.owner)
+        self._snapshot_id = entity.snapshot_id
+        self._num_tracks = entity.tracks.total
 
 
 class ArtistMetadata(SpotifyEntityMetadata):
@@ -173,8 +173,8 @@ class AlbumMetadata(SpotifyEntityMetadata):
             await self._fetch_data()
         return None if self._track_image_url is None else unquote(self._track_image_url)
 
-    def _fetch_additional_data(self, album: Any) -> None:
-        self._track_image_url = get_smallest_image(album.images)
+    def _fetch_additional_data(self, entity: Any) -> None:
+        self._track_image_url = get_smallest_image(entity.images)
 
 
 # def get_duplicates_message(items: Collection) -> str:

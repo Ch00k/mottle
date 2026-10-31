@@ -36,7 +36,7 @@ class Command(BaseCommand):
                 user = SpotifyUser.objects.get(spotify_id=user_id)
             except SpotifyUser.DoesNotExist as e:
                 raise CommandError("User does not exist") from e
-            if user.playlists is None:  # pyright: ignore[reportAttributeAccessIssue]
+            if not user.playlists.exists():
                 raise CommandError("User has no playlists")
 
             async_to_sync(partial(check_user_playlists_for_updates, user, send_notifications))()
@@ -48,4 +48,4 @@ class Command(BaseCommand):
 
             async_to_sync(partial(check_playlist_for_updates, playlist, spotify_client))()
         else:
-            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()  # pyright: ignore[reportUnknownMemberType]
+            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()

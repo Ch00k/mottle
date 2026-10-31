@@ -81,10 +81,10 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.next_request_allowed_at = time.time()
 
     def _merge_headers(self, headers: httpx._types.HeaderTypes | None = None) -> httpx._types.HeaderTypes | None:
-        headers = super()._merge_headers(headers)
+        merged_headers = httpx.Headers(super()._merge_headers(headers))
         random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))  # noqa: S311
-        headers["User-Agent"] = headers["User-Agent"] + "-" + random_str  # type: ignore[index,operator,call-overload]
-        return headers
+        merged_headers["User-Agent"] = merged_headers["User-Agent"] + "-" + random_str
+        return merged_headers
 
     async def send(self, request: httpx.Request, *args: Any, **kwargs: Any) -> httpx.Response:
         retries = self.retries

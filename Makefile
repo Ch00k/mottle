@@ -1,9 +1,16 @@
-.PHONY: lint test up down logs ssh shell makemigrations manage debug css release-patch release-minor release-major
+.PHONY: lint check test test_ci up down logs ssh shell makemigrations manage debug css release-patch release-minor release-major
 
 lint:
 	uv run ruff format .
 	uv run ruff check --fix --unsafe-fixes .
-	uv run mypy --config-file pyproject.toml .
+	uv run ty check
+
+# What has to pass before a merge. Unlike lint it changes no file.
+check:
+	uv lock --check
+	uv run ruff format --check .
+	uv run ruff check .
+	uv run ty check
 
 test:
 	docker compose --file compose.dev.yaml run --rm --no-deps --quiet-build web pytest --cov --cov-branch --cov-report=xml $(if $(ARGS),$(ARGS),tests/)
