@@ -244,9 +244,7 @@ LOGGING: dict[str, Any] = {
 }
 
 if DEBUG_SQL:
-    LOGGING["loggers"]["django.db.backends"]["level"] = "DEBUG"
-    LOGGING["loggers"]["django.db.backends"]["handlers"] = ["sql"]
-    LOGGING["loggers"]["django.db.backends"]["proagate"] = False
+    LOGGING["loggers"]["django.db.backends"] = {"level": "DEBUG", "handlers": ["sql"], "propagate": False}
 
 
 TEKORE_HTTP_TIMEOUT = env.int("TEKORE_HTTP_TIMEOUT", 15)
@@ -300,7 +298,8 @@ OPENAI_IMAGES_DUMP_DIR = env.path("OPENAI_IMAGES_DUMP_DIR", BASE_DIR / "images_d
 
 HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
 
-PROXY_URL = env.str("PROXY_URL", None)
+# Compose passes an unset variable through as an empty string
+PROXY_URL = env.str("PROXY_URL", None) or None
 
 EVENTS_ENABLED = env.bool("EVENTS_ENABLED", True)
 EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT = env.int("EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT", 100)

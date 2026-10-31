@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import urljoin
 
 from django.conf import settings
 from sentry_sdk import capture_exception, capture_message
@@ -13,6 +14,7 @@ from urlshortener.models import ShortURL
 from .constants import (
     BANDSINTOWN_BASE_URL,
     BANDSINTOWN_WINDOW_DATA_XPATH,
+    SONGKICK_ARTIST_CALENDAR_URL_REGEX,
     SONGKICK_BASE_URL,
     SONGKICK_EVENT_URL_REGEX,
     SONGKICK_EVENTS_XPATH,
@@ -226,6 +228,7 @@ class EventSourceArtist:
     songkick_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     bandsintown_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     events: list[Event] = field(default_factory=list)
+    failed_sources: list[EventDataSource] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -344,76 +347,97 @@ class EventSourceArtist:
     async def fetch_events(self) -> None:
         events = {e.url: e for e in self.events}
 
+        # A source that fails, including on markup it cannot parse, leaves the events read from the other one in place
         if self.songkick_url is not None:
             try:
-                _, events_xpath, __, __ = await asend_get_request(
-                    async_songkick_client, self.songkick_url, xpath=SONGKICK_EVENTS_XPATH
-                )
-            except HTTPClientException as exc:
-                raise SongkickException(f"Failed to fetch events from Songkick: {exc}") from exc
-
-            event_jsons = [json.loads(event) for event in events_xpath]
-
-            songkick_events_data = []
-            for event_json in event_jsons:
-                if len(event_json) != 1:
-                    logger.error(f"Event data list does not have exactly one item: {event_json}")
-                    capture_message(f"Event data list does not have exactly one item: {event_json}")
-                    continue
-
-                event_data = event_json[0]
-                event_url = event_data["url"].split("?")[0]
-
-                if not should_fetch_event(event_url, EventDataSource.songkick, events):
-                    logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
-                    continue
-
-                songkick_events_data.append(event_data)
-
-            calls = [extract_songkick_event(event_data) for event_data in songkick_events_data]
-            results = await asyncio.gather(*calls, return_exceptions=True)
-
-            for r in results:
-                if isinstance(r, BaseException):
-                    logger.exception(r)
-                else:
-                    events[r.url] = r
+                await self.fetch_songkick_events(self.songkick_url, events)
+            except Exception as e:
+                logger.exception(e)
+                self.failed_sources.append(EventDataSource.songkick)
 
         if self.bandsintown_url is not None:
             try:
-                events_data = await extract_bandsintown_events_data(self.bandsintown_url)
-            except HTTPClientException as exc:
-                raise BandsintownException(f"Failed to fetch events from Bandsintown: {exc}") from exc
-
-            # This assumes that there are no duplicate dates in the following `for` loop
-            existing_event_dates = [e.date for e in events.values()]
-
-            bandsintown_events_data = []
-            for event_data in events_data:
-                event_url = event_data["url"].split("?")[0]
-                event_date = datetime.fromisoformat(event_data["startDate"]).date()
-
-                if not should_fetch_event(event_url, EventDataSource.bandsintown, events):
-                    logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
-                    continue
-
-                # TODO: Perhaps this check needs to be a little smarter, but good enough for now
-                if event_date in existing_event_dates:
-                    logger.warning(f"Event on {event_date} already exists. Skipping")
-                    continue
-
-                bandsintown_events_data.append(event_data)
-
-            calls = [extract_bandsintown_event(event_data) for event_data in bandsintown_events_data]
-            results = await asyncio.gather(*calls, return_exceptions=True)
-
-            for r in results:
-                if isinstance(r, BaseException):
-                    logger.exception(r)
-                else:
-                    events[r.url] = r
+                await self.fetch_bandsintown_events(self.bandsintown_url, events)
+            except Exception as e:
+                logger.exception(e)
+                self.failed_sources.append(EventDataSource.bandsintown)
 
         self.events = list(events.values())
+
+    async def fetch_songkick_events(self, songkick_url: str, events: dict[str, Event]) -> None:
+        try:
+            _, events_xpath, __, calendar_url = await asend_get_request(
+                async_songkick_client, songkick_url, xpath=SONGKICK_EVENTS_XPATH, follow_redirects=True
+            )
+        except HTTPClientException as exc:
+            raise SongkickException(f"Failed to fetch events from Songkick: {exc}") from exc
+
+        # Songkick moves an artist's calendar when it merges or renames the artist, but a redirect to any other page
+        # would point the artist at a page with no events for good
+        if not SONGKICK_ARTIST_CALENDAR_URL_REGEX.match(str(calendar_url)):
+            raise SongkickException(
+                f"Songkick redirected {songkick_url} to {calendar_url}, which is not an artist calendar"
+            )
+
+        self.songkick_url = str(calendar_url)
+
+        event_jsons = [json.loads(event) for event in events_xpath]
+
+        songkick_events_data = []
+        for event_json in event_jsons:
+            if len(event_json) != 1:
+                logger.error(f"Event data list does not have exactly one item: {event_json}")
+                capture_message(f"Event data list does not have exactly one item: {event_json}")
+                continue
+
+            event_data = event_json[0]
+            event_url = event_data["url"].split("?")[0]
+
+            if not should_fetch_event(event_url, EventDataSource.songkick, events):
+                logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
+                continue
+
+            songkick_events_data.append(event_data)
+
+        calls = [extract_songkick_event(event_data) for event_data in songkick_events_data]
+        results = await asyncio.gather(*calls, return_exceptions=True)
+
+        for r in results:
+            if isinstance(r, BaseException):
+                logger.exception(r)
+            else:
+                events[r.url] = r
+
+    async def fetch_bandsintown_events(self, bandsintown_url: str, events: dict[str, Event]) -> None:
+        events_data = await extract_bandsintown_events_data(bandsintown_url)
+
+        # This assumes that there are no duplicate dates in the following `for` loop
+        existing_event_dates = [e.date for e in events.values()]
+
+        bandsintown_events_data = []
+        for event_data in events_data:
+            event_url = event_data["url"].split("?")[0]
+            event_date = datetime.fromisoformat(event_data["startDate"]).date()
+
+            if not should_fetch_event(event_url, EventDataSource.bandsintown, events):
+                logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
+                continue
+
+            # TODO: Perhaps this check needs to be a little smarter, but good enough for now
+            if event_date in existing_event_dates:
+                logger.warning(f"Event on {event_date} already exists. Skipping")
+                continue
+
+            bandsintown_events_data.append(event_data)
+
+        calls = [extract_bandsintown_event(event_data) for event_data in bandsintown_events_data]
+        results = await asyncio.gather(*calls, return_exceptions=True)
+
+        for r in results:
+            if isinstance(r, BaseException):
+                logger.exception(r)
+            else:
+                events[r.url] = r
 
 
 async def find_artist_in_songkick(
@@ -531,7 +555,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
                 if r[2] is not None:
                     result_urls.append((await ShortURL.shorten(r[2])).full_short_url)
     else:
-        urls = [f"{SONGKICK_BASE_URL}/{u}" for u in urls]
+        urls = [urljoin(SONGKICK_BASE_URL, u) for u in urls]
         result_urls = [(await ShortURL.shorten(u)).full_short_url for u in urls]
 
     if event_type == EventType.live_stream:

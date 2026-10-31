@@ -18,6 +18,7 @@ from tekore import Token
 
 from web.events.data import EventSourceArtist
 from web.events.enums import EventDataSource, EventType
+from web.events.exceptions import EventDataSourceException
 
 from .events.data import Event as FetchedEvent
 from .events.data import Venue as FetchedVenue
@@ -300,8 +301,17 @@ class EventArtist(DirtyFieldsMixin, BaseModel):
         fetched_artist = await self.as_fetched_artist(with_events=not force_refetch)
         await fetched_artist.fetch_events()
 
+        if fetched_artist.songkick_url != self.songkick_url:
+            self.songkick_url = fetched_artist.songkick_url
+            await self.asave(update_fields=["songkick_url", "updated_at"])
+
         for event in fetched_artist.events:
             await Event.update_or_create_from_fetched_event(event, self)
+
+        # Raised once the other source's events are saved, so that the task counts the artist as failed
+        if fetched_artist.failed_sources:
+            sources = ", ".join(fetched_artist.failed_sources)
+            raise EventDataSourceException(f"Failed to fetch events from {sources}")
 
         # This is returned for logging purposes
         return self
