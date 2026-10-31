@@ -393,7 +393,7 @@ class EventSourceArtist:
 
         for r in results:
             if isinstance(r, BaseException):
-                logger.exception(r)
+                logger.error(r, exc_info=r)
             else:
                 events[r.url] = r
 
@@ -424,7 +424,7 @@ class EventSourceArtist:
 
         for r in results:
             if isinstance(r, BaseException):
-                logger.exception(r)
+                logger.error(r, exc_info=r)
             else:
                 events[r.url] = r
 
@@ -535,10 +535,10 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
         result_urls = []
         for r in results:
             if isinstance(r, HTTPClientException):
-                logger.exception(f"Failed to fetch URL: {r}")
+                logger.error(f"Failed to fetch URL: {r}", exc_info=r)
                 capture_exception(r)
             elif isinstance(r, BaseException):
-                logger.exception(f"Unexpected error while fetching URL: {r}")
+                logger.error(f"Unexpected error while fetching URL: {r}", exc_info=r)
                 capture_exception(r)
             else:  # noqa: PLR5501
                 if r[2] is not None:

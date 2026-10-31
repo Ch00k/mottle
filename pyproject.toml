@@ -68,6 +68,8 @@ ignore = [
   "B023",    # Loop variable
   "BLE001",  # Bare Exception
   "C901",    # Complexity
+  "CPY001",  # Copyright notices
+  "ICN001",  # datetime is imported by its own name
   "COM812",  # Trailing comma
   "DJ001",   # Django-specific rule
   "EM101",   # Exception uses string literal
@@ -83,6 +85,7 @@ ignore = [
   "PLR0913", # Too many arguments
   "PLR2004", # Magic values
   "PLR0915", # Too many statements
+  "PLR0917", # Too many positional arguments
   "RUF012",  # Mutable class attributes
   "S101",    # Use of assert
 ]
@@ -100,6 +103,8 @@ line-ending = "lf"
 
 [tool.mypy]
 plugins = ["mypy_django_plugin.main"]
+# Migrations use the historical models, which differ from the current ones the plugin types them against
+exclude = ["migrations/"]
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
@@ -130,6 +135,7 @@ django_settings_module = "mottle.settings"
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "mottle.settings"
 django_debug_mode = "keep"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.djlint]
 extend_exclude = "tests/golden/event_updates_email/html.html,tests/golden/playlist_updates_email/html.html"

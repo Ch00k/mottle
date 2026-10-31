@@ -65,10 +65,6 @@ class SpotifyAuthMiddleware:
             logger.debug(f"SpotifyAuth for spotify user ID {spotify_user_id} does not exist")
             return redirect_to_login(request.get_full_path())
 
-        if spotify_auth.access_token is None:
-            logger.debug(f"{spotify_auth} access_token is None")
-            return redirect_to_login(request.get_full_path())
-
         if spotify_auth.refresh_token is None:
             logger.debug(f"{spotify_auth} refresh_token is None")
             return redirect_to_login(request.get_full_path())

@@ -134,8 +134,6 @@ async def test_fetch_events_keeps_songkick_events_when_bandsintown_fails(
         transport=httpx.MockTransport(lambda _: httpx.Response(403, text="Just a moment...")),
     )
     monkeypatch.setattr(data, "async_bandsintown_client", bandsintown)
-    # The app's loggers do not propagate to the root logger caplog listens on
-    monkeypatch.setattr(logging.getLogger("web"), "propagate", True)
     artist = EventSourceArtist(
         name="Deep Purple",
         songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",

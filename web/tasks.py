@@ -239,7 +239,7 @@ async def acheck_artists_for_event_updates(
 
         for result in results:
             if isinstance(result, Exception):
-                logger.exception(f"Failed to process artist: {result}")
+                logger.error(f"Failed to process artist: {result}", exc_info=result)
                 fail_count += 1
             elif isinstance(result, EventArtist):
                 logger.debug(f"Processed artist: {result}")
@@ -393,10 +393,6 @@ def upload_cover_image(
 
     logger.debug(spotify_auth)
 
-    if spotify_auth.access_token is None:
-        logger.error(f"{spotify_auth} access_token is None")
-        return
-
     try:
         async_to_sync(spotify_auth.maybe_refresh)
     except MottleException as e:
@@ -535,7 +531,7 @@ async def atrack_artists_events(
 
         for result in results:
             if isinstance(result, Exception):
-                logger.exception(f"Failed to process artist: {result}")
+                logger.error(f"Failed to process artist: {result}", exc_info=result)
                 fail_count += 1
             elif isinstance(result, EventArtist):
                 logger.debug(f"Processed artist: {result}")

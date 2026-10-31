@@ -78,10 +78,6 @@ async def login(request: MottleHttpRequest) -> HttpResponse:
 
         logger.debug(spotify_auth)
 
-        if spotify_auth.access_token is None:
-            logger.debug(f"{spotify_auth} access_token is None")
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
         if spotify_auth.refresh_token is None:
             logger.debug(f"{spotify_auth} refresh_token is None")
             return render(request, "web/login.html", {"redirect_uri": redirect_uri})
