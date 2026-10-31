@@ -139,7 +139,7 @@
                                                    name="all-albums"
                                                    id="all-albums"
                                                    class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxGroup(this, 'album')"
+                                                   onClick="toggleCheckboxes(this, 'album')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_albums %}disabled{% endif %}
                                                    checked>
@@ -224,7 +224,7 @@
                                                    name="all-singles"
                                                    id="all-singles"
                                                    class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxGroup(this, 'single')"
+                                                   onClick="toggleCheckboxes(this, 'single')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_singles %}disabled{% endif %}
                                                    checked>
@@ -309,7 +309,7 @@
                                                    name="all-compilations"
                                                    id="all-compilations"
                                                    class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxGroup(this, 'compilation')"
+                                                   onClick="toggleCheckboxes(this, 'compilation')"
                                                    onchange="toggleSubmitButton()"
                                                    {% if not has_compilations %}disabled{% endif %}>
                                             <div>
@@ -448,13 +448,6 @@
     }
 
     // Functions from original albums.html that need to be included
-    function toggleCheckboxGroup(mainCheckbox, type) {
-        const checkboxes = document.querySelectorAll(`.${type}`);
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = mainCheckbox.checked;
-        });
-    }
-
     function toggleSubmitButton() {
         const allCheckboxes = document.querySelectorAll('.toggling');
         const submitButton = document.getElementById('create');

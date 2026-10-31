@@ -3,7 +3,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 from django.conf import settings
@@ -27,7 +27,6 @@ from .enums import SONGKICK_EVENT_TYPE_MAP, ArtistNameMatchAccuracy, EventDataSo
 from .exceptions import (
     BandsintownException,
     EventDataSourceException,
-    HeuristicsException,
     HTTPClientException,
     MusicBrainzException,
     SongkickException,
@@ -41,13 +40,15 @@ from .http import (
     get_xpath,
 )
 from .utils import (
-    find_best_artist_name_match_advanced,
-    find_best_artist_name_match_simple,
     get_normalized_country_name,
+    match_artist_name,
     normalize_string,
     replace_unicode_characters,
     should_fetch_event,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -237,21 +238,13 @@ class EventSourceArtist:
 
         artist = EventSourceArtist(name=artist_name, alternative_names=alternative_names)
 
-        calls = []
-        if artist.songkick_url is None:
-            calls.append(artist.find_in_songkick(use_advanced_heuristics))
-        if artist.bandsintown_url is None:
-            calls.append(artist.find_in_bandsintown(use_advanced_heuristics))
+        songkick_result, bandsintown_result = await asyncio.gather(
+            artist.find_in_songkick(use_advanced_heuristics),
+            artist.find_in_bandsintown(use_advanced_heuristics),
+            return_exceptions=True,
+        )
 
-        if not calls:
-            logger.warning(f"EventSourceArtist {artist_name} already has both Songkick and Bandsintown URLs")
-            return artist
-
-        results = await asyncio.gather(*calls, return_exceptions=True)
-
-        songkick_result, bandsintown_result = results
-
-        if isinstance(songkick_result, SongkickException):
+        if isinstance(songkick_result, BaseException):
             logger.warning(songkick_result)
         else:
             logger.debug(
@@ -259,7 +252,7 @@ class EventSourceArtist:
                 f"name match accuracy: {artist.songkick_match_accuracy}"
             )
 
-        if isinstance(bandsintown_result, BandsintownException):
+        if isinstance(bandsintown_result, BaseException):
             logger.warning(bandsintown_result)
         else:
             logger.debug(
@@ -269,26 +262,41 @@ class EventSourceArtist:
 
         return artist
 
-    async def find_in_songkick(self, use_advanced_heuristics: bool = False) -> None:
-        if self.songkick_url is not None:
-            logger.warning("Songkick URL already exists")
-            return
+    async def find_by_any_name(
+        self,
+        source_name: str,
+        find_artist: Callable[[str, bool], Awaitable[tuple[str | None, ArtistNameMatchAccuracy]]],
+        use_advanced_heuristics: bool,
+    ) -> tuple[str, ArtistNameMatchAccuracy] | None:
+        """Return the source's ID of the artist, found by the first of its names that finds it, and how well it matched.
 
+        A name whose search fails is logged with its error, and the next name is tried.
+        """
         for name in [self.name, *self.alternative_names]:
-            logger.info(f"Searching for artist in Songkick by one of the names: '{name}'")
+            logger.info(f"Searching for artist in {source_name} by one of the names: '{name}'")
 
             try:
-                artist_id, accuracy = await find_artist_in_songkick(name, use_advanced_heuristics)
+                artist_id, accuracy = await find_artist(name, use_advanced_heuristics)
             except Exception as e:
-                logger.exception(f"Failed to search for artist in Songkick by name '{name}': {e}. Trying next name")
+                logger.exception(
+                    f"Failed to search for artist in {source_name} by name '{name}': {e}. Trying next name"
+                )
                 capture_exception(e)
-            else:
-                if artist_id is None:
-                    logger.warning(f"Could not find artist by name '{name}' in Songkick. Trying next name")
-                else:
-                    break
-        else:
+                continue
+
+            if artist_id is not None:
+                return artist_id, accuracy
+
+            logger.warning(f"Could not find artist by name '{name}' in {source_name}. Trying next name")
+
+        return None
+
+    async def find_in_songkick(self, use_advanced_heuristics: bool = False) -> None:
+        found = await self.find_by_any_name("Songkick", find_artist_in_songkick, use_advanced_heuristics)
+        if found is None:
             raise SongkickException(f"Artist '{self.name}' not found in Songkick using any of the names")
+
+        artist_id, accuracy = found
 
         try:
             artist_url = await get_songkick_calendar_url(artist_id)
@@ -301,26 +309,11 @@ class EventSourceArtist:
         self.songkick_match_accuracy = accuracy
 
     async def find_in_bandsintown(self, use_advanced_heuristics: bool = False) -> None:
-        if self.bandsintown_url is not None:
-            logger.warning("Bandsintown URL already exists")
-            return
-
-        for name in [self.name, *self.alternative_names]:
-            logger.info(f"Searching for artist in Bandsintown by one of the names: '{name}'")
-
-            try:
-                artist_id, accuracy = await find_artist_in_bandsintown(name, use_advanced_heuristics)
-            except BandsintownException as e:
-                logger.exception(f"Failed to search for artist in Bandsintown by name '{name}': {e}. Trying next name")
-                capture_exception(e)
-            else:
-                if artist_id is None:
-                    logger.warning(f"Could not find artist by name '{name}' in Bandsintown. Trying next name")
-                else:
-                    break
-        else:
+        found = await self.find_by_any_name("Bandsintown", find_artist_in_bandsintown, use_advanced_heuristics)
+        if found is None:
             raise BandsintownException(f"Artist '{self.name}' not found in Bandsintown using any of the names")
 
+        artist_id, accuracy = found
         artist_url = f"{BANDSINTOWN_BASE_URL}/a/{artist_id}"
         logger.info(f"Found artist in Bandsintown: {artist_url}")
 
@@ -432,29 +425,15 @@ async def get_songkick_calendar_url(artist_id: str) -> str:
 async def find_artist_in_songkick(
     artist_name: str, use_advanced_heuristics: bool = False
 ) -> tuple[str | None, ArtistNameMatchAccuracy]:
-    if '"' in artist_name:
-        # https://github.com/encode/httpx/discussions/3360
-        artist_name = artist_name.replace('"', "%22")
-
-    search_results = await get_json(async_songkick_client, f"api/universal_search?query={artist_name}")
+    # https://github.com/encode/httpx/discussions/3360
+    query = artist_name.replace('"', "%22")
+    search_results = await get_json(async_songkick_client, f"api/universal_search?query={query}")
 
     artists = [
         (str(a["document"]["primary_key_id"]), a["document"]["name"])
         for a in search_results["data"]["attributes"]["search_results"]["artists"]
     ]
-
-    if not artists:
-        return None, ArtistNameMatchAccuracy.no_match
-
-    if use_advanced_heuristics:
-        pick_artist = find_best_artist_name_match_advanced
-    else:
-        pick_artist = find_best_artist_name_match_simple
-
-    try:
-        return pick_artist(artist_name, artists)
-    except HeuristicsException:
-        return None, ArtistNameMatchAccuracy.no_match
+    return match_artist_name(artist_name, artists, use_advanced_heuristics)
 
 
 async def find_artist_in_bandsintown(
@@ -466,19 +445,28 @@ async def find_artist_in_bandsintown(
         raise BandsintownException(f"Failed to search Bandsintown for '{artist_name}': {e}") from e
 
     artists = [(str(a["id"]), a["name"]) for a in search_results["artists"]]
+    return match_artist_name(artist_name, artists, use_advanced_heuristics)
 
-    if not artists:
-        return None, ArtistNameMatchAccuracy.no_match
 
-    if use_advanced_heuristics:
-        pick_artist = find_best_artist_name_match_advanced
-    else:
-        pick_artist = find_best_artist_name_match_simple
+def venue_from_place(place: dict[str, Any]) -> Venue | None:
+    """Return the venue a schema.org Place describes, or None for a place without a name."""
+    name = place.get("name")
+    if name is None:
+        logger.warning(f"Venue data is incomplete: {place}. Setting Venue to None")
+        return None
 
-    try:
-        return pick_artist(artist_name, artists)
-    except HeuristicsException:
-        return None, ArtistNameMatchAccuracy.no_match
+    address = place.get("address", {})
+    geo = place.get("geo", {})
+
+    return Venue(
+        name=name,
+        postcode=address.get("postalCode"),
+        address=address.get("streetAddress"),
+        city=address.get("addressLocality"),
+        country=get_normalized_country_name(address.get("addressCountry")),
+        geo_lat=geo.get("latitude"),
+        geo_lon=geo.get("longitude"),
+    )
 
 
 async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
@@ -494,28 +482,7 @@ async def extract_songkick_event(event_data: dict[str, Any]) -> Event:
     if event_type is None:
         raise SongkickException(f"Unknown event type: {event_type_orig}")
 
-    location = event_data["location"]
-    venue_name = location.get("name")
-
-    if event_type == EventType.live_stream:
-        venue = None
-    else:  # noqa: PLR5501
-        if venue_name is None:
-            logger.warning(f"Venue data is incomplete: {location}. Setting Venue to None")
-            venue = None
-        else:
-            venue_address = location.get("address", {})
-            venue_geolocation = location.get("geo", {})
-
-            venue = Venue(
-                name=venue_name,
-                postcode=venue_address.get("postalCode"),
-                address=venue_address.get("streetAddress"),
-                city=venue_address.get("addressLocality"),
-                country=get_normalized_country_name(venue_address.get("addressCountry")),
-                geo_lat=venue_geolocation.get("latitude"),
-                geo_lon=venue_geolocation.get("longitude"),
-            )
+    venue = None if event_type == EventType.live_stream else venue_from_place(event_data["location"])
 
     # TODO: Can an event have both ticket and live stream URLs?
     stream_urls = []
@@ -627,39 +594,22 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
     else:
         type = EventType.concert  # noqa: A001
-        venue_name = location.get("name")
+        venue = venue_from_place(location)
 
-        if venue_name is None:
-            logger.warning(f"Venue data is incomplete: {location}. Setting Venue to None")
-            venue = None
-        else:
-            venue_address = location.get("address", {})
-            venue_geolocation = location.get("geo", {})
+        detailed_ticket_list = event_view_body.get("detailedTicketList", {})
+        if not detailed_ticket_list:
+            logger.warning(f"eventView.body.detailedTicketList key not found in 'window.__data' on {event_url}")
 
-            venue = Venue(
-                name=venue_name,
-                postcode=venue_address.get("postalCode"),
-                address=venue_address.get("streetAddress"),
-                city=venue_address.get("addressLocality"),
-                country=get_normalized_country_name(venue_address.get("addressCountry")),
-                geo_lat=venue_geolocation.get("latitude"),
-                geo_lon=venue_geolocation.get("longitude"),
-            )
-
-            detailed_ticket_list = event_view_body.get("detailedTicketList", {})
-            if not detailed_ticket_list:
-                logger.warning(f"eventView.body.detailedTicketList key not found in 'window.__data' on {event_url}")
-
-            ticket_list = detailed_ticket_list.get("ticketList", [])
-            for ticket in ticket_list:
-                ticket_url = ticket.get("directTicketUrl")
-                if ticket_url:
-                    tickets_urls.append((await ShortURL.shorten(ticket_url)).full_short_url)
-                else:
-                    logger.warning(
-                        f"directTicketUrl not found in one of the elements in "
-                        f"eventView.body.detailedTicketList.ticketList in 'window.__data' on {event_url}"
-                    )
+        ticket_list = detailed_ticket_list.get("ticketList", [])
+        for ticket in ticket_list:
+            ticket_url = ticket.get("directTicketUrl")
+            if ticket_url:
+                tickets_urls.append((await ShortURL.shorten(ticket_url)).full_short_url)
+            else:
+                logger.warning(
+                    f"directTicketUrl not found in one of the elements in "
+                    f"eventView.body.detailedTicketList.ticketList in 'window.__data' on {event_url}"
+                )
 
     return Event(
         source=EventDataSource.bandsintown,

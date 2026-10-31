@@ -1,4 +1,3 @@
-import asyncio
 import itertools
 import logging
 import timeit
@@ -160,29 +159,37 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
 
     user_config = await User.objects.aget(spotify_user=user)
     if not user_config.playlist_notifications:
-        logger.warning("Playlist notifications disabled for user {user}")
+        logger.warning(f"Playlist notifications disabled for user {user}")
         return
 
     if user.email is None:
         logger.warning(f"No email for user {user}")
         return
 
-    logger.info(f"Sending email to {user.email}")
+    if await send_updates_email(user.email, html_message):
+        # TODO: This will update all PlaylistUpdates, not just the ones that were sent
+        await PlaylistUpdate.objects.filter(
+            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))
+        ).aupdate(is_notified_of=True)
+
+
+async def send_updates_email(email: str, html_message: str) -> bool:
+    """Email the updates to the address, returning whether the email was sent."""
+    logger.info(f"Sending email to {email}")
+
     try:
         await sync_to_async(send_mail)(
             subject="We've got updates for you",
             message="",
             html_message=html_message,
             from_email=f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>",
-            recipient_list=[user.email],
+            recipient_list=[email],
         )
     except Exception as e:
-        logger.error(f"Failed to send email to {user.email}: {e}")
-    else:
-        # TODO: This will update all PlaylistUpdates, not just the ones that were sent
-        await PlaylistUpdate.objects.filter(
-            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))
-        ).aupdate(is_notified_of=True)
+        logger.error(f"Failed to send email to {email}: {e}")
+        return False
+
+    return True
 
 
 async def acheck_playlists_for_updates(send_notifications: bool = False) -> None:
@@ -217,13 +224,9 @@ async def acheck_artists_for_event_updates(
     logger.info(f"Artists to process: {num_artists}")
 
     calls = [artist.update_events(force_refetch=force_refetch) async for artist in artists]
-
-    concurrency_limit = concurrency_limit or settings.EVENTS_FETCH_CONCURRENCY_LIMIT
-
-    if concurrency_limit:
-        results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
-    else:
-        results = await asyncio.gather(*calls, return_exceptions=True)
+    results = await gather_with_concurrency(
+        concurrency_limit or settings.EVENTS_FETCH_CONCURRENCY_LIMIT, *calls, return_exceptions=True
+    )
 
     for result in results:
         if isinstance(result, Exception):
@@ -282,18 +285,7 @@ async def acheck_artists_for_event_updates(
                 logger.warning(f"No email for user {spotify_user}")
                 continue
 
-            logger.info(f"Sending email to {spotify_user.email}")
-            try:
-                await sync_to_async(send_mail)(
-                    subject="We've got updates for you",
-                    message="",
-                    html_message=html_message,
-                    from_email=f"{settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>",
-                    recipient_list=[spotify_user.email],
-                )
-            except Exception as e:
-                logger.error(f"Failed to send email to {spotify_user.email}: {e}")
-            else:
+            if await send_updates_email(spotify_user.email, html_message):
                 # TODO: This will cause other users to not get notifications if they follow the same artists
                 logger.info("Marking updates as notified of")
                 await EventUpdate.objects.filter(id__in=[u.id for u in all_updates]).aupdate(is_notified_of=True)
@@ -307,9 +299,7 @@ async def acheck_artists_for_event_updates(
     )
 
 
-async def upload_cover_image(
-    playlist_title: str, playlist_spotify_id: str, spotify_user_id: str, dump_to_disk: bool = False
-) -> None:
+async def upload_cover_image(playlist_title: str, playlist_spotify_id: str, spotify_user_id: str) -> None:
     logger.debug(f"Uploading cover image to Spotify playlist {playlist_spotify_id}")
 
     try:
@@ -329,9 +319,7 @@ async def upload_cover_image(
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
     # Image generation makes blocking OpenAI calls and touches no database, so it runs in a thread of its own.
-    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(
-        playlist_title, dump_to_disk=dump_to_disk
-    )
+    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(playlist_title)
     await spotify_client.upload_playlist_cover_image(playlist_spotify_id, image_data)
 
 
@@ -461,13 +449,9 @@ async def atrack_artists_events(
         for artist_spotify_id, artist_name in artists_data.items()
         if artist_name
     ]
-
-    concurrency_limit = concurrency_limit or settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT
-
-    if concurrency_limit:
-        results = await gather_with_concurrency(concurrency_limit, *calls, return_exceptions=True)
-    else:
-        results = await asyncio.gather(*calls, return_exceptions=True)
+    results = await gather_with_concurrency(
+        concurrency_limit or settings.EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT, *calls, return_exceptions=True
+    )
 
     for result in results:
         if isinstance(result, Exception):

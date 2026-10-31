@@ -4,7 +4,7 @@ import unicodedata
 from typing import TYPE_CHECKING
 
 from django.conf import settings
-from thefuzz import fuzz
+from rapidfuzz import fuzz
 from unidecode import unidecode
 
 from .constants import ALNUM_TABLE
@@ -121,12 +121,31 @@ def find_best_artist_name_match_advanced(
     if matches := [
         (_, name)
         for _, name in available_artists
-        if fuzz.ratio(artist_name, name) >= settings.EVENT_ARTIST_NAME_MATCH_THRESHOLD
+        # The threshold is a whole percentage, which the similarity is rounded to
+        if round(fuzz.ratio(artist_name, name)) >= settings.EVENT_ARTIST_NAME_MATCH_THRESHOLD
     ]:
         id, _ = matches[0]  # noqa: A001
         return id, ArtistNameMatchAccuracy.fuzzy
 
     raise HeuristicsException(f"Artist '{original_artist_name}' not found")
+
+
+def match_artist_name(
+    artist_name: str, available_artists: list[tuple[str, str]], use_advanced_heuristics: bool
+) -> tuple[str | None, ArtistNameMatchAccuracy]:
+    """Return the ID of the available artist whose name best matches the artist's, and how well it matches.
+
+    An artist none of the names match gets no ID and no match.
+    """
+    if use_advanced_heuristics:
+        find_best_match = find_best_artist_name_match_advanced
+    else:
+        find_best_match = find_best_artist_name_match_simple
+
+    try:
+        return find_best_match(artist_name, available_artists)
+    except HeuristicsException:
+        return None, ArtistNameMatchAccuracy.no_match
 
 
 def normalize_string(string: str) -> str:
@@ -150,7 +169,7 @@ def should_fetch_event(event_url: str, event_source: EventDataSource, events: di
         return True
 
     if existing_event.source != event_source:
-        logger.error("WTF!?")  # TODO: Eh?
+        logger.error(f"Event {event_url} from {event_source} is already known from {existing_event.source}")
         return True
 
     return not existing_event.tickets_urls and not existing_event.stream_urls

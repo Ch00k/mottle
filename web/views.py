@@ -270,7 +270,6 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 playlist_title=name,
                 playlist_spotify_id=playlist.id,
                 spotify_user_id=request.session["spotify_user_id"],
-                dump_to_disk=True,
             )
         )
 
@@ -517,9 +516,6 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
         name=f"Copy of {playlist_name}",
         track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
         is_public=True,  # TODO: How do we decide on the value?
-        cover_image=None,
-        add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
-        fail_on_cover_image_upload_error=False,
     )
 
     # When the playlist is initially created, it is empty, and its attributes (e.g. owner) are still not defined.
@@ -666,7 +662,6 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
             playlist_title=playlist.name,
             playlist_spotify_id=playlist_id,
             spotify_user_id=request.session["spotify_user_id"],
-            dump_to_disk=True,
         )
     )
     return toast(HttpResponse(), "success", "Cover image generation requested. It may take a while to update.")

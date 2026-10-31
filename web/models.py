@@ -6,6 +6,7 @@ import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
+from asgiref.sync import sync_to_async
 from dirtyfields import DirtyFieldsMixin
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
@@ -164,7 +165,9 @@ class SpotifyAuthRequest(BaseModel):
             raise MottleException(f"{self}: state is None")
 
         try:
-            token = authenticate(code, self.state)
+            # tekore's credentials send their requests synchronously, so they run in a thread of their own, leaving the
+            # event loop and the shared database thread free while Spotify answers
+            token = await sync_to_async(authenticate, thread_sensitive=False)(code, self.state)
         except Exception as e:
             raise MottleException("Failed to authenticate") from e
 
@@ -221,7 +224,10 @@ class SpotifyAuth(BaseModel):
         logger.debug(f"Refreshing {self}")
 
         try:
-            tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(self.as_tekore_token)
+            # tekore's credentials send the request synchronously, so it runs in a thread of its own
+            tekore_token = await sync_to_async(settings.SPOTIFY_CREDEINTIALS.refresh, thread_sensitive=False)(
+                self.as_tekore_token
+            )
         except Exception as e:
             raise MottleException("Failed to refresh token") from e
 
@@ -246,7 +252,7 @@ class Artist(SpotifyEntityModel):
         return [album.id for album in albums]
 
 
-class EventArtist(DirtyFieldsMixin, BaseModel):
+class EventArtist(BaseModel):
     artist = models.OneToOneField(Artist, on_delete=models.CASCADE, related_name="event_artist")  # TODO: Cascade?
     musicbrainz_id = models.UUIDField(null=True)
     songkick_url = models.CharField(max_length=2000, null=True)
@@ -557,9 +563,7 @@ class PlaylistUpdate(BaseModel):
     )
 
     albums_added = models.JSONField(null=True)
-    albums_removed = models.JSONField(null=True)
     tracks_added = models.JSONField(null=True)
-    tracks_removed = models.JSONField(null=True)
 
     update_hash = models.CharField(max_length=64)
     is_notified_of = models.BooleanField(default=False)
@@ -585,12 +589,7 @@ class PlaylistUpdate(BaseModel):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.update_hash:
-            self.update_hash = generate_playlist_update_hash(
-                self.albums_added,
-                self.albums_removed,
-                self.tracks_added,
-                self.tracks_removed,
-            )
+            self.update_hash = generate_playlist_update_hash(self.albums_added, self.tracks_added)
         super().save(*args, **kwargs)
 
     @property
@@ -700,20 +699,7 @@ class PlaylistUpdate(BaseModel):
             return update, False
 
 
-def generate_playlist_update_hash(
-    albums_added: list[str] | None = None,
-    albums_removed: list[str] | None = None,
-    tracks_added: list[str] | None = None,
-    tracks_removed: list[str] | None = None,
-) -> str:
-    ids = (
-        ["+album"]  # noqa: RUF005
-        + sorted(albums_added or [])
-        + ["-album"]
-        + sorted(albums_removed or [])
-        + ["+track"]
-        + sorted(tracks_added or [])
-        + ["-track"]
-        + sorted(tracks_removed or [])
-    )
+def generate_playlist_update_hash(albums_added: list[str] | None = None, tracks_added: list[str] | None = None) -> str:
+    # Every stored hash includes the "-album" and "-track" markers
+    ids = ["+album", *sorted(albums_added or []), "-album", "+track", *sorted(tracks_added or []), "-track"]
     return hashlib.sha256("".join(ids).encode("utf-8")).hexdigest()

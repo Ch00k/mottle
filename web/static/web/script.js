@@ -1,10 +1,3 @@
-function toggleCheckboxGroup(source, album_type) {
-    checkboxes = document.querySelectorAll(`.${album_type}`);
-    for (checkbox of checkboxes) {
-        checkbox.checked = source.checked;
-    }
-}
-
 function toggleCheckboxes(source, cbClass) {
     checkboxes = document.querySelectorAll(`.${cbClass}`);
     for (checkbox of checkboxes) {
