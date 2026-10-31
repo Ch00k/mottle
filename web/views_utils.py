@@ -1,23 +1,19 @@
-import inspect
 import logging
 import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote
 
-import sentry_sdk
 from asgiref.sync import sync_to_async
-from django.http import HttpResponse, HttpResponseServerError
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
-from django_htmx.http import trigger_client_event
 
 from .models import Artist, EventArtist, EventUpdate, Playlist
 from .spotify_items import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from django.http import HttpResponse
 
     from .middleware import MottleHttpRequest
 
@@ -211,7 +207,7 @@ async def compile_event_updates_email(
     template_data = []
 
     for event_artist, event_updates in updates.items():
-        artist_spotify_id = await sync_to_async(lambda: event_artist.artist.spotify_id)()
+        artist_spotify_id = event_artist.artist.spotify_id
         spotify_artist = await spotify_client.get_artist(artist_spotify_id)
 
         updates_data = []
@@ -325,33 +321,3 @@ async def compile_playlist_updates_email(
 
 def camel_to_snake(string: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", string).lower()
-
-
-def catch_errors(view_func: Callable) -> Callable:
-    def catch_e(e: Exception) -> HttpResponse:
-        logger.error(e, exc_info=e)
-        sentry_sdk.capture_exception(e)
-
-        return trigger_client_event(
-            HttpResponseServerError(),
-            "HXToast",
-            {"type": "error", "body": f"Error: {e}"},
-        )
-
-    async def ainner(*args: Any, **kwargs: Any) -> Any:
-        try:
-            resp = await view_func(*args, **kwargs)
-        except MottleException as e:
-            return catch_e(e)
-        return resp
-
-    def inner(*args: Any, **kwargs: Any) -> Any:
-        try:
-            resp = view_func(*args, **kwargs)
-        except MottleException as e:
-            return catch_e(e)
-        return resp
-
-    if inspect.iscoroutinefunction(view_func):
-        return ainner
-    return inner

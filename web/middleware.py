@@ -2,10 +2,12 @@ import inspect
 import logging
 from typing import TYPE_CHECKING
 
+import sentry_sdk
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseServerError
+from django_htmx.http import trigger_client_event
 
 from .models import SpotifyAuth
 from .utils import MottleException, MottleSpotifyClient
@@ -84,3 +86,31 @@ class SpotifyAuthMiddleware:
 
         request.spotify_client = MottleSpotifyClient(spotify_auth.access_token)
         return await self.get_response(request)
+
+
+class MottleExceptionMiddleware:
+    """Answers a MottleException a view raises with a 500 that shows the error to the user as a toast."""
+
+    async_capable = True
+    sync_capable = False
+
+    def __init__(self, get_response: Callable[..., Awaitable[HttpResponse]]) -> None:
+        self.get_response = get_response
+        if inspect.iscoroutinefunction(self.get_response):
+            inspect.markcoroutinefunction(self)
+
+    async def __call__(self, request: HttpRequest) -> HttpResponse:
+        return await self.get_response(request)
+
+    def process_exception(self, request: HttpRequest, exception: Exception) -> HttpResponse | None:  # noqa: ARG002
+        if not isinstance(exception, MottleException):
+            return None
+
+        logger.error(exception, exc_info=exception)
+        sentry_sdk.capture_exception(exception)
+
+        return trigger_client_event(
+            HttpResponseServerError(),
+            "HXToast",
+            {"type": "error", "body": f"Error: {exception}"},
+        )

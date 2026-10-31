@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import itertools
 import logging
 import timeit
@@ -8,18 +7,16 @@ from typing import Any
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
-from django.contrib.gis.measure import Distance
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
 from django.db import IntegrityError
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
 from .events.data import EventSourceArtist, MusicBrainzArtist
-from .events.enums import ArtistNameMatchAccuracy, EventType
+from .events.enums import ArtistNameMatchAccuracy
 from .events.exceptions import MusicBrainzException
 from .images import create_cover_image
-from .models import Artist, EventArtist, EventUpdate, Playlist, PlaylistUpdate, SpotifyAuth, SpotifyUser
+from .models import Artist, EventArtist, EventUpdate, Playlist, PlaylistUpdate, SpotifyAuth, SpotifyUser, User
 from .spotify import get_client_token
 from .utils import MottleException, MottleSpotifyClient, gather_with_concurrency
 from .views_utils import compile_event_updates_email, compile_playlist_updates_email
@@ -38,12 +35,12 @@ async def check_playlist_for_updates(playlist: Playlist, spotify_client: MottleS
         logger.error(f"Failed to get tracks for playlist {playlist}: {e}")
         return updates
 
-    watch_configs = playlist.configs_as_watching.all()
+    watch_configs = playlist.configs_as_watching.select_related("watched_playlist", "watched_artist")
     logger.info(f"Watched playlists or artists: {await watch_configs.acount()}")
 
     async for config in watch_configs:
-        watched_playlist = await sync_to_async(lambda: config.watched_playlist)()
-        watched_artist = await sync_to_async(lambda: config.watched_artist)()
+        watched_playlist = config.watched_playlist
+        watched_artist = config.watched_artist
 
         if watched_playlist is not None:
             logger.info(f"Processing watched playlist {watched_playlist}")
@@ -115,7 +112,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
     logger.info(f"Processing user {user}")
     updates: dict[str, list[dict[str, Any]]] = {}
 
-    spotify_auth = await sync_to_async(lambda: user.spotify_auth)()
+    spotify_auth = await SpotifyAuth.objects.aget(spotify_user=user)
 
     # TODO: This needs to happen for every update, not just once
     try:
@@ -161,7 +158,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
         logger.warning("Email notifications disabled")
         return
 
-    user_config = await sync_to_async(lambda: user.user)()
+    user_config = await User.objects.aget(spotify_user=user)
     if not user_config.playlist_notifications:
         logger.warning("Playlist notifications disabled for user {user}")
         return
@@ -244,34 +241,22 @@ async def acheck_artists_for_event_updates(
         token = get_client_token()
         spotify_client = MottleSpotifyClient(token.access_token)
 
-        async for spotify_user in SpotifyUser.objects.filter(
-            ~Q(watched_event_artists=None),
-            email__isnull=False,
-            user__location__isnull=False,
-            user__event_distance_threshold__isnull=False,
-        ).order_by("created_at"):
+        async for spotify_user in (
+            SpotifyUser.objects.filter(
+                ~Q(watched_event_artists=None),
+                email__isnull=False,
+                user__location__isnull=False,
+                user__event_distance_threshold__isnull=False,
+            )
+            .select_related("user")
+            .order_by("created_at")
+        ):
             artists_with_events = defaultdict(list)
-            user = await sync_to_async(lambda: spotify_user.user)()
+            user = spotify_user.user
 
-            async for event_artist in spotify_user.watched_event_artists.all():
-                # Two cases:
-                # 1. Streaming event
-                # 2. Non-streaming event with geolocation defined, and its geolocation is within the configured number
-                #    of km of user's location
-                # Non-streaming events sometimes do not have geolocation (https://www.songkick.com/concerts/41973416)
-                events_query = event_artist.events.filter(
-                    Q(date__gte=datetime.datetime.now(tz=datetime.UTC).date())
-                    & (
-                        Q(type=EventType.live_stream)
-                        | (
-                            Q(~Q(type=EventType.live_stream), geolocation__isnull=False)
-                            & Q(geolocation__distance_lte=(user.location, Distance(km=user.event_distance_threshold)))
-                        )
-                    )
-                )
-
-                async for event in events_query.all():
-                    async for update in event.updates.filter(is_notified_of=False).all():
+            async for event_artist in spotify_user.watched_event_artists.select_related("artist"):
+                async for event in user.upcoming_events_of(event_artist):
+                    async for update in event.updates.filter(is_notified_of=False):
                         artists_with_events[event_artist].append(update)
 
             if not artists_with_events:
@@ -417,8 +402,8 @@ async def track_artist_events(
         logger.debug(f"Artist already existed: {artist}")
 
     try:
-        event_artist = await sync_to_async(lambda: artist.event_artist)()
-    except ObjectDoesNotExist:
+        event_artist = await EventArtist.objects.aget(artist=artist)
+    except EventArtist.DoesNotExist:
         logger.debug(f"Artist {artist} does not have an EventArtist. Trying to fetch")
 
         musicbrainz_artist, fetched_artist = await find_event_data_sources(artist_spotify_id, artist_name)
@@ -441,7 +426,7 @@ async def track_artist_events(
         else:
             logger.debug(f"Created EventArtist: {event_artist}")
     else:
-        logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")
+        logger.debug(f"Artist {artist} already has an EventArtist: {event_artist}")
         # https://github.com/typeddjango/django-stubs/issues/997
         await event_artist.watching_users.aadd(spotify_user_id)  # ty: ignore[invalid-argument-type]
 

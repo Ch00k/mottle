@@ -1,3 +1,4 @@
+import json
 from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -6,8 +7,9 @@ from django.test import AsyncClient, RequestFactory, TestCase
 from tekore.model import FullTrack, Image, SimpleAlbum, SimpleTrack
 
 from tests.conftest import create_mock_artist_getter, create_mock_playlist_getter
-from web.models import Artist, Playlist, PlaylistUpdate, SpotifyUser
-from web.utils import MottleSpotifyClient
+from web.middleware import MottleExceptionMiddleware
+from web.models import Artist, Playlist, PlaylistUpdate, SpotifyAuthRequest, SpotifyUser
+from web.utils import MottleException, MottleSpotifyClient
 from web.views import playlist_updates
 
 if TYPE_CHECKING:
@@ -79,7 +81,8 @@ class TestPlaylistUpdates(TestCase):
         request.spotify_client = spotify_client
 
         with patch("web.views.check_playlist_for_updates", AsyncMock()):
-            response = await playlist_updates(request, "watching_playlist")
+            # ty takes a view wrapped in Django's method decorators for the decorator's type variable
+            response = await playlist_updates(request, "watching_playlist")  # ty: ignore[call-non-callable]
 
         assert response.status_code == 200
         content = response.content.decode()
@@ -87,3 +90,33 @@ class TestPlaylistUpdates(TestCase):
         assert 'src="https://i.scdn.co/image/album1"' in content
         spotify_client.get_tracks_in_albums.assert_awaited_once_with(["album1"])
         spotify_client.get_tracks.assert_awaited_once_with(["track1"])
+
+
+@pytest.mark.asyncio
+class TestMottleExceptionMiddleware(TestCase):
+    async def test_mottle_exception_becomes_error_toast(self) -> None:
+        """A MottleException a view raises is answered with a 500 whose HTMX trigger shows the error as a toast.
+
+        The callback view raises it when Spotify refuses to issue a token. The error is logged and sent to Sentry.
+        """
+        await SpotifyAuthRequest.objects.acreate(state="known_state", redirect_uri="/")
+
+        with (
+            patch.object(
+                SpotifyAuthRequest, "request_token", AsyncMock(side_effect=MottleException("Spotify said no"))
+            ),
+            patch("web.middleware.sentry_sdk.capture_exception") as capture_exception,
+            self.assertLogs("web.middleware", level="ERROR") as logs,
+        ):
+            response = await AsyncClient().get("/callback/", {"code": "code", "state": "known_state"})
+
+        assert response.status_code == 500
+        assert json.loads(response["HX-Trigger"]) == {"HXToast": {"type": "error", "body": "Error: Spotify said no"}}
+        assert logs.output[0].startswith("ERROR:web.middleware:Spotify said no")
+        capture_exception.assert_called_once()
+
+    def test_other_exceptions_are_left_to_django(self) -> None:
+        """An exception other than a MottleException gets no response from the middleware, so Django handles it."""
+        middleware = MottleExceptionMiddleware(AsyncMock())
+
+        assert middleware.process_exception(RequestFactory().get("/"), ValueError("unexpected")) is None

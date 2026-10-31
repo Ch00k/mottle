@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from django.http import HttpResponseServerError
 from django.test import TestCase
 from minify_html import minify
 from tekore.model import FullPlaylist, Image, PublicUser
@@ -25,7 +24,6 @@ from web.views_utils import (
     ArtistMetadata,
     PlaylistMetadata,
     camel_to_snake,
-    catch_errors,
     compile_event_updates_email,
     compile_playlist_updates_email,
     get_playlist_modal_response,
@@ -853,76 +851,3 @@ class TestGetPlaylistModalResponse(TestCase):
 
         with pytest.raises(MottleException, match="Spotify API error"):
             await get_playlist_modal_response(mock_request, "target_playlist", "test_template.html")
-
-
-class TestCatchErrors:
-    @pytest.mark.asyncio
-    async def test_catch_errors_async_success(self) -> None:
-        """Test that async view function executes successfully without errors."""
-
-        @catch_errors
-        async def async_view(value: int) -> int:
-            return value * 2
-
-        result = await async_view(5)
-        assert result == 10
-
-    @pytest.mark.asyncio
-    async def test_catch_errors_async_mottle_exception(self) -> None:
-        """Test that async view catches MottleException and returns error response."""
-
-        @catch_errors
-        async def async_view() -> None:
-            raise MottleException("Test error")
-
-        with patch("web.views_utils.sentry_sdk.capture_exception") as mock_sentry:
-            response = await async_view()
-
-            assert isinstance(response, HttpResponseServerError)
-            assert response.status_code == 500
-            mock_sentry.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_catch_errors_async_other_exception_passes_through(self) -> None:
-        """Test that async view allows non-MottleException to propagate."""
-
-        @catch_errors
-        async def async_view() -> None:
-            raise ValueError("Not a MottleException")
-
-        with pytest.raises(ValueError, match="Not a MottleException"):
-            await async_view()
-
-    def test_catch_errors_sync_success(self) -> None:
-        """Test that sync view function executes successfully without errors."""
-
-        @catch_errors
-        def sync_view(value: int) -> int:
-            return value * 2
-
-        result = sync_view(5)
-        assert result == 10
-
-    def test_catch_errors_sync_mottle_exception(self) -> None:
-        """Test that sync view catches MottleException and returns error response."""
-
-        @catch_errors
-        def sync_view() -> None:
-            raise MottleException("Test error")
-
-        with patch("web.views_utils.sentry_sdk.capture_exception") as mock_sentry:
-            response = sync_view()
-
-            assert isinstance(response, HttpResponseServerError)
-            assert response.status_code == 500
-            mock_sentry.assert_called_once()
-
-    def test_catch_errors_sync_other_exception_passes_through(self) -> None:
-        """Test that sync view allows non-MottleException to propagate."""
-
-        @catch_errors
-        def sync_view() -> None:
-            raise ValueError("Not a MottleException")
-
-        with pytest.raises(ValueError, match="Not a MottleException"):
-            sync_view()
