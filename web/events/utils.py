@@ -1,8 +1,8 @@
 import logging
+import re
 import unicodedata
 from typing import TYPE_CHECKING
 
-import country_converter as coco
 from django.conf import settings
 from thefuzz import fuzz
 from unidecode import unidecode
@@ -16,15 +16,46 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-cc = coco.CountryConverter()
+# Bandsintown sends short country names. Songkick sends ISO 3166 names, some of them since renamed, with every word
+# capitalised, and abbreviates the United Kingdom and the United States.
+COUNTRY_SHORT_NAMES = {
+    "UK": "United Kingdom",
+    "US": "United States",
+    "Bolivia, Plurinational State of": "Bolivia",
+    "Cape Verde": "Cabo Verde",
+    "Congo, the Democratic Republic of the": "DR Congo",
+    "Cote D'ivoire": "Côte d'Ivoire",
+    "Czech Republic": "Czechia",
+    "Iran, Islamic Republic of": "Iran",
+    "Korea, Democratic People's Republic of": "North Korea",
+    "Korea, Republic of": "South Korea",
+    "Lao People's Democratic Republic": "Laos",
+    "Macao": "Macau",
+    "Macedonia": "North Macedonia",
+    "Moldova, Republic of": "Moldova",
+    "Palestine, State of": "Palestine",
+    "Russian Federation": "Russia",
+    "Swaziland": "Eswatini",
+    "Syrian Arab Republic": "Syria",
+    "Taiwan, Province of China": "Taiwan",
+    "Tanzania, United Republic of": "Tanzania",
+    "Turkey": "Türkiye",
+    "Venezuela, Bolivarian Republic of": "Venezuela",
+    "Viet Nam": "Vietnam",
+    "Virgin Islands, British": "British Virgin Islands",
+    "Virgin Islands, U.S.": "United States Virgin Islands",
+}
+
+# Words a country name keeps in lower case unless it starts with them
+LOWER_CASE_WORDS = re.compile(r"(?<=\s)(?:And|Of|The)\b")
 
 
 def get_normalized_country_name(country_name: str | None) -> str | None:
     if country_name is None:
         return None
 
-    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)
-    return normalized_name
+    country_name = LOWER_CASE_WORDS.sub(lambda match: match.group().lower(), country_name)
+    return COUNTRY_SHORT_NAMES.get(country_name, country_name)
 
 
 def find_best_artist_name_match_simple(
