@@ -22,9 +22,9 @@ from django.views.decorators.http import (
 from django_htmx.http import push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
-from taskrunner.tasks import task_track_artists_events, task_upload_cover_image
 from web.templatetags.tekore_model_extras import get_smallest_image
 
+from .background import run_in_background
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
 from .middleware import MottleHttpRequest, get_token_scope_changes
 from .models import (
@@ -37,7 +37,7 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
-from .tasks import check_playlist_for_updates, track_artist_events
+from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
 from .utils import MottleException, MottleSpotifyClient
 from .views_utils import (
     AlbumMetadata,
@@ -320,16 +320,20 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
         )
 
     if bool(request.POST.get("generate-cover", False)):
-        await sync_to_async(task_upload_cover_image)(
-            playlist_title=name,
-            playlist_spotify_id=playlist.id,
-            spotify_user_id=request.session["spotify_user_id"],
-            dump_to_disk=True,
+        run_in_background(
+            upload_cover_image(
+                playlist_title=name,
+                playlist_spotify_id=playlist.id,
+                spotify_user_id=request.session["spotify_user_id"],
+                dump_to_disk=True,
+            )
         )
 
     if settings.EVENTS_ENABLED and bool(request.POST.get("track-events", False)):
-        await sync_to_async(task_track_artists_events)(
-            artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
+        run_in_background(
+            atrack_artists_events(
+                artists_data={artist_id: artist.name}, spotify_user_id=request.session["spotify_user_id"]
+            )
         )
 
     # TODO: Toast
@@ -501,9 +505,11 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
             for artist in track.artists:
                 artists[artist.id] = artist.name
 
-        await sync_to_async(task_track_artists_events)(
-            artists_data=artists,
-            spotify_user_id=request.session["spotify_user_id"],
+        run_in_background(
+            atrack_artists_events(
+                artists_data=artists,
+                spotify_user_id=request.session["spotify_user_id"],
+            )
         )
 
     context = {
@@ -860,11 +866,13 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
     playlist_metadata = PlaylistMetadata(request, playlist_id)
     playlist = await PlaylistData.from_metadata(playlist_metadata)
 
-    await sync_to_async(task_upload_cover_image)(
-        playlist_title=playlist.name,
-        playlist_spotify_id=playlist_id,
-        spotify_user_id=request.session["spotify_user_id"],
-        dump_to_disk=True,
+    run_in_background(
+        upload_cover_image(
+            playlist_title=playlist.name,
+            playlist_spotify_id=playlist_id,
+            spotify_user_id=request.session["spotify_user_id"],
+            dump_to_disk=True,
+        )
     )
     return trigger_client_event(
         HttpResponse(),

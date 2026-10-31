@@ -12,7 +12,7 @@ mottle is currently in a closed beta. Ask for an invite via feedback[at]mottle.i
 
 ## Development
 
-- `make up` runs the app in Docker at <http://127.0.0.1:65534>, `make up-all` with the task runners.
+- `make up` runs the app in Docker at <http://127.0.0.1:65534>.
 - `make test` runs the tests in Docker, which provides GDAL and SpatiaLite.
 - `make lint` formats and fixes what it can; `make check` verifies the lock file, formatting, lint, types and the
   stylesheet without changing anything.

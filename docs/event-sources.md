@@ -1,9 +1,9 @@
 # Event sources
 
-The daily event check (`EVENT_UPDATES` schedule, `web.tasks.check_artists_for_event_updates`) collects each tracked
-artist's upcoming concerts from two websites and emails users about new or changed ones near their location. Neither
-site has a public API mottle can use, so both are read from their HTML, and a change to their markup stops events from
-arriving without any error: the pages still load, they just yield nothing.
+The daily event check (the `get_event_updates` job in `crontab`, `web.tasks.check_artists_for_event_updates`)
+collects each tracked artist's upcoming concerts from two websites and emails users about new or changed ones near their
+location. Neither site has a public API mottle can use, so both are read from their HTML, and a change to their markup
+stops events from arriving without any error: the pages still load, they just yield nothing.
 
 An artist is matched to the sites through MusicBrainz, which links an artist's Spotify page to their Songkick and
 Bandsintown pages (`web.events.data.MusicBrainzArtist`), with a name search on each site as the fallback.

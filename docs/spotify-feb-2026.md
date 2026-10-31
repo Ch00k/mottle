@@ -145,9 +145,9 @@ For views that load data purely for display, implement htmx infinite scroll to l
 
 Affected views: saved tracks, playlist items, discography album selection, user playlists, playlist update details, events page artists.
 
-### Compute/write views: async background tasks via django-q2
+### Compute/write views: async background tasks
 
-Operations that need the full dataset cannot benefit from pagination. These should be converted to fire-and-forget background tasks using the existing django-q2/taskrunner infrastructure:
+Operations that need the full dataset cannot benefit from pagination. These should be converted to fire-and-forget background tasks, run in the web process with `run_in_background` (`web/background.py`) like cover image generation:
 
 - **Discography playlist creation**: user selects albums, task runs in background, notification when done.
 - **Playlist copying**: kick off as background task.

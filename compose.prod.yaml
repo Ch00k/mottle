@@ -13,7 +13,6 @@ x-env: &env
   URLSHORTENER_BASE_URL: ${URLSHORTENER_BASE_URL}
   SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN}
   DATABASE_FILE: ${DATABASE_FILE}
-  DATABASE_FILE_TASKS: ${DATABASE_FILE_TASKS}
   STATIC_ROOT: ${STATIC_ROOT}
   SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
   SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
@@ -48,7 +47,7 @@ services:
     <<: *build
     environment:
       <<: *env
-    command: bash -c "/app/manage.py migrate --database default && /app/manage.py migrate --database tasks"
+    command: /app/manage.py migrate
     volumes:
       - ./database:/database
 
@@ -60,6 +59,7 @@ services:
     volumes:
       - ./static:/static
       - ./database:/database
+      - ./images_dump:/images_dump
     ports:
       - ${WEB_LISTEN_HOST}:${WEB_LISTEN_PORT}:${WEB_LISTEN_PORT}
     restart: unless-stopped
@@ -69,29 +69,13 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  taskrunner_default:
+  cron:
     <<: *build
     environment:
       <<: *env
-      Q_CLUSTER_NAME: default
-    command: python /app/taskrunner/run.py
+    command: supercronic -passthrough-logs -json /app/crontab
     volumes:
       - ./database:/database
-      - ./images_dump:/images_dump
-    restart: unless-stopped
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-  taskrunner_long_running:
-    <<: *build
-    environment:
-      <<: *env
-      Q_CLUSTER_NAME: long_running
-    command: python /app/taskrunner/run.py
-    volumes:
-      - ./database:/database
-      - ./images_dump:/images_dump
     restart: unless-stopped
     depends_on:
       migrate:

@@ -4,10 +4,9 @@ import itertools
 import logging
 import timeit
 from collections import defaultdict
-from functools import partial
 from typing import Any
 
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ObjectDoesNotExist
@@ -195,10 +194,6 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
         await check_user_playlists_for_updates(user, send_notifications)
 
 
-def check_playlists_for_updates(send_notifications: bool = True) -> None:
-    asyncio.run(acheck_playlists_for_updates(send_notifications=send_notifications))
-
-
 async def acheck_artists_for_event_updates(
     artist_spotify_ids: list[str] | None = None,
     compile_notifications: bool = True,
@@ -376,13 +371,13 @@ def check_artists_for_event_updates(
 #     )
 
 
-def upload_cover_image(
+async def upload_cover_image(
     playlist_title: str, playlist_spotify_id: str, spotify_user_id: str, dump_to_disk: bool = False
 ) -> None:
     logger.debug(f"Uploading cover image to Spotify playlist {playlist_spotify_id}")
 
     try:
-        spotify_auth = SpotifyAuth.objects.get(spotify_user__id=spotify_user_id)
+        spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
     except SpotifyAuth.DoesNotExist:
         logger.error(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
         return
@@ -390,15 +385,18 @@ def upload_cover_image(
     logger.debug(spotify_auth)
 
     try:
-        async_to_sync(spotify_auth.maybe_refresh)
+        await spotify_auth.maybe_refresh()
     except MottleException as e:
         logger.error(e)
         return
 
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
-    image_data = create_cover_image(playlist_title, dump_to_disk=dump_to_disk)
-    async_to_sync(partial(spotify_client.upload_playlist_cover_image, playlist_spotify_id, image_data))()
+    # Image generation makes blocking OpenAI calls and touches no database, so it runs in a thread of its own.
+    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(
+        playlist_title, dump_to_disk=dump_to_disk
+    )
+    await spotify_client.upload_playlist_cover_image(playlist_spotify_id, image_data)
 
 
 async def find_event_data_sources_at_musicbrainz(
