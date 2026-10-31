@@ -346,7 +346,7 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
 
         assert mail.outbox == []
         assert (await PlaylistUpdate.objects.aget()).is_notified_of is False
-        assert logs.output == ["WARNING:web.tasks:Playlist notifications disabled for user {user}"]
+        assert logs.output == [f"WARNING:web.tasks:Playlist notifications disabled for user {spotify_user}"]
 
     async def test_user_without_email(self) -> None:
         """A user Spotify gave no email address gets no email, and the updates are not marked as notified of."""

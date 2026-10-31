@@ -3,7 +3,7 @@ from typing import Any
 
 import sentry_sdk
 from cryptography.fernet import Fernet, MultiFernet
-from environs import Env
+from environs import Env, validate
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.httpx2 import Httpx2Integration
@@ -253,8 +253,10 @@ HTTP_USER_AGENT = f"mottle/{APP_VERSION}"
 PROXY_URL = env.str("PROXY_URL", None) or None
 
 EVENTS_ENABLED = env.bool("EVENTS_ENABLED", True)
-EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT = env.int("EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT", 100)
-EVENTS_FETCH_CONCURRENCY_LIMIT = env.int("EVENTS_FETCH_CONCURRENCY_LIMIT", 100)
+EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT = env.int(
+    "EVENT_SOURCES_FETCH_CONCURRENCY_LIMIT", 100, validate=validate.Range(min=1)
+)
+EVENTS_FETCH_CONCURRENCY_LIMIT = env.int("EVENTS_FETCH_CONCURRENCY_LIMIT", 100, validate=validate.Range(min=1))
 EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD", 85)
 RESOLVE_SONGKICK_URLS = env.bool("RESOLVE_SONGKICK_URLS", False)
 
