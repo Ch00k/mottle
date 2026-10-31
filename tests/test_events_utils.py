@@ -180,4 +180,4 @@ def test_event_known_from_other_source_is_fetched(caplog: pytest.LogCaptureFixtu
     assert should_fetch_event(EVENT_URL, EventDataSource.bandsintown, events) is True
 
     errors = [r.getMessage() for r in caplog.records if r.name == "web.events.utils" and r.levelno == logging.ERROR]
-    assert errors == ["WTF!?"]
+    assert errors == [f"Event {EVENT_URL} from bandsintown is already known from songkick"]

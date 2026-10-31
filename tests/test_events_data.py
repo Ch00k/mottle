@@ -637,6 +637,14 @@ async def test_find_artist_matches_similar_name_only_with_advanced_heuristics(
 
 
 @pytest.mark.asyncio
+async def test_find_artist_in_songkick_matches_name_with_quotes(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A name with quotes, which the search is sent escaped, is matched with its quotes."""
+    install_event_source_search(monkeypatch, [(5, '"Weird Al" Yankovic')])
+
+    assert await data.find_artist_in_songkick('"Weird Al" Yankovic') == ("5", ArtistNameMatchAccuracy.exact)
+
+
+@pytest.mark.asyncio
 async def test_find_artist_in_songkick_fails_on_refused_search(monkeypatch: pytest.MonkeyPatch) -> None:
     """A search Songkick refuses fails with the request that was refused."""
     install_event_source_search(monkeypatch, [], refused_names=("Deep Purple",))
@@ -967,7 +975,7 @@ async def test_extract_bandsintown_concert_reads_partial_venue_and_tickets(
 async def test_extract_bandsintown_concert_without_venue_name_has_no_venue(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A concert whose venue has no name gets no venue, which is logged as a warning, and no tickets."""
+    """A concert whose venue has no name gets no venue, which is logged as a warning, and keeps its tickets."""
     location = {"@type": "Place", "address": {"addressCountry": "UK"}}
     window_data = bandsintown_window_data(
         location, {"detailedTicketList": {"ticketList": [{"directTicketUrl": "https://tickets.example/1"}]}}
@@ -977,8 +985,9 @@ async def test_extract_bandsintown_concert_without_venue_name_has_no_venue(
     with caplog.at_level(logging.WARNING, logger="web.events.data"):
         event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
 
+    short_url = await ShortURL.objects.aget(url="https://tickets.example/1")
     assert event.venue is None
-    assert event.tickets_urls == []
+    assert event.tickets_urls == [short_url.full_short_url]
     assert [r.getMessage() for r in caplog.records] == [f"Venue data is incomplete: {location}. Setting Venue to None"]
 
 
