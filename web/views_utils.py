@@ -13,7 +13,7 @@ from django.urls import reverse
 from django_htmx.http import trigger_client_event
 
 from .models import Artist, EventArtist, EventUpdate, Playlist
-from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url
+from .spotify_items import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:

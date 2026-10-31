@@ -22,7 +22,7 @@ from django.views.decorators.http import (
 from django_htmx.http import push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
-from web.templatetags.tekore_model_extras import get_smallest_image
+from web.spotify_items import get_smallest_image
 
 from .background import run_in_background
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
@@ -559,10 +559,8 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         if playlist.owner_id != request.session["spotify_user_spotify_id"]:
             return HttpResponseBadRequest("You can only deduplicate your own playlists")
 
-        # XXX: The whole remove_tracks_at_positions_from_playlist is not working as expected,
-        # which is probably the reason it is not documented in the Spotify API.
-        # The API request is successful, but the tracks' positions in request payload are ignored:
-        # all specified tracks are removed from the playlist, regardless of their positions.
+        # Spotify ignores the positions in a request to remove tracks at given positions, which its API does not
+        # document, and removes every occurrence. So every copy of a duplicated track is removed and one is added back.
 
         tracks_to_remove = request.POST.getlist("track-ids")
 
