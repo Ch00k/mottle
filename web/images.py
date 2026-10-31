@@ -78,12 +78,9 @@ def resize_image(image_data: bytes, size: tuple[int, int]) -> bytes:
     return new_image_fp.getvalue()
 
 
-def round_to_nearest_multiple_of_four(n: float) -> int:
-    return 4 * math.ceil(n / 4)
-
-
 def calculate_base64_size(data: bytes) -> int:
-    return round_to_nearest_multiple_of_four(len(data) / 3 * 4)
+    # Every started three bytes encode to four characters
+    return 4 * math.ceil(len(data) / 3)
 
 
 def convert_image_to_jpg(image_data: bytes, default_quality: int = 95, size_limit: int = 256000) -> bytes:
@@ -117,7 +114,7 @@ def dump_image_to_disk(image_data: bytes, file_name: str, trace: str) -> None:
         f.write(image_data)
 
 
-def create_cover_image(playlist_title: str, dump_to_disk: bool = False) -> bytes:
+def create_cover_image(playlist_title: str) -> bytes:
     trace = str(uuid.uuid4())
     logger.debug(f"Generating cover image for playlist '{playlist_title}' with trace {trace}")
 
@@ -128,23 +125,20 @@ def create_cover_image(playlist_title: str, dump_to_disk: bool = False) -> bytes
     size_original = len(original_image_data)
     logger.debug(f"Generated cover image data size: {size_original} bytes")
 
-    if dump_to_disk:
-        dump_image_to_disk(original_image_data, "original.png", trace)
+    dump_image_to_disk(original_image_data, "original.png", trace)
 
     logger.debug(f"Resizing image data of size {size_original} bytes to 640x640")
     resized_png_data = resize_image(original_image_data, (640, 640))
     size_resized = len(resized_png_data)
     logger.debug(f"Resized image data size: {size_resized} bytes")
 
-    if dump_to_disk:
-        dump_image_to_disk(resized_png_data, "resized.png", trace)
+    dump_image_to_disk(resized_png_data, "resized.png", trace)
 
     jpg_data = convert_image_to_jpg(resized_png_data)
     size_jpg = len(jpg_data)
     logger.debug(f"Converted image data size: {size_jpg} bytes")
 
-    if dump_to_disk:
-        dump_image_to_disk(jpg_data, "final.jpg", trace)
+    dump_image_to_disk(jpg_data, "final.jpg", trace)
 
     base64_encoded = b64encode(jpg_data)
     size_base64 = len(base64_encoded)

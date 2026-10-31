@@ -314,7 +314,6 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 playlist_title=name,
                 playlist_spotify_id=playlist.id,
                 spotify_user_id=request.session["spotify_user_id"],
-                dump_to_disk=True,
             )
         )
 
@@ -761,7 +760,6 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
             playlist_title=playlist.name,
             playlist_spotify_id=playlist_id,
             spotify_user_id=request.session["spotify_user_id"],
-            dump_to_disk=True,
         )
     )
     return trigger_client_event(

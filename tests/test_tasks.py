@@ -106,15 +106,49 @@ class TestUploadCoverImage(TestCase):
             patch("web.tasks.create_cover_image", return_value=b"jpeg") as create_cover_image,
             patch("web.tasks.MottleSpotifyClient", return_value=spotify_client) as client_class,
         ):
-            await upload_cover_image("Road Trip", "playlist_1", str(spotify_user.id), dump_to_disk=True)
+            await upload_cover_image("Road Trip", "playlist_1", str(spotify_user.id))
 
         auth = await SpotifyAuth.objects.aget(spotify_user=spotify_user)
         assert auth.access_token == "refreshed_token"
         assert auth.refresh_token == "new_refresh_token"
         refresh.assert_called_once()
-        create_cover_image.assert_called_once_with("Road Trip", dump_to_disk=True)
+        create_cover_image.assert_called_once_with("Road Trip")
         client_class.assert_called_once_with("refreshed_token")
         spotify_client.upload_playlist_cover_image.assert_awaited_once_with("playlist_1", b"jpeg")
+
+    async def test_user_without_spotify_auth_gets_no_image(self) -> None:
+        """A user with no Spotify authorization is logged as an error, and no image is generated."""
+        missing_user_id = str(uuid.uuid4())
+
+        with (
+            patch("web.tasks.create_cover_image") as create_cover_image,
+            self.assertLogs("web.tasks", level="ERROR") as logs,
+        ):
+            await upload_cover_image("Road Trip", "playlist_1", missing_user_id)
+
+        create_cover_image.assert_not_called()
+        assert logs.output == [f"ERROR:web.tasks:SpotifyAuth for user ID {missing_user_id} does not exist"]
+
+    async def test_failed_token_refresh_stops_upload(self) -> None:
+        """A token that fails to refresh is logged as an error, and no image is generated or uploaded."""
+        spotify_user = await SpotifyUser.objects.acreate(spotify_id="cover_user")
+        await SpotifyAuth.objects.acreate(
+            spotify_user=spotify_user,
+            access_token="expired_token",
+            refresh_token="refresh_token",
+            expires_at=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(minutes=1),
+            token_scope=["ugc-image-upload"],
+        )
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=Exception("Spotify is down")),
+            patch("web.tasks.create_cover_image") as create_cover_image,
+            self.assertLogs("web.tasks", level="ERROR") as logs,
+        ):
+            await upload_cover_image("Road Trip", "playlist_1", str(spotify_user.id))
+
+        create_cover_image.assert_not_called()
+        assert logs.output == ["ERROR:web.tasks:Failed to refresh token"]
 
 
 # Creating an EventArtist that already exists fails the insert, which would abort the transaction a TestCase wraps the

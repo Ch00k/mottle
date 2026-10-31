@@ -307,9 +307,7 @@ async def acheck_artists_for_event_updates(
     )
 
 
-async def upload_cover_image(
-    playlist_title: str, playlist_spotify_id: str, spotify_user_id: str, dump_to_disk: bool = False
-) -> None:
+async def upload_cover_image(playlist_title: str, playlist_spotify_id: str, spotify_user_id: str) -> None:
     logger.debug(f"Uploading cover image to Spotify playlist {playlist_spotify_id}")
 
     try:
@@ -329,9 +327,7 @@ async def upload_cover_image(
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
     # Image generation makes blocking OpenAI calls and touches no database, so it runs in a thread of its own.
-    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(
-        playlist_title, dump_to_disk=dump_to_disk
-    )
+    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(playlist_title)
     await spotify_client.upload_playlist_cover_image(playlist_spotify_id, image_data)
 
 
