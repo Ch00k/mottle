@@ -140,7 +140,7 @@ def test_create_cover_image(settings: Settings, tmp_path: Path) -> None:
     client = mock_openai_client("A sunset over a desert highway", generated)
 
     with patch("web.images.get_openai_client", return_value=client):
-        cover_image = create_cover_image("Road Trip", dump_to_disk=True)
+        cover_image = create_cover_image("Road Trip")
 
     assert "'Road Trip'" in client.chat.completions.create.call_args.kwargs["messages"][0]["content"]
     assert client.images.generate.call_args.kwargs["prompt"] == "A sunset over a desert highway"
@@ -177,6 +177,6 @@ def test_create_cover_image_fails_without_image(settings: Settings, tmp_path: Pa
     client = mock_openai_client("A sunset over a desert highway", None)
 
     with patch("web.images.get_openai_client", return_value=client), pytest.raises(ValueError, match="image"):
-        create_cover_image("Road Trip", dump_to_disk=True)
+        create_cover_image("Road Trip")
 
     assert list(tmp_path.iterdir()) == []
