@@ -252,7 +252,7 @@ class Artist(SpotifyEntityModel):
         return [album.id for album in albums]
 
 
-class EventArtist(DirtyFieldsMixin, BaseModel):
+class EventArtist(BaseModel):
     artist = models.OneToOneField(Artist, on_delete=models.CASCADE, related_name="event_artist")  # TODO: Cascade?
     musicbrainz_id = models.UUIDField(null=True)
     songkick_url = models.CharField(max_length=2000, null=True)
