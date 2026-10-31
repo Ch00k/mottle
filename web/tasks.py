@@ -4,14 +4,14 @@ import itertools
 import logging
 import timeit
 from collections import defaultdict
-from functools import partial
 from typing import Any
 
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
@@ -195,10 +195,6 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
         await check_user_playlists_for_updates(user, send_notifications)
 
 
-def check_playlists_for_updates(send_notifications: bool = True) -> None:
-    asyncio.run(acheck_playlists_for_updates(send_notifications=send_notifications))
-
-
 async def acheck_artists_for_event_updates(
     artist_spotify_ids: list[str] | None = None,
     compile_notifications: bool = True,
@@ -267,7 +263,7 @@ async def acheck_artists_for_event_updates(
             email__isnull=False,
             user__location__isnull=False,
             user__event_distance_threshold__isnull=False,
-        ):
+        ).order_by("created_at"):
             artists_with_events = defaultdict(list)
             user = await sync_to_async(lambda: spotify_user.user)()
 
@@ -308,8 +304,8 @@ async def acheck_artists_for_event_updates(
                 continue
 
             if not user.event_notifications:
-                logger.warning("Playlist notifications disabled for user {spotify_user}")
-                return
+                logger.warning(f"Event notifications disabled for user {spotify_user}")
+                continue
 
             if spotify_user.email is None:
                 logger.warning(f"No email for user {spotify_user}")
@@ -332,7 +328,7 @@ async def acheck_artists_for_event_updates(
                 await EventUpdate.objects.filter(id__in=[u.id for u in all_updates]).aupdate(is_notified_of=True)
 
     elapsed_time = timeit.default_timer() - start_time
-    avg_per_artist = elapsed_time / num_artists
+    avg_per_artist = elapsed_time / num_artists if num_artists else 0
     logger.debug(
         f"Processed {num_artists} artists in {elapsed_time} seconds, "
         f"success: {success_count}, fail: {fail_count}, events: {num_events}, URLs: {num_urls}, "
@@ -376,13 +372,13 @@ def check_artists_for_event_updates(
 #     )
 
 
-def upload_cover_image(
+async def upload_cover_image(
     playlist_title: str, playlist_spotify_id: str, spotify_user_id: str, dump_to_disk: bool = False
 ) -> None:
     logger.debug(f"Uploading cover image to Spotify playlist {playlist_spotify_id}")
 
     try:
-        spotify_auth = SpotifyAuth.objects.get(spotify_user__id=spotify_user_id)
+        spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
     except SpotifyAuth.DoesNotExist:
         logger.error(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
         return
@@ -390,15 +386,18 @@ def upload_cover_image(
     logger.debug(spotify_auth)
 
     try:
-        async_to_sync(spotify_auth.maybe_refresh)
+        await spotify_auth.maybe_refresh()
     except MottleException as e:
         logger.error(e)
         return
 
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
-    image_data = create_cover_image(playlist_title, dump_to_disk=dump_to_disk)
-    async_to_sync(partial(spotify_client.upload_playlist_cover_image, playlist_spotify_id, image_data))()
+    # Image generation makes blocking OpenAI calls and touches no database, so it runs in a thread of its own.
+    image_data = await sync_to_async(create_cover_image, thread_sensitive=False)(
+        playlist_title, dump_to_disk=dump_to_disk
+    )
+    await spotify_client.upload_playlist_cover_image(playlist_spotify_id, image_data)
 
 
 async def find_event_data_sources_at_musicbrainz(
@@ -475,10 +474,22 @@ async def track_artist_events(
         musicbrainz_artist, fetched_artist = await find_event_data_sources(artist_spotify_id, artist_name)
         musicbrainz_id = None if musicbrainz_artist is None else musicbrainz_artist.id
 
-        event_artist = await EventArtist.create_from_fetched_artist(
-            artist, musicbrainz_id, fetched_artist, [spotify_user_id]
-        )
-        logger.debug(f"Created EventArtist: {event_artist}")
+        try:
+            event_artist = await EventArtist.create_from_fetched_artist(
+                artist, musicbrainz_id, fetched_artist, [spotify_user_id]
+            )
+        except IntegrityError:
+            # Another tracking job created the artist's EventArtist while this one was searching the event sources
+            existing_event_artist = await EventArtist.objects.filter(artist=artist).afirst()
+            if existing_event_artist is None:
+                raise
+
+            event_artist = existing_event_artist
+            logger.debug(f"EventArtist {event_artist} was created by another job")
+            # https://github.com/typeddjango/django-stubs/issues/997
+            await event_artist.watching_users.aadd(spotify_user_id)  # ty: ignore[invalid-argument-type]
+        else:
+            logger.debug(f"Created EventArtist: {event_artist}")
     else:
         logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")
         # https://github.com/typeddjango/django-stubs/issues/997
@@ -563,7 +574,7 @@ async def atrack_artists_events(
                     no_bt += 1
 
     elapsed_time = timeit.default_timer() - start_time
-    avg_per_artist = elapsed_time / number_of_artists
+    avg_per_artist = elapsed_time / number_of_artists if number_of_artists else 0
     logger.debug(
         f"Processed {number_of_artists} artists in {elapsed_time} seconds, "
         f"success: {success_count}, fail: {fail_count}, no MB: {no_mb}, no SK: {no_sk}, no BT: {no_bt}, "

@@ -11,9 +11,10 @@ changes to their playlists, settings and notifications.
 
 ## Running and deploying
 
-- Production runs in [oar](https://github.com/oar-cd/oar) on this host, from `compose.prod.yaml`: web (daphne) and two
-  django-q taskrunners. Auto-deploy is off for mottle: a merge to `main` reaches production only when the user deploys
-  it from oar's web UI. Its environment lives in oar's project config (`oar project show <id>`), not in the repository.
+- Production runs in [oar](https://github.com/oar-cd/oar) on this host, from `compose.prod.yaml`: web (daphne) and
+  supercronic, which runs the daily jobs in `crontab` as management commands. Auto-deploy is off for mottle: a merge to
+  `main` reaches production only when the user deploys it from oar's web UI. Its environment lives in oar's project
+  config (`oar project show <id>`), not in the repository.
 - GeoDjango needs GDAL and SpatiaLite. Homebrew's GDAL needs a newer glibc than this host has, so `make test` and
   anything that loads Django run in Docker (`compose.dev.yaml`); `make check` and `make lint` run on the host.
 - `make check` is what CI runs before the tests, and changes no file.
@@ -21,6 +22,8 @@ changes to their playlists, settings and notifications.
 ## Decisions
 
 - Type checking is ty with django-stubs; Django's reverse relations are annotated on the models for it.
+- There is no task queue. Work a request starts (cover images, tracking artists' events) runs on daphne's event loop via
+  `web/background.py`, and is lost if the process restarts before it finishes.
 - pandas stays below 3, which country-converter cannot import with (`[tool.uv]` in `pyproject.toml`).
 - No metrics: Prometheus was dropped in October 2026, as nothing scraped it. Sentry and the JSON logs remain.
 - Events are scraped from Songkick and Bandsintown, whose markup changes break them silently. Bandsintown's Cloudflare

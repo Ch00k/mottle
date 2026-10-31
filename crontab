@@ -1,0 +1,8 @@
+# Jobs run by supercronic in the cron service.
+CRON_TZ=UTC
+
+# Check watched playlists for new tracks and email the updates
+0 11 * * * /app/manage.py get_playlist_updates --send-notifications
+
+# Fetch the events of tracked artists and email the updates near each user
+0 4 * * * /app/manage.py get_event_updates --compile-notifications --send-notifications

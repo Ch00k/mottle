@@ -14,7 +14,6 @@ x-env: &env
   URLSHORTENER_BASE_URL: ${URLSHORTENER_BASE_URL:-http://127.0.0.1}
   SESSION_COOKIE_DOMAIN: ${SESSION_COOKIE_DOMAIN:-127.0.0.1}
   DATABASE_FILE: ${DATABASE_FILE:-/app/database/db.sqlite3}
-  DATABASE_FILE_TASKS: ${DATABASE_FILE_TASKS:-/app/database/tasks.sqlite3}
   STATIC_ROOT: ${STATIC_ROOT:-/app/mounted/web/static}
   SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-foo}
   SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-bar}
@@ -41,7 +40,7 @@ services:
     <<: *build
     environment:
       <<: *env
-    command: bash -c "./manage.py migrate --database default && ./manage.py migrate --database tasks"
+    command: ./manage.py migrate
     volumes:
       - ./runtime_data/database:/app/database
       - .:/app/mounted
@@ -55,6 +54,7 @@ services:
     command: ./manage.py runserver 0.0.0.0:65534
     volumes:
       - ./runtime_data/database:/app/database
+      - ./runtime_data/images_dump:/images_dump
       - .:/app/mounted
       - /app/mounted/.venv  # exclude .venv
     working_dir: /app/mounted
@@ -62,43 +62,6 @@ services:
       - 127.0.0.1:65534:65534
     stdin_open: true
     tty: true
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-  taskrunner_default:
-    <<: *build
-    profiles:
-      - taskrunner
-    environment:
-      <<: *env
-      Q_CLUSTER_NAME: default
-      SCHEDULER_ENABLED: false
-    command: python ./taskrunner/run.py
-    volumes:
-      - ./runtime_data/database:/app/database
-      - ./runtime_data/images_dump:/images_dump
-      - .:/app/mounted
-      - /app/mounted/.venv  # exclude .venv
-    working_dir: /app/mounted
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-
-  taskrunner_long_running:
-    <<: *build
-    profiles:
-      - taskrunner
-    environment:
-      <<: *env
-      Q_CLUSTER_NAME: long_running
-      SCHEDULER_ENABLED: false
-    command: python ./taskrunner/run.py
-    volumes:
-      - ./runtime_data/database:/app/database
-      - .:/app/mounted
-      - /app/mounted/.venv  # exclude .venv
-    working_dir: /app/mounted
     depends_on:
       migrate:
         condition: service_completed_successfully

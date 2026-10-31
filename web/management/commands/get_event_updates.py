@@ -8,9 +8,9 @@ from django.core.management import CommandError
 from django.core.management.base import BaseCommand
 from tekore.model import FullPlaylistTrack
 
-from taskrunner.tasks import get_event_updates
 from web.data import TrackData
 from web.spotify import get_client_token
+from web.tasks import check_artists_for_event_updates
 from web.utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -43,12 +43,19 @@ class Command(BaseCommand):
             default=False,
             help="Compile notifications for event updates",
         )
+        parser.add_argument(
+            "--send-notifications",
+            action="store_true",
+            default=False,
+            help="Send the compiled notifications",
+        )
 
     def handle(self, *_: Any, **options: str) -> None:
         playlist_id: str | None = options.get("playlist_id")
         force_refetch: bool = cast("bool", options.get("force_refetch", False))
         concurrency_limit: int = cast("int", options.get("concurrency_limit", settings.EVENTS_FETCH_CONCURRENCY_LIMIT))
         compile_notifications: bool = cast("bool", options.get("compile_notifications", False))
+        send_notifications: bool = cast("bool", options.get("send_notifications", False))
 
         if playlist_id:
             token = get_client_token()
@@ -68,10 +75,10 @@ class Command(BaseCommand):
         else:
             artist_ids = None
 
-        get_event_updates(
+        check_artists_for_event_updates(
             artist_spotify_ids=artist_ids,
             compile_notifications=compile_notifications,
-            send_notifications=False,
+            send_notifications=send_notifications,
             force_refetch=force_refetch,
             concurrent_execution=True,
             concurrency_limit=concurrency_limit,

@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     "urlshortener",
     "django_hosts",
     "django_htmx",
-    "django_q",
     "django.contrib.gis",
 ]
 
@@ -100,16 +99,7 @@ DATABASES = {
             """,
         },
     },
-    "tasks": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": env.path("DATABASE_FILE_TASKS", BASE_DIR / "tasks.sqlite3"),
-    },
 }
-
-DATABASE_ROUTERS = [
-    "mottle.db_routers.DefaultRouter",
-    "mottle.db_routers.TasksRouter",
-]
 
 if gdal_library_path := env.str("GDAL_LIBRARY_PATH", None):
     GDAL_LIBRARY_PATH = gdal_library_path
@@ -127,31 +117,6 @@ sentry_sdk.init(
         LoggingIntegration(level=None, event_level=None),
     ],
 )
-
-SCHEDULER_ENABLED = env.bool("SCHEDULER_ENABLED", True)
-
-Q_CLUSTER = {
-    "name": "default",
-    "orm": "tasks",
-    "workers": 1,
-    "timeout": 300,
-    "retry": 450,
-    "max_attempts": 1,
-    "ack_failures": True,
-    "save_limit": 0,
-    "scheduler": SCHEDULER_ENABLED,
-    "log_level": "DEBUG",
-    "ALT_CLUSTERS": {
-        "long_running": {
-            "orm": "tasks",
-            "timeout": 20 * 60 * 60,  # 20 hours
-            "retry": 21 * 60 * 60,  # 21 hours
-        },
-    },
-    "error_reporter": {
-        "sentry": {},
-    },
-}
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -205,33 +170,13 @@ LOGGING: dict[str, Any] = {
         "handlers": [LOG_FORMAT],
     },
     "loggers": {
-        "__main__": {
-            "level": "DEBUG",
-            "handlers": [LOG_FORMAT],
-            "propagate": False,
-        },
         "web": {
-            "level": "DEBUG",
-            "handlers": [LOG_FORMAT],
-            "propagate": False,
-        },
-        "scheduler": {
-            "level": "DEBUG",
-            "handlers": [LOG_FORMAT],
-            "propagate": False,
-        },
-        "taskrunner": {
             "level": "DEBUG",
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
         "django.channels.server": {
             "level": "WARNING",
-            "handlers": [LOG_FORMAT],
-            "propagate": False,
-        },
-        "django-q": {
-            "level": "DEBUG",
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
@@ -309,8 +254,3 @@ EVENT_ARTIST_NAME_MATCH_THRESHOLD = env.int("EVENT_ARTIST_NAME_MATCH_THRESHOLD",
 RESOLVE_SONGKICK_URLS = env.bool("RESOLVE_SONGKICK_URLS", False)
 
 GEODJANGO_SRID = 4326
-
-SCHEDULE = {
-    "PLAYLIST_UPDATES": env.str("SCHEDULE_PLAYLIST_UPDATES", None),
-    "EVENT_UPDATES": env.str("SCHEDULE_EVENT_UPDATES", None),
-}
