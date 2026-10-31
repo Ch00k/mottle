@@ -172,8 +172,6 @@ async def test_fetch_events_keeps_songkick_events_when_bandsintown_fails(
         transport=httpx.MockTransport(lambda _: httpx.Response(403, text="Just a moment...")),
     )
     monkeypatch.setattr(data, "async_bandsintown_client", bandsintown)
-    # The app's loggers do not propagate to the root logger caplog listens on
-    monkeypatch.setattr(logging.getLogger("web"), "propagate", True)
     artist = EventSourceArtist(
         name="Deep Purple",
         songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
@@ -190,14 +188,11 @@ async def test_fetch_events_keeps_songkick_events_when_bandsintown_fails(
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("songkick")
-async def test_fetch_events_rejects_songkick_redirect_away_from_a_calendar(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
+async def test_fetch_events_rejects_songkick_redirect_away_from_a_calendar(caplog: pytest.LogCaptureFixture) -> None:
     """A calendar URL Songkick redirects to a page that is not an artist calendar is kept, and the failure logged.
 
     Storing the new URL would point the artist at a page with no events for good.
     """
-    monkeypatch.setattr(logging.getLogger("web"), "propagate", True)
     calendar_url = f"{SONGKICK_BASE_URL}/artists/2-deep-purple-removed/calendar"
     artist = EventSourceArtist(name="Deep Purple", songkick_url=calendar_url)
 
@@ -208,21 +203,22 @@ async def test_fetch_events_rejects_songkick_redirect_away_from_a_calendar(
     assert artist.failed_sources == [EventDataSource.songkick]
     errors = [r for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
     assert [r.getMessage() for r in errors] == [
-        f"Songkick redirected {calendar_url} to {SONGKICK_BASE_URL}/search?query=deep+purple, which is not an artist "
-        "calendar"
+        (
+            f"Songkick redirected {calendar_url} to {SONGKICK_BASE_URL}/search?query=deep+purple, which is not an "
+            "artist calendar"
+        )
     ]
 
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("songkick", "bandsintown")
 async def test_fetch_events_keeps_bandsintown_events_when_songkick_markup_breaks(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A Songkick page that cannot be parsed does not lose the events read from Bandsintown.
 
     The calendar's event data is broken JSON, which fails outside the HTTP client's own error handling.
     """
-    monkeypatch.setattr(logging.getLogger("web"), "propagate", True)
     artist = EventSourceArtist(
         name="Deep Purple",
         songkick_url=f"{SONGKICK_BASE_URL}/artists/3-deep-purple-broken/calendar",

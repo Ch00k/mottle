@@ -344,7 +344,7 @@ def camel_to_snake(string: str) -> str:
 
 def catch_errors(view_func: Callable) -> Callable:
     def catch_e(e: Exception) -> HttpResponse:
-        logger.exception(e)
+        logger.error(e, exc_info=e)
         sentry_sdk.capture_exception(e)
 
         return trigger_client_event(

@@ -124,7 +124,7 @@ if geos_library_path := env.str("GEOS_LIBRARY_PATH", None):
 
 sentry_sdk.init(
     dsn=env.str("SENTRY_DSN", ""),
-    enable_tracing=True,
+    traces_sample_rate=1.0,
     release=f"mottle@{APP_VERSION}",
     environment=env.str("SENTRY_ENVIRONMENT", "dev"),
     integrations=[

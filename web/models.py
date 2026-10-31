@@ -179,7 +179,7 @@ class SpotifyAuthRequest(BaseModel):
 
 class SpotifyAuth(BaseModel):
     spotify_user = models.OneToOneField(SpotifyUser, on_delete=models.CASCADE, related_name="spotify_auth")
-    access_token = EncryptedCharField(max_length=450, null=True)
+    access_token = EncryptedCharField(max_length=450)
     refresh_token = EncryptedCharField(max_length=300, null=True)
     expires_at = models.DateTimeField(null=True)
     token_scope = models.JSONField()
