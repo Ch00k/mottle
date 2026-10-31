@@ -35,7 +35,7 @@ echo "New version: $NEW_VERSION"
 
 # Update .env with new version
 echo "Updating .env..."
-sed -i "s/^APP_VERSION=\".*\"/APP_VERSION=\"$NEW_VERSION\"/" .env
+sed -i "s/^APP_VERSION=.*/APP_VERSION=$NEW_VERSION/" .env
 
 read -p "Create release $NEW_VERSION? [y/N] " -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
