@@ -1349,13 +1349,6 @@ class TestGeneratePlaylistUpdateHash:
         assert len(hash1) == 64
         assert isinstance(hash1, str)
 
-    def test_hash_with_removed_items(self) -> None:
-        """Test that removed items affect the hash differently than added items."""
-        hash1 = generate_playlist_update_hash(tracks_added=["track1"], tracks_removed=["track2"])
-        hash2 = generate_playlist_update_hash(tracks_added=["track1"])
-
-        assert hash1 != hash2
-
 
 class TestPlaylistWatchConfig:
     def test_cannot_watch_both_playlist_and_artist(self) -> None:

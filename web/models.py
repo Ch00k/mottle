@@ -557,9 +557,7 @@ class PlaylistUpdate(BaseModel):
     )
 
     albums_added = models.JSONField(null=True)
-    albums_removed = models.JSONField(null=True)
     tracks_added = models.JSONField(null=True)
-    tracks_removed = models.JSONField(null=True)
 
     update_hash = models.CharField(max_length=64)
     is_notified_of = models.BooleanField(default=False)
@@ -585,12 +583,7 @@ class PlaylistUpdate(BaseModel):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.update_hash:
-            self.update_hash = generate_playlist_update_hash(
-                self.albums_added,
-                self.albums_removed,
-                self.tracks_added,
-                self.tracks_removed,
-            )
+            self.update_hash = generate_playlist_update_hash(self.albums_added, self.tracks_added)
         super().save(*args, **kwargs)
 
     @property
@@ -700,20 +693,7 @@ class PlaylistUpdate(BaseModel):
             return update, False
 
 
-def generate_playlist_update_hash(
-    albums_added: list[str] | None = None,
-    albums_removed: list[str] | None = None,
-    tracks_added: list[str] | None = None,
-    tracks_removed: list[str] | None = None,
-) -> str:
-    ids = (
-        ["+album"]  # noqa: RUF005
-        + sorted(albums_added or [])
-        + ["-album"]
-        + sorted(albums_removed or [])
-        + ["+track"]
-        + sorted(tracks_added or [])
-        + ["-track"]
-        + sorted(tracks_removed or [])
-    )
+def generate_playlist_update_hash(albums_added: list[str] | None = None, tracks_added: list[str] | None = None) -> str:
+    # Every stored hash includes the "-album" and "-track" markers
+    ids = ["+album", *sorted(albums_added or []), "-album", "+track", *sorted(tracks_added or []), "-track"]
     return hashlib.sha256("".join(ids).encode("utf-8")).hexdigest()

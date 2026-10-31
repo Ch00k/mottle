@@ -246,9 +246,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=watched_playlist1,
             source_artist=None,
             tracks_added=["track1", "track2", "track3"],
-            tracks_removed=None,
             albums_added=None,
-            albums_removed=None,
             update_hash="hash1_1",
             is_accepted=True,
         )
@@ -259,9 +257,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=None,
             source_artist=watched_artist1,
             tracks_added=None,
-            tracks_removed=None,
             albums_added=["album1", "album2"],
-            albums_removed=None,
             update_hash="hash1_2",
             is_accepted=None,
         )
@@ -278,9 +274,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=watched_playlist2,
             source_artist=None,
             tracks_added=["track4", "track5"],
-            tracks_removed=None,
             albums_added=None,
-            albums_removed=None,
             update_hash="hash2_1",
             is_accepted=None,
         )
@@ -298,9 +292,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=watched_playlist3,
             source_artist=None,
             tracks_added=track_ids,
-            tracks_removed=None,
             albums_added=None,
-            albums_removed=None,
             update_hash="hash3_1",
             is_accepted=None,
         )
@@ -318,9 +310,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=None,
             source_artist=watched_artist2,
             tracks_added=None,
-            tracks_removed=None,
             albums_added=album_ids,
-            albums_removed=None,
             update_hash="hash4_1",
             is_accepted=None,
         )
@@ -336,9 +326,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=watched_playlist5,
             source_artist=None,
             tracks_added=track_ids_10,
-            tracks_removed=None,
             albums_added=None,
-            albums_removed=None,
             update_hash="hash5_1",
             is_accepted=None,
         )
@@ -354,9 +342,7 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
             source_playlist=None,
             source_artist=watched_artist6,
             tracks_added=None,
-            tracks_removed=None,
             albums_added=album_ids_2,
-            albums_removed=None,
             update_hash="hash6_1",
             is_accepted=None,
         )
