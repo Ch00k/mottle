@@ -21,13 +21,14 @@ class TestUuidToHash:
         assert all(c in "0123456789abcdefghijklmnopqrstuvwxyz" for c in result)
 
     def test_deterministic_for_same_uuid(self) -> None:
-        """Test that same UUID always produces same hash."""
+        """Test that a UUID produces the same hash in every process.
+
+        The expected value is fixed, so a hash that depended on the process (as Python's own hash() of a string does)
+        would fail here.
+        """
         test_uuid = uuid.UUID("12345678-1234-5678-1234-567812345678")
 
-        hash1 = uuid_to_hash(test_uuid)
-        hash2 = uuid_to_hash(test_uuid)
-
-        assert hash1 == hash2
+        assert uuid_to_hash(test_uuid) == "gjgy7i0"
 
     def test_different_uuids_produce_different_hashes(self) -> None:
         """Test that different UUIDs produce different hashes."""
