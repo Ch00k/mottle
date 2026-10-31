@@ -49,6 +49,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "web.middleware.SpotifyAuthMiddleware",
+    "web.middleware.MottleExceptionMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
     "django_hosts.middleware.HostsResponseMiddleware",
 ]

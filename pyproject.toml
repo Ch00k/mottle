@@ -100,7 +100,7 @@ unused-type-ignore-comment = "error"
 
 # ty does not see through Django's view decorators, so it takes every decorated view for a value of the wrong type.
 [[tool.ty.overrides]]
-include = ["web/views.py", "urlshortener/views.py", "urlshortener/urls.py"]
+include = ["web/views.py", "web/urls.py", "urlshortener/views.py", "urlshortener/urls.py"]
 
 [tool.ty.overrides.rules]
 invalid-argument-type = "ignore"
