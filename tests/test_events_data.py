@@ -1,7 +1,9 @@
 import datetime
 import json
 import logging
+import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx2
 import pytest
@@ -10,11 +12,19 @@ from django.conf import settings
 from urlshortener.models import ShortURL
 from web.events import data
 from web.events.constants import BANDSINTOWN_BASE_URL, MUSICBRAINZ_API_BASE_URL, SONGKICK_BASE_URL
-from web.events.data import EventSourceArtist, MusicBrainzArtist, Venue
+from web.events.data import Event, EventSourceArtist, MusicBrainzArtist, Venue
 from web.events.enums import ArtistNameMatchAccuracy, EventDataSource, EventType
-from web.events.exceptions import BandsintownException, EventDataSourceException
+from web.events.exceptions import (
+    BandsintownException,
+    EventDataSourceException,
+    HTTPClientException,
+    SongkickException,
+)
 from web.events.http import AsyncRetryingClient
 from web.models import Artist, EventArtist
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # ShortURL.shorten opens a transaction from asgiref's worker thread, which the in-memory test database refuses
 # while the test's own transaction holds it on the main thread.
@@ -542,3 +552,479 @@ async def test_musicbrainz_artist_keeps_match_without_stale_link(caplog: pytest.
 async def test_musicbrainz_finds_no_artist_for_unknown_name() -> None:
     """A name MusicBrainz has no artist for finds nothing."""
     assert await MusicBrainzArtist.find_by_name("Deep Purple Mk II") is None
+
+
+REMOVED_SONGKICK_ARTIST_ID = 404
+
+
+def install_event_source_search(
+    monkeypatch: pytest.MonkeyPatch, artists: list[tuple[int, str]], refused_names: tuple[str, ...] = ()
+) -> None:
+    """Point both event sources at searches that find the given artists for any name but the refused ones.
+
+    A Songkick calendar URL with only the artist's ID redirects to the artist's calendar, but for an artist Songkick
+    has removed.
+    """
+
+    def songkick_site(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/api/universal_search":
+            if request.url.params["query"] in refused_names:
+                return httpx2.Response(403)
+
+            documents = [{"document": {"primary_key_id": id_, "name": name}} for id_, name in artists]
+            return httpx2.Response(200, json={"data": {"attributes": {"search_results": {"artists": documents}}}})
+
+        if match := re.fullmatch(r"/artists/(\d+)/calendar", request.url.path):
+            if int(match[1]) == REMOVED_SONGKICK_ARTIST_ID:
+                return httpx2.Response(404)
+
+            return httpx2.Response(301, headers={"Location": f"{SONGKICK_BASE_URL}/artists/{match[1]}-found/calendar"})
+
+        return httpx2.Response(404)
+
+    def bandsintown_site(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/searchSuggestions":
+            if request.url.params["searchTerm"] in refused_names:
+                return httpx2.Response(403)
+
+            return httpx2.Response(200, json={"artists": [{"id": id_, "name": name} for id_, name in artists]})
+
+        return httpx2.Response(404)
+
+    for name, site, base_url in (
+        ("async_songkick_client", songkick_site, SONGKICK_BASE_URL),
+        ("async_bandsintown_client", bandsintown_site, BANDSINTOWN_BASE_URL),
+    ):
+        client = AsyncRetryingClient(attempts=1, base_url=base_url, transport=httpx2.MockTransport(site))
+        monkeypatch.setattr(data, name, client)
+
+
+FIND_ARTIST_IN_SOURCES = [data.find_artist_in_songkick, data.find_artist_in_bandsintown]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("find_artist", FIND_ARTIST_IN_SOURCES)
+async def test_find_artist_picks_artist_with_searched_name(
+    monkeypatch: pytest.MonkeyPatch, find_artist: Callable
+) -> None:
+    """Of the artists a source's search finds, the one with the searched name is picked, with how well it matched."""
+    install_event_source_search(monkeypatch, [(1, "Deep Purple Tribute"), (99952, "deep purple")])
+
+    assert await find_artist("Deep Purple") == ("99952", ArtistNameMatchAccuracy.exact)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("find_artist", FIND_ARTIST_IN_SOURCES)
+async def test_find_artist_finds_nothing_when_search_finds_nothing(
+    monkeypatch: pytest.MonkeyPatch, find_artist: Callable
+) -> None:
+    """A search that finds no artists finds no match."""
+    install_event_source_search(monkeypatch, [])
+
+    assert await find_artist("Deep Purple") == (None, ArtistNameMatchAccuracy.no_match)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("find_artist", FIND_ARTIST_IN_SOURCES)
+async def test_find_artist_matches_similar_name_only_with_advanced_heuristics(
+    monkeypatch: pytest.MonkeyPatch, find_artist: Callable
+) -> None:
+    """An artist whose name is only similar to the searched one is matched by the advanced heuristics alone."""
+    install_event_source_search(monkeypatch, [(7, "The Deep Purple")])
+
+    assert await find_artist("Deep Purple") == (None, ArtistNameMatchAccuracy.no_match)
+    assert await find_artist("Deep Purple", use_advanced_heuristics=True) == ("7", ArtistNameMatchAccuracy.fuzzy)
+
+
+@pytest.mark.asyncio
+async def test_find_artist_in_songkick_fails_on_refused_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A search Songkick refuses fails with the request that was refused."""
+    install_event_source_search(monkeypatch, [], refused_names=("Deep Purple",))
+
+    with pytest.raises(
+        HTTPClientException, match=r"^Failed to send GET request to api/universal_search\?query=Deep Purple: "
+    ):
+        await data.find_artist_in_songkick("Deep Purple")
+
+
+@pytest.mark.asyncio
+async def test_find_artist_in_bandsintown_fails_on_refused_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A search Bandsintown refuses fails with the name searched for."""
+    install_event_source_search(monkeypatch, [], refused_names=("Deep Purple",))
+
+    with pytest.raises(BandsintownException, match=r"^Failed to search Bandsintown for 'Deep Purple': "):
+        await data.find_artist_in_bandsintown("Deep Purple")
+
+
+@pytest.mark.asyncio
+async def test_find_in_songkick_tries_names_until_one_is_found(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The artist's names are searched for in turn until one is found, whose calendar and match the artist gets.
+
+    A name that finds nothing is logged as a warning.
+    """
+    install_event_source_search(monkeypatch, [(99952, "Deep Purple Mk II")])
+    artist = EventSourceArtist(name="Deep Purple", alternative_names=["Deep Purple Mk II"])
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        await artist.find_in_songkick()
+
+    assert artist.songkick_url == f"{SONGKICK_BASE_URL}/artists/99952-found/calendar"
+    assert artist.songkick_match_accuracy == ArtistNameMatchAccuracy.exact
+    assert [r.getMessage() for r in caplog.records] == [
+        "Could not find artist by name 'Deep Purple' in Songkick. Trying next name"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_find_in_songkick_tries_every_name_when_search_is_refused(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A search Songkick refuses moves on to the artist's next name, and fails once every name has been tried.
+
+    Each refused search is logged as an error naming the name searched for.
+    """
+    install_event_source_search(monkeypatch, [], refused_names=("Deep Purple", "Deep Purple Mk II"))
+    artist = EventSourceArtist(name="Deep Purple", alternative_names=["Deep Purple Mk II"])
+
+    with pytest.raises(SongkickException, match=r"^Artist 'Deep Purple' not found in Songkick using any of the names$"):
+        await artist.find_in_songkick()
+
+    assert artist.songkick_url is None
+    errors = [r.getMessage() for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
+    assert len(errors) == 2
+    assert errors[0].startswith(
+        "Failed to search for artist in Songkick by name 'Deep Purple': "
+        "Failed to send GET request to api/universal_search?query=Deep Purple: "
+    )
+    assert errors[1].startswith(
+        "Failed to search for artist in Songkick by name 'Deep Purple Mk II': "
+        "Failed to send GET request to api/universal_search?query=Deep Purple Mk II: "
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_in_songkick_fails_without_artist_calendar(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An artist found whose calendar Songkick does not have is not found."""
+    install_event_source_search(monkeypatch, [(REMOVED_SONGKICK_ARTIST_ID, "Deep Purple")])
+    artist = EventSourceArtist(name="Deep Purple")
+
+    with pytest.raises(SongkickException, match=r"^Failed to fetch artist URL for 'Deep Purple': "):
+        await artist.find_in_songkick()
+
+    assert artist.songkick_url is None
+
+
+@pytest.mark.asyncio
+async def test_find_in_bandsintown_gives_artist_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The artist found in Bandsintown gets the artist's page and how well the name matched."""
+    install_event_source_search(monkeypatch, [(31005, "Deep Purple")])
+    artist = EventSourceArtist(name="Deep Purple")
+
+    await artist.find_in_bandsintown()
+
+    assert artist.bandsintown_url == f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}"
+    assert artist.bandsintown_match_accuracy == ArtistNameMatchAccuracy.exact
+
+
+@pytest.mark.asyncio
+async def test_find_searches_both_sources_by_every_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The artist is searched for in both sources, by its name and the alternative names other than its name."""
+    install_event_source_search(monkeypatch, [(31005, "DP")])
+
+    artist = await EventSourceArtist.find("Deep Purple", ["Deep Purple", "DP"])
+
+    assert artist.alternative_names == ["DP"]
+    assert artist.songkick_url == f"{SONGKICK_BASE_URL}/artists/31005-found/calendar"
+    assert artist.songkick_match_accuracy == ArtistNameMatchAccuracy.exact
+    assert artist.bandsintown_url == f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}"
+    assert artist.bandsintown_match_accuracy == ArtistNameMatchAccuracy.exact
+
+
+@pytest.mark.asyncio
+async def test_find_uses_advanced_heuristics_in_both_sources(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The advanced heuristics, when asked for, match a similar name in both sources."""
+    install_event_source_search(monkeypatch, [(31005, "The Deep Purple")])
+
+    artist = await EventSourceArtist.find("Deep Purple", [], use_advanced_heuristics=True)
+
+    assert artist.songkick_match_accuracy == ArtistNameMatchAccuracy.fuzzy
+    assert artist.bandsintown_match_accuracy == ArtistNameMatchAccuracy.fuzzy
+
+
+@pytest.mark.asyncio
+async def test_find_leaves_artist_without_sources_when_not_found(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An artist found in neither source has no URLs and no match, and each source's failure is logged as a warning."""
+    install_event_source_search(monkeypatch, [])
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        artist = await EventSourceArtist.find("Deep Purple", [])
+
+    assert artist.songkick_url is None
+    assert artist.songkick_match_accuracy == ArtistNameMatchAccuracy.no_match
+    assert artist.bandsintown_url is None
+    assert artist.bandsintown_match_accuracy == ArtistNameMatchAccuracy.no_match
+    assert sorted(r.getMessage() for r in caplog.records) == [
+        "Artist 'Deep Purple' not found in Bandsintown using any of the names",
+        "Artist 'Deep Purple' not found in Songkick using any of the names",
+        "Could not find artist by name 'Deep Purple' in Bandsintown. Trying next name",
+        "Could not find artist by name 'Deep Purple' in Songkick. Trying next name",
+    ]
+
+
+def install_page(monkeypatch: pytest.MonkeyPatch, client_name: str, base_url: str, page: str) -> None:
+    """Point the event source's client at a site that serves the page at every URL."""
+    transport = httpx2.MockTransport(lambda _: httpx2.Response(200, text=page))
+    monkeypatch.setattr(data, client_name, AsyncRetryingClient(attempts=1, base_url=base_url, transport=transport))
+
+
+SONGKICK_LIVE_STREAM_URL = f"{SONGKICK_BASE_URL}/live-stream-concerts/1-deep-purple-online"
+
+
+@pytest.mark.asyncio
+async def test_extract_songkick_live_stream_reads_stream_links(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A Songkick live stream has no venue, and its stream links are read from its page and shortened."""
+    install_page(
+        monkeypatch,
+        "async_songkick_client",
+        SONGKICK_BASE_URL,
+        '<html><body><div class="live-stream-link"><a href="https://stream.example/deep-purple?ref=sk">Watch</a></div>'
+        "</body></html>",
+    )
+
+    event = await data.extract_songkick_event(
+        {
+            "url": f"{SONGKICK_LIVE_STREAM_URL}?utm_source=microformat",
+            "startDate": "2026-12-01T20:00:00",
+            "location": {"@type": "VirtualLocation", "name": "Online"},
+        }
+    )
+
+    short_url = await ShortURL.objects.aget(url="https://stream.example/deep-purple")
+    assert event == Event(
+        source=EventDataSource.songkick,
+        url=SONGKICK_LIVE_STREAM_URL,
+        type=EventType.live_stream,
+        date=datetime.date(2026, 12, 1),
+        venue=None,
+        stream_urls=[short_url.full_short_url],
+        tickets_urls=[],
+    )
+
+
+@pytest.mark.asyncio
+async def test_extract_songkick_concert_reads_partial_venue(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A venue's missing details are left out, and its country gets the short name."""
+    install_page(monkeypatch, "async_songkick_client", SONGKICK_BASE_URL, "<html><body></body></html>")
+
+    event = await data.extract_songkick_event(
+        {
+            "url": f"{SONGKICK_BASE_URL}{CONCERT_PATH}",
+            "startDate": "2026-11-01T19:00:00",
+            "location": {"name": "Royal Albert Hall", "address": {"addressCountry": "UK", "addressLocality": "London"}},
+        }
+    )
+
+    assert event.venue == Venue(name="Royal Albert Hall", city="London", country="United Kingdom")
+    assert event.tickets_urls == []
+
+
+@pytest.mark.asyncio
+async def test_extract_songkick_concert_without_venue_name_has_no_venue(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A concert whose venue has no name gets no venue, which is logged as a warning, and keeps its tickets."""
+    install_page(
+        monkeypatch, "async_songkick_client", SONGKICK_BASE_URL, (DATA_DIR / "songkick_concert.html").read_text()
+    )
+    location = {"address": {"addressCountry": "Germany"}}
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        event = await data.extract_songkick_event(
+            {"url": f"{SONGKICK_BASE_URL}{CONCERT_PATH}", "startDate": "2026-11-01T19:00:00", "location": location}
+        )
+
+    assert event.venue is None
+    assert len(event.tickets_urls) == 2
+    assert [r.getMessage() for r in caplog.records] == [f"Venue data is incomplete: {location}. Setting Venue to None"]
+
+
+@pytest.mark.asyncio
+async def test_extract_songkick_event_rejects_url_of_no_event() -> None:
+    """A URL that is not one of a concert, a festival or a live stream fails the event."""
+    url = f"{SONGKICK_BASE_URL}/venues/1-hamburg-sporthalle"
+
+    with pytest.raises(SongkickException, match=rf"^Event URL does not match pattern: {url}$"):
+        await data.extract_songkick_event({"url": url, "startDate": "2026-11-01T19:00:00", "location": {}})
+
+
+BANDSINTOWN_ONLINE_EVENT_URL = f"{BANDSINTOWN_BASE_URL}/e/1-deep-purple-online"
+BANDSINTOWN_ONLINE_EVENT_DATA = {
+    "url": f"{BANDSINTOWN_ONLINE_EVENT_URL}?came_from=257",
+    "startDate": "2026-12-01T20:00:00",
+}
+BANDSINTOWN_PLACE = {
+    "@type": "Place",
+    "name": "Royal Albert Hall",
+    "address": {"addressCountry": "UK", "addressLocality": "London"},
+}
+
+
+def bandsintown_event_page(window_data: dict) -> str:
+    return f"<html><head><script>window.__data={json.dumps(window_data)}</script></head><body></body></html>"
+
+
+def bandsintown_window_data(location: dict, event_view_body: dict) -> dict:
+    return {
+        "eventView": {"body": event_view_body},
+        "jsonLdContainer": {"eventJsonLd": {"location": location}},
+    }
+
+
+def install_bandsintown_event_page(monkeypatch: pytest.MonkeyPatch, page: str) -> None:
+    install_page(monkeypatch, "async_bandsintown_client", BANDSINTOWN_BASE_URL, page)
+
+
+@pytest.mark.asyncio
+async def test_extract_bandsintown_live_stream_reads_stream_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An event at a virtual location is a live stream with no venue, whose stream link is shortened."""
+    window_data = bandsintown_window_data(
+        {"@type": "VirtualLocation"}, {"hybridEventDetails": {"streamingUrl": "https://stream.example/deep-purple"}}
+    )
+    install_bandsintown_event_page(monkeypatch, bandsintown_event_page(window_data))
+
+    event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    short_url = await ShortURL.objects.aget(url="https://stream.example/deep-purple")
+    assert event == Event(
+        source=EventDataSource.bandsintown,
+        url=BANDSINTOWN_ONLINE_EVENT_URL,
+        type=EventType.live_stream,
+        date=datetime.date(2026, 12, 1),
+        venue=None,
+        stream_urls=[short_url.full_short_url],
+        tickets_urls=[],
+    )
+
+
+@pytest.mark.asyncio
+async def test_extract_bandsintown_live_stream_without_stream_link(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A live stream without a stream link gets none, which is logged as a warning."""
+    window_data = bandsintown_window_data({"@type": "VirtualLocation"}, {"hybridEventDetails": {"streamingUrl": None}})
+    install_bandsintown_event_page(monkeypatch, bandsintown_event_page(window_data))
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    assert event.stream_urls == []
+    assert [r.getMessage() for r in caplog.records] == [
+        (
+            "eventView.body.hybridEventDetails.streamingUrl key not found in 'window.__data' on "
+            f"{BANDSINTOWN_ONLINE_EVENT_URL}"
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_extract_bandsintown_concert_reads_partial_venue_and_tickets(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A venue's missing details are left out, and its country gets the short name.
+
+    A ticket without a link is skipped, which is logged as a warning.
+    """
+    window_data = bandsintown_window_data(
+        BANDSINTOWN_PLACE,
+        {
+            "detailedTicketList": {
+                "ticketList": [{"directTicketUrl": "https://tickets.example/1"}, {"ticketType": None}]
+            }
+        },
+    )
+    install_bandsintown_event_page(monkeypatch, bandsintown_event_page(window_data))
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    short_url = await ShortURL.objects.aget(url="https://tickets.example/1")
+    assert event.type == EventType.concert
+    assert event.venue == Venue(name="Royal Albert Hall", city="London", country="United Kingdom")
+    assert event.tickets_urls == [short_url.full_short_url]
+    assert [r.getMessage() for r in caplog.records] == [
+        (
+            "directTicketUrl not found in one of the elements in eventView.body.detailedTicketList.ticketList in "
+            f"'window.__data' on {BANDSINTOWN_ONLINE_EVENT_URL}"
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_extract_bandsintown_concert_without_venue_name_has_no_venue(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A concert whose venue has no name gets no venue, which is logged as a warning, and no tickets."""
+    location = {"@type": "Place", "address": {"addressCountry": "UK"}}
+    window_data = bandsintown_window_data(
+        location, {"detailedTicketList": {"ticketList": [{"directTicketUrl": "https://tickets.example/1"}]}}
+    )
+    install_bandsintown_event_page(monkeypatch, bandsintown_event_page(window_data))
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    assert event.venue is None
+    assert event.tickets_urls == []
+    assert [r.getMessage() for r in caplog.records] == [f"Venue data is incomplete: {location}. Setting Venue to None"]
+
+
+@pytest.mark.asyncio
+async def test_extract_bandsintown_event_without_event_view_reports_it(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An event page without the event's view still gives the event, with no tickets, and logs what is missing."""
+    window_data = {"jsonLdContainer": {"eventJsonLd": {"location": BANDSINTOWN_PLACE}}}
+    install_bandsintown_event_page(monkeypatch, bandsintown_event_page(window_data))
+
+    with caplog.at_level(logging.WARNING, logger="web.events.data"):
+        event = await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    assert event.venue == Venue(name="Royal Albert Hall", city="London", country="United Kingdom")
+    assert event.tickets_urls == []
+    assert [(r.levelno, r.getMessage()) for r in caplog.records] == [
+        (logging.ERROR, f"eventView key not found in 'window.__data' on {BANDSINTOWN_ONLINE_EVENT_URL}"),
+        (logging.ERROR, f"eventView.body key not found in 'window.__data' on {BANDSINTOWN_ONLINE_EVENT_URL}"),
+        (
+            logging.WARNING,
+            f"eventView.body.detailedTicketList key not found in 'window.__data' on {BANDSINTOWN_ONLINE_EVENT_URL}",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("page", "error"),
+    [
+        ("<html><head></head><body></body></html>", "'window.__data' element not found on {url}"),
+        (
+            "<html><head><script>window.__data={}</script><script>window.__data={}</script></head></html>",
+            "Multiple 'window.__data' elements found on {url}",
+        ),
+        ("<html><head><script>window.__data={</script></head></html>", "Failed to parse 'window.__data' from {url}: "),
+        (bandsintown_event_page({}), "jsonLdContainer.eventJsonLd.location not found on {url}"),
+    ],
+)
+async def test_extract_bandsintown_event_fails_without_event_data(
+    monkeypatch: pytest.MonkeyPatch, page: str, error: str
+) -> None:
+    """An event page without the event's data, or with more than one set of it, fails the event."""
+    install_bandsintown_event_page(monkeypatch, page)
+
+    with pytest.raises(BandsintownException) as exc_info:
+        await data.extract_bandsintown_event(BANDSINTOWN_ONLINE_EVENT_DATA)
+
+    assert str(exc_info.value).startswith(error.format(url=BANDSINTOWN_ONLINE_EVENT_URL))
