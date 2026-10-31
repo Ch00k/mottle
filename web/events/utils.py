@@ -128,15 +128,6 @@ def find_best_artist_name_match_advanced(
 
     raise HeuristicsException(f"Artist '{original_artist_name}' not found")
 
-    # from cyrtranslit import to_latin
-    # from transliterate import translit
-    #
-    # [(_, name) for _, name in filtered if CYRILLIC_COMMON & set(name)]
-    # [(_, translit(name, "ru", reversed=True)) for _, name in filtered]
-    # [(_, translit(name, "uk", reversed=True)) for _, name in filtered]
-    # [(_, to_latin(name, "ru")) for _, name in filtered]
-    # [(_, to_latin(name, "ua")) for _, name in filtered]
-
 
 def normalize_string(string: str) -> str:
     return replace_unicode_characters(string.strip().casefold())

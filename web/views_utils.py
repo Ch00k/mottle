@@ -13,7 +13,7 @@ from django.urls import reverse
 from django_htmx.http import trigger_client_event
 
 from .models import Artist, EventArtist, EventUpdate, Playlist
-from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url
+from .spotify_items import get_largest_image, get_smallest_image, get_spotify_url
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
@@ -175,21 +175,6 @@ class AlbumMetadata(SpotifyEntityMetadata):
 
     def _fetch_additional_data(self, entity: Any) -> None:
         self._track_image_url = get_smallest_image(entity.images)
-
-
-# def get_duplicates_message(items: Collection) -> str:
-#     num_duplicates = len(items)
-
-#     if not num_duplicates:
-#         message = "No duplicates found"
-#     elif num_duplicates == 1:
-#         message = "1 track has duplicates"
-#     elif num_duplicates % 10 == 1:
-#         message = f"{len(items)} track has duplicates"
-#     else:
-#         message = f"{len(items)} tracks have duplicates"
-
-#     return message
 
 
 async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: str, template_path: str) -> HttpResponse:

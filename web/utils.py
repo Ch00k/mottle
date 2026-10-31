@@ -42,10 +42,8 @@ class MottleException(Exception):
 
 
 class MottleSpotifyClient:
-    def __init__(
-        self, access_token: str, http_timeout: int = settings.TEKORE_HTTP_TIMEOUT, is_async: bool = True
-    ) -> None:
-        self.spotify_client = get_client(access_token, http_timeout=http_timeout, async_on=is_async)
+    def __init__(self, access_token: str, http_timeout: int = settings.TEKORE_HTTP_TIMEOUT) -> None:
+        self.spotify_client = get_client(access_token, http_timeout=http_timeout)
 
     async def get_current_user(self) -> PrivateUser:
         try:
@@ -181,16 +179,6 @@ class MottleSpotifyClient:
             await self.spotify_client.playlist_remove(playlist_id, track_uris)
         except Exception as e:
             raise MottleException(f"Failed to remove tracks from playlist {playlist_id}") from e
-
-    # async def remove_tracks_at_positions_from_playlist(
-    #     self, playlist_id: str, tracks: list[dict], playlist_snapshot_id: str
-    # ) -> None:
-    #     try:
-    #         await self.spotify_client.playlist_remove_occurrences(
-    #             playlist_id, tracks, playlist_snapshot_id
-    #         )
-    #     except Exception as e:
-    #         raise MottleException(f"Failed to remove tracks from playlist {playlist_id}") from e
 
     async def create_playlist(self, current_user_id: str, name: str, is_public: bool = True) -> FullPlaylist:
         try:

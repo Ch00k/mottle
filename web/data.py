@@ -12,7 +12,7 @@ from tekore.model import (
     SimpleTrack,
 )
 
-from .templatetags.tekore_model_extras import get_largest_image, get_smallest_image, get_spotify_url, humanize_duration
+from .spotify_items import get_largest_image, get_smallest_image, get_spotify_url, humanize_duration
 
 if TYPE_CHECKING:
     from datetime import date

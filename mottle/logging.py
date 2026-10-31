@@ -10,11 +10,6 @@ BUILTIN_ATTRS.add("taskName")
 
 
 class MottleJSONFormatter(JSONFormatter):
-    def extra_from_record(self, record: logging.LogRecord) -> dict:
-        return {
-            attr_name: record.__dict__[attr_name] for attr_name in record.__dict__ if attr_name not in BUILTIN_ATTRS
-        }
-
     def json_record(self, message: str, extra: dict, record: logging.LogRecord) -> dict:
         new_extra: dict[str, Any] = {}
 

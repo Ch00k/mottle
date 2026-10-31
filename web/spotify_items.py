@@ -1,13 +1,9 @@
 from typing import TYPE_CHECKING
 
-from django import template
 from django.templatetags.static import static
 
 if TYPE_CHECKING:
     from tekore.model import Image, Item
-
-register = template.Library()
-
 
 ALLOWED_IMAGE_SIZES = [70, 300]
 DEFAULT_IMAGE_SIZE = 70
@@ -45,11 +41,6 @@ def get_spotify_url(item: Item) -> str:
 
     external_url: str = external_urls.get("spotify", "#")
     return external_url
-
-
-@register.filter
-def year(release_date: str) -> str:
-    return release_date.split("-", 1)[0]
 
 
 def humanize_duration(duration_ms: int) -> str:

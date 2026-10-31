@@ -22,7 +22,7 @@ from django.views.decorators.http import (
 from django_htmx.http import push_url, trigger_client_event
 from tekore.model import AlbumType, FullPlaylistTrack
 
-from web.templatetags.tekore_model_extras import get_smallest_image
+from web.spotify_items import get_smallest_image
 
 from .background import run_in_background
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
@@ -44,7 +44,6 @@ from .views_utils import (
     ArtistMetadata,
     PlaylistMetadata,
     catch_errors,
-    # get_duplicates_message,
     get_playlist_modal_response,
 )
 
@@ -226,7 +225,6 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
                     "playlists": playlists,
                     "user_playlist_ids": user_playlist_ids,
                     "query": query,
-                    # "source": "playlists_search",
                 },
             ),
             "?query=" + unquote(query),
@@ -240,7 +238,6 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
             "playlists": playlists,
             "user_playlist_ids": user_playlist_ids,
             "query": query,
-            # "source": "playlists_search",
         },
     )
 
@@ -524,9 +521,6 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 @catch_errors
 @require_POST
 async def follow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
-    # playlist_metadata = PlaylistMetadata(request, playlist_id)
-    # playlist = await PlaylistData.from_metadata(playlist_metadata)
-
     await request.spotify_client.follow_playlist(playlist_id)
 
     return trigger_client_event(
@@ -535,27 +529,10 @@ async def follow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
         {"type": "success", "body": "Successfully added playlist"},
     )
 
-    # source = request.headers.get("M-Source")
-    # if not source:
-    #     return trigger_client_event(
-    #         HttpResponseServerError("Failed to follow playlist"),
-    #         "HXToast",
-    #         {"type": "error", "body": "Failed to follow playlist"},
-    #     )
-
-    # return render(
-    #     request,
-    #     "web/parts/playlist_unfollow.html",
-    #     {"playlist": playlist, "source": source},
-    # )
-
 
 @catch_errors
 @require_POST
 async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
-    # playlist_metadata = PlaylistMetadata(request, playlist_id)
-    # playlist = await PlaylistData.from_metadata(playlist_metadata)
-
     await request.spotify_client.unfollow_playlist(playlist_id)
 
     try:
@@ -565,41 +542,11 @@ async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> Htt
     else:
         await db_playlist.unfollow()
 
-    # if request.headers.get("M-Source") == "playlists_search":
     return trigger_client_event(
         HttpResponse(),
         "HXToast",
         {"type": "success", "body": "Successfully removed playlist"},
     )
-    # if request.headers.get("M-Source") == "playlists_my":
-    #     if playlist.owner_id == request.session["spotify_user_spotify_id"]:
-    #         return trigger_client_event(
-    #             HttpResponse(),
-    #             "HXToast",
-    #             {"type": "success", "body": "Successfully unfollowed playlist"},
-    #         )
-    #     return trigger_client_event(
-    #         render(
-    #             request,
-    #             "web/parts/playlist_follow.html",
-    #             {"playlist": playlist, "source": "playlists_my"},
-    #         ),
-    #         "HXToast",
-    #         {"type": "success", "body": "Successfully unfollowed playlist"},
-    #     )
-    # if request.headers.get("M-Source") == "playlist":
-    #     if playlist.owner_id == request.session["spotify_user_spotify_id"]:
-    #         return HttpResponseClientRedirect("/playlists")
-    #     return trigger_client_event(
-    #         render(
-    #             request,
-    #             "web/parts/playlist_follow.html",
-    #             {"playlist": playlist, "source": "playlist"},
-    #         ),
-    #         "HXToast",
-    #         {"type": "success", "body": "Successfully unfollowed playlist"},
-    #     )
-    # return HttpResponseServerError("Failed to unfollow playlist")
 
 
 @catch_errors
@@ -612,15 +559,9 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         if playlist.owner_id != request.session["spotify_user_spotify_id"]:
             return HttpResponseBadRequest("You can only deduplicate your own playlists")
 
-        # XXX: The whole remove_tracks_at_positions_from_playlist is not working as expected,
-        # which is probably the reason it is not documented in the Spotify API.
-        # The API request is successful, but the tracks' positions in request payload are ignored:
-        # all specified tracks are removed from the playlist, regardless of their positions.
+        # Spotify ignores the positions in a request to remove tracks at given positions, which its API does not
+        # document, and removes every occurrence. So every copy of a duplicated track is removed and one is added back.
 
-        # track_data = dict([item.split("::") for item in request.POST.getlist("track-meta")])
-        # tracks_to_remove = [
-        #     {"uri": k, "positions": [int(i) for i in v.split(",")][1:]} for k, v in track_data.items()
-        # ]
         tracks_to_remove = request.POST.getlist("track-ids")
 
         logger.debug(f"Tracks: {tracks_to_remove}")
@@ -628,9 +569,6 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
 
         tracks = [f"spotify:track:{track_id}" for track_id in tracks_to_remove]
 
-        # await request.spotify_client.remove_tracks_at_positions_from_playlist(
-        #     playlist_id, tracks_to_remove, playlist_snapshot_id
-        # )
         await request.spotify_client.remove_tracks_from_playlist(playlist_id, tracks)
         await request.spotify_client.add_tracks_to_playlist(playlist_id, tracks)
 
@@ -646,7 +584,6 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         context={
             "playlist": playlist,
             "duplicates": duplicates,
-            # "message": get_duplicates_message(duplicates),
         },
     )
 
@@ -679,28 +616,12 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
     # TODO: Uploading playlist cover image is weird. Right after playlist is created, the upload returns a 404 for
     # some time, then it returns a 502 for some time, and only then it returns a 202.
     # Disabling it for now because the whole thing is very flaky.
-    # try:
-    #     cover_images = await request.spotify_client.get_playlist_cover_images(playlist_id)
-    # except MottleException as e:
-    #     logger.exception(e)
-    #     cover_images = []
-
-    # cover_images = [image for image in cover_images if urlparse(image.url).netloc != "mosaic.scdn.co"]
-    # if cover_images:
-    #     # The assumption is that there are either 3 mosaic images or 1 non-mosaic image
-    #     cover_image = cover_images[0]
-    #     resp = await httpx.AsyncClient().get(cover_image.url)
-    #     cover_image_base64_data = base64.b64encode(resp.content).decode()
-    #     logger.debug(f"Cover image data size: {len(cover_image_base64_data) / 1000} KB")
-    # else:
-    #     cover_image_base64_data = None
 
     playlist = await request.spotify_client.create_playlist_with_tracks(
         request.session["spotify_user_spotify_id"],
         name=f"Copy of {playlist_name}",
         track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
         is_public=True,  # TODO: How do we decide on the value?
-        # cover_image=cover_image_base64_data,
         cover_image=None,
         add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
         fail_on_cover_image_upload_error=False,
@@ -1046,7 +967,6 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
                 "latitude": latitude,
                 "longitude": longitude,
                 "radius": radius,
-                # "events_enabled": events_enabled,
             },
         )
 
@@ -1086,7 +1006,6 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
                 "latitude": latitude,
                 "longitude": longitude,
                 "radius": radius,
-                # "events_enabled": events_enabled,
             },
         ),
         "HXToast",

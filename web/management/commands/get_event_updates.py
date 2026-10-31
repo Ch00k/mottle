@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from functools import partial
 from typing import Any, cast
@@ -10,7 +11,7 @@ from tekore.model import FullPlaylistTrack
 
 from web.data import TrackData
 from web.spotify import get_client_token
-from web.tasks import check_artists_for_event_updates
+from web.tasks import acheck_artists_for_event_updates
 from web.utils import MottleException, MottleSpotifyClient
 
 logger = logging.getLogger(__name__)
@@ -75,11 +76,12 @@ class Command(BaseCommand):
         else:
             artist_ids = None
 
-        check_artists_for_event_updates(
-            artist_spotify_ids=artist_ids,
-            compile_notifications=compile_notifications,
-            send_notifications=send_notifications,
-            force_refetch=force_refetch,
-            concurrent_execution=True,
-            concurrency_limit=concurrency_limit,
+        asyncio.run(
+            acheck_artists_for_event_updates(
+                artist_spotify_ids=artist_ids,
+                compile_notifications=compile_notifications,
+                send_notifications=send_notifications,
+                force_refetch=force_refetch,
+                concurrency_limit=concurrency_limit,
+            )
         )
