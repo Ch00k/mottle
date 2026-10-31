@@ -3,6 +3,7 @@ from functools import total_ordering
 from typing import TYPE_CHECKING
 
 from tekore.model import (
+    FullAlbum,
     FullArtist,
     FullPlaylist,
     FullPlaylistTrack,
@@ -50,7 +51,7 @@ class AlbumData(SpotifyEntityData):
     num_tracks: int | None = None
 
     @staticmethod
-    def from_tekore_model(album: SimpleAlbum) -> AlbumData:
+    def from_tekore_model(album: SimpleAlbum | FullAlbum) -> AlbumData:
         return AlbumData(
             id=album.id,
             name=album.name,
