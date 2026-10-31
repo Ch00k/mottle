@@ -483,6 +483,15 @@ class TestPlaylistData:
                 offset=0,
                 previous=None,
             ),
+            items=PlaylistTrackPaging(
+                href="https://api.spotify.com/v1/playlists/playlist123/items",
+                items=[],
+                limit=100,
+                next=None,
+                total=42,
+                offset=0,
+                previous=None,
+            ),
         )
 
         result = PlaylistData.from_tekore_model(playlist)
@@ -526,6 +535,10 @@ class TestPlaylistData:
             primary_color=None,
             tracks=Tracks(
                 href="https://api.spotify.com/v1/playlists/playlist456/tracks",
+                total=0,
+            ),
+            items=Tracks(
+                href="https://api.spotify.com/v1/playlists/playlist456/items",
                 total=0,
             ),
         )
