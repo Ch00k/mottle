@@ -643,7 +643,9 @@ class PlaylistUpdate(BaseModel):
     def is_auto_acceptable(self) -> bool:
         try:
             config = PlaylistWatchConfig.objects.get(
-                watched_playlist=self.source_playlist, watching_playlist=self.target_playlist
+                watched_playlist=self.source_playlist,
+                watched_artist=self.source_artist,
+                watching_playlist=self.target_playlist,
             )
         except PlaylistWatchConfig.DoesNotExist:
             return False
