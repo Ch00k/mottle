@@ -11,6 +11,7 @@ SONGKICK_API_REQUEST_TIMEOUT = 5
 BANDSINTOWN_API_REQUEST_TIMEOUT = 5
 
 SONGKICK_EVENT_URL_REGEX = re.compile(r"^https://www\.songkick\.com/(concerts|festivals|live-stream-concerts).*$")
+SONGKICK_ARTIST_CALENDAR_URL_REGEX = re.compile(r"^https://www\.songkick\.com/artists/[^/]+/calendar$")
 SONGKICK_EVENTS_XPATH = (
     "//div[@id='calendar-summary' and contains(@class, 'upcoming')]//div[@class='microformat']/script/text()"
 )
