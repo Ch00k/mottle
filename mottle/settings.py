@@ -28,7 +28,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 APP_VERSION = env.str("APP_VERSION", "dev")
 
 INSTALLED_APPS = [
-    "daphne",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -179,8 +178,9 @@ LOGGING: dict[str, Any] = {
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
-        "django.channels.server": {
-            "level": "WARNING",
+        # uvicorn's server messages. Its access log stays with uvicorn, which logs it unless told not to.
+        "uvicorn.error": {
+            "level": "INFO",
             "handlers": [LOG_FORMAT],
             "propagate": False,
         },
