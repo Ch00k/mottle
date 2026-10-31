@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from django.conf import settings
+from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 from django.template.loader_tags import ExtendsNode, IncludeNode
 
@@ -28,7 +29,7 @@ def test_included_and_extended_templates_exist() -> None:
     for name in sorted(referenced):
         try:
             get_template(name)
-        except Exception:
+        except TemplateDoesNotExist:
             missing.append(name)
 
     assert {"web/base.html", "web/icons/ticket.html"} <= referenced
