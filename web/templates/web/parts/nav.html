@@ -14,7 +14,7 @@
             </div>
             <div class="hidden md:block">
                 <div class="ml-10 icon-text space-x-4">
-                    {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
+                    {% if "spotify_user_display_name" in request.session and request.session.spotify_user_display_name %}
                         <a href="{% url 'search' %}"
                            hx-boost="true"
                            hx-indicator="#spinner"
@@ -87,7 +87,7 @@
     <!-- Mobile menu -->
     <div id="mobile-menu" class="md:hidden hidden">
         <div class="px-2 pt-2 pb-3 space-y-1 bg-gray-50 border-t border-gray-200">
-            {% if 'spotify_user_display_name' in request.session and request.session.spotify_user_display_name %}
+            {% if "spotify_user_display_name" in request.session and request.session.spotify_user_display_name %}
                 <a href="{% url 'search' %}"
                    hx-boost="true"
                    hx-indicator="#spinner"

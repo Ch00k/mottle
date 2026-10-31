@@ -22,6 +22,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libsqlite3-mod-spatialite libgdal-dev
 
+      # make check rebuilds the stylesheet to compare it with the committed one, which needs the release of the
+      # Tailwind CLI the Makefile names, checked against the checksum the release published.
+      - name: Install the Tailwind CLI
+        run: |
+          version=$(sed -n 's/^TAILWIND_VERSION := //p' Makefile)
+          base="https://github.com/tailwindlabs/tailwindcss/releases/download/$version"
+          curl -fsSLO "$base/tailwindcss-linux-x64"
+          curl -fsSL "$base/sha256sums.txt" | grep ' ./tailwindcss-linux-x64$' | sed 's| ./| |' | sha256sum --check
+          sudo install tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.3
         with:

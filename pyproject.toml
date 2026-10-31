@@ -127,4 +127,4 @@ django_debug_mode = "keep"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.djlint]
-extend_exclude = "tests/golden/event_updates_email/html.html,tests/golden/playlist_updates_email/html.html"
+extend_exclude = "tests/golden/event_updates_email/html.html,tests/golden/playlist_updates_email/html.html,tests/data"

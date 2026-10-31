@@ -27,20 +27,20 @@
     <div class="p-4">
         <!-- Album Name -->
         <div class="mb-2">
-        <a href="{% url 'album' album.id %}" hx-boost="true" hx-indicator="#spinner" hx-headers='{% include "web/parts/album_metadata_headers.html" %}' class="text-heading-md text-link-hover line-clamp-2" {{ album.name }} </a>
-    </div>
-    <!-- Album Details -->
-    <div class="space-y-1 text-metadata mb-3">
-        <div class="flex-between">
-            <span>{{ album.release_year }}</span>
-            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {% if album.type == 'album' %}bg-blue-100 text-blue-700 {% elif album.type == 'single' %}bg-green-100 text-green-700 {% else %}bg-gray-100 text-gray-700{% endif %}">
-                {{ album.type|title }}
-            </span>
+            <a href="{% url 'album' album.id %}" hx-boost="true" hx-indicator="#spinner" hx-headers='{% include "web/parts/album_metadata_headers.html" %}' class="text-heading-md text-link-hover line-clamp-2" {{ album.name }} </a>
+            </div>
+            <!-- Album Details -->
+            <div class="space-y-1 text-metadata mb-3">
+                <div class="flex-between">
+                    <span>{{ album.release_year }}</span>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {% if album.type == 'album' %}bg-blue-100 text-blue-700 {% elif album.type == 'single' %}bg-green-100 text-green-700 {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ album.type|title }}
+                    </span>
+                </div>
+                <div class="icon-text">
+                    {% include "web/icons/tw_music_notes.html" with class="w-4 h-4 mr-1" %}
+                    <span>{{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</span>
+                </div>
+            </div>
         </div>
-        <div class="icon-text">
-            {% include "web/icons/tw_music_notes.html" with class="w-4 h-4 mr-1" %}
-            <span>{{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</span>
-        </div>
     </div>
-</div>
-</div>

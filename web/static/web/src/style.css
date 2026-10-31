@@ -1,4 +1,8 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+
+/* Only the app's templates and scripts use classes; anything else in the tree would add stray ones */
+@source "../../../templates";
+@source "../*.js";
 
 /* Component Classes for Mottle */
 

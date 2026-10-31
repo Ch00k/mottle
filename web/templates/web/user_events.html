@@ -16,7 +16,8 @@
                          alt="{{ artist.name }}">
                     <div>
                         <h2 class="text-2xl font-semibold text-gray-900">
-                            <a href="{{ artist.url }}" class="hover:text-blue-600 transition-colors">{{ artist.name }}</a>
+                            <a href="{{ artist.url }}"
+                               class="hover:text-blue-600 transition-colors">{{ artist.name }}</a>
                         </h2>
                         <p class="text-sm text-gray-600">{{ events|length }} upcoming event{{ events|length|pluralize }}</p>
                     </div>

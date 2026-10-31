@@ -44,18 +44,23 @@
                                         <div class="flex-1 min-w-0">
                                             <!-- Track Name -->
                                             <h3 class="text-sm font-medium text-gray-900 truncate">
-                                                <a href="{{ track.url }}" class="text-link-hover" target="_blank">{{ track.name }}</a>
+                                                <a href="{{ track.url }}"
+                                                   class="text-link-hover"
+                                                   target="_blank">{{ track.name }}</a>
                                             </h3>
                                             <!-- Artists -->
                                             <p class="text-metadata truncate">
                                                 {% for artist in track.artists %}
-                                                    <a href="{{ artist.url }}" class="text-link-hover" target="_blank">{{ artist.name }}</a>
+                                                    <a href="{{ artist.url }}"
+                                                       class="text-link-hover"
+                                                       target="_blank">{{ artist.name }}</a>
                                                     {% if not forloop.last %},{% endif %}
                                                 {% endfor %}
                                             </p>
                                             <!-- Album -->
                                             <p class="text-xs text-gray-500 truncate mt-1">
-                                                <a href="{% url 'album' track.album.id %}" class="text-link-hover">{{ track.album.name }}</a>
+                                                <a href="{% url 'album' track.album.id %}"
+                                                   class="text-link-hover">{{ track.album.name }}</a>
                                             </p>
                                         </div>
                                         <!-- Track Meta -->

@@ -246,14 +246,14 @@
                 </div>
             {% endif %}
         </div>
-    </div>
-{% else %}
-    <div class="container-page">
-        <div class="empty-state">
-            {% include "web/icons/tw_music_notes.html" %}
-            <h3 class="mt-4 text-lg font-medium text-gray-900">No albums found</h3>
-            <p class="mt-2 text-gray-500">{{ artist.name }} has no albums available.</p>
         </div>
-    </div>
-{% endif %}
+    {% else %}
+        <div class="container-page">
+            <div class="empty-state">
+                {% include "web/icons/tw_music_notes.html" %}
+                <h3 class="mt-4 text-lg font-medium text-gray-900">No albums found</h3>
+                <p class="mt-2 text-gray-500">{{ artist.name }} has no albums available.</p>
+            </div>
+        </div>
+    {% endif %}
 {% endblock content %}
