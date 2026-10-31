@@ -29,7 +29,7 @@
                                 </a>
                             </div>
                             <div class="flex items-center space-x-4">
-                                <button hx-post="{% url 'accept_playlist_updates' playlist.id %}"
+                                <button hx-post="{% url 'accept_playlist_updates' playlist_id %}"
                                         hx-confirm="Are you sure you want to accept all playlist updates?"
                                         hx-target="body"
                                         hx-indicator="#spinner"
@@ -79,7 +79,7 @@
                                             {% endif %}
                                         </div>
                                         <!-- Accept Button -->
-                                        <button hx-post="{% url 'accept_playlist_update' playlist.id update_id %}"
+                                        <button hx-post="{% url 'accept_playlist_update' playlist_id update_id %}"
                                                 hx-confirm="Accept {{ tracks|length }} new track{{ tracks|length|pluralize }}?"
                                                 hx-target="body"
                                                 hx-indicator="#spinner"

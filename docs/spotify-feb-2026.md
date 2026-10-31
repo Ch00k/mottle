@@ -88,7 +88,7 @@ Used in `MottleSpotifyClient.remove_user_saved_tracks` via `saved_tracks_delete(
 
 #### 4. Playlist `tracks` field renamed to `items`
 
-Used in `PlaylistData.from_tekore_model` (`web/data.py`) and `PlaylistMetadata._fetch_additional_data` (`web/views_utils.py`), both accessing `tracks.total`.
+Used in `PlaylistData.from_tekore_model` (`web/data.py`), accessing `tracks.total`.
 
 **Migration**: Update field access to use `items` instead of `tracks`. This likely depends on a Tekore library update to reflect the new response shape.
 

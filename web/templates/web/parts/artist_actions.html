@@ -4,8 +4,7 @@
             hx-get="{% url 'albums' artist.id %}"
             hx-target="body"
             hx-swap="beforeend"
-            hx-indicator="#spinner"
-            hx-headers='{% include "web/parts/artist_metadata_headers.html" %}'>
+            hx-indicator="#spinner">
         {% include "web/icons/tw_music_notes.html" with class="w-3 h-3 mr-1" %}
         Discography
     </button>

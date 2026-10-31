@@ -4,8 +4,7 @@
             hx-get="{% url 'merge_playlist' playlist.id %}"
             hx-target="body"
             hx-swap="beforeend"
-            hx-indicator="#spinner"
-            hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+            hx-indicator="#spinner">
         {% include "web/icons/tw_copy.html" with class="w-3 h-3 mr-1" %}
         Merge
     </button>
@@ -15,8 +14,7 @@
                 hx-get="{% url 'configure_playlist' playlist.id %}"
                 hx-target="body"
                 hx-swap="beforeend"
-                hx-indicator="#spinner"
-                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                hx-indicator="#spinner">
             {% include "web/icons/tw_cog.html" with class="w-3 h-3 mr-1" %}
             Manage
         </button>
@@ -26,8 +24,7 @@
                     hx-get="{% url 'playlist_updates' playlist.id %}"
                     hx-target="body"
                     hx-swap="beforeend"
-                    hx-indicator="#spinner"
-                    hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                    hx-indicator="#spinner">
                 {% include "web/icons/tw_refresh.html" with class="w-3 h-3 mr-1" %}
                 Updates
             </button>
@@ -37,8 +34,7 @@
                 hx-get="{% url 'deduplicate_playlist' playlist.id %}"
                 hx-target="body"
                 hx-swap="beforeend"
-                hx-indicator="#spinner"
-                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+                hx-indicator="#spinner">
             {% include "web/icons/tw_duplicate.html" with class="w-3 h-3 mr-1" %}
             Duplicates
         </button>

@@ -1,7 +1,5 @@
 import logging
-import re
 from typing import TYPE_CHECKING, Any
-from urllib.parse import unquote
 
 from asgiref.sync import sync_to_async
 from django.shortcuts import render
@@ -9,7 +7,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from .models import Artist, EventArtist, EventUpdate, Playlist
-from .spotify_items import get_largest_image, get_smallest_image, get_spotify_url
+from .spotify_items import get_smallest_image
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
@@ -20,162 +18,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-UNDEFINED = "UNDEFINED"
-
-
-class SpotifyEntityMetadata:
-    def __init__(self, request: MottleHttpRequest, entity_id: str) -> None:
-        self._id = entity_id
-        self._spotify_client = request.spotify_client
-        self._entity_name = camel_to_snake(self.__class__.__name__).replace("_metadata", "")
-        self._headers = request.headers
-        self._is_data_fetched = False
-        self._header_prefix = f"M-{self._entity_name}"
-
-        self._get_common_attrs()
-
-    @property
-    async def id(self) -> str:
-        return self._id
-
-    @property
-    async def name(self) -> str:
-        if self._name == UNDEFINED:
-            logger.warning(f"Name of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._name)
-
-    @property
-    async def url(self) -> str:
-        if self._url == UNDEFINED:
-            logger.warning(f"Spotify URL of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._url)
-
-    @property
-    async def image_url_small(self) -> str | None:
-        if self._image_url_small == UNDEFINED:
-            logger.warning(f"Image URL (small) of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return None if self._image_url_small is None else unquote(self._image_url_small)
-
-    @property
-    async def image_url_large(self) -> str | None:
-        if self._image_url_large == UNDEFINED:
-            logger.warning(f"Image URL (large) of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return None if self._image_url_large is None else unquote(self._image_url_large)
-
-    async def _fetch_data(self) -> None:
-        logger.warning(f"Fetching data for {self._entity_name} {self._id}")
-
-        if not self._is_data_fetched:
-            try:
-                spotify_client_method = getattr(self._spotify_client, f"get_{self._entity_name}")
-            except AttributeError as e:
-                raise MottleException(f"Method get_{self._entity_name} not found in Spotify client") from e
-
-            entity = await spotify_client_method(self._id)
-
-            self._name = entity.name
-            self._url = get_spotify_url(entity)
-            self._image_url_small = get_smallest_image(entity.images)
-            self._image_url_large = get_largest_image(entity.images)
-
-            self._fetch_additional_data(entity)
-
-            self._is_data_fetched = True
-
-    def _fetch_additional_data(self, entity: Any) -> None:
-        pass
-
-    def _get_attr_from_header(self, attr_name: str) -> str:
-        return self._headers.get(f"{self._header_prefix}-{attr_name}", UNDEFINED)
-
-    def _get_common_attrs(self) -> None:
-        self._name = self._get_attr_from_header("Name")
-        self._url = self._get_attr_from_header("Url")
-        self._image_url_small = self._get_attr_from_header("Imageurlsmall")
-        self._image_url_large = self._get_attr_from_header("Imageurllarge")
-
-
-class PlaylistMetadata(SpotifyEntityMetadata):
-    def __init__(self, request: MottleHttpRequest, playlist_id: str) -> None:
-        super().__init__(request, playlist_id)
-
-        self._owner_id = self._get_attr_from_header("Ownerid")
-        self._owner_name = self._get_attr_from_header("Ownername")
-        self._owner_url = self._get_attr_from_header("Ownerurl")
-        self._snapshot_id = self._get_attr_from_header("Snapshotid")
-        self._num_tracks = self._get_attr_from_header("Numtracks")
-
-    @property
-    async def owner_id(self) -> str:
-        if self._owner_id == UNDEFINED:
-            logger.warning(f"Owner ID of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._owner_id)
-
-    @property
-    async def owner_name(self) -> str:
-        if self._owner_name == UNDEFINED:
-            logger.warning(f"Owner name of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._owner_name)
-
-    @property
-    async def owner_url(self) -> str:
-        if self._owner_url == UNDEFINED:
-            logger.warning(f"Owner URL of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._owner_url)
-
-    @property
-    async def snapshot_id(self) -> str:
-        if self._snapshot_id == UNDEFINED:
-            logger.warning(f"Snapshot ID of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return unquote(self._snapshot_id)
-
-    @property
-    async def num_tracks(self) -> int:
-        if self._num_tracks == UNDEFINED:
-            logger.warning(f"Number of tracks of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return int(self._num_tracks)
-
-    def _fetch_additional_data(self, entity: Any) -> None:
-        self._owner_id = entity.owner.id
-        self._owner_name = entity.owner.display_name
-        self._owner_url = get_spotify_url(entity.owner)
-        self._snapshot_id = entity.snapshot_id
-        self._num_tracks = entity.tracks.total
-
-
-class ArtistMetadata(SpotifyEntityMetadata):
-    pass
-
-
-class AlbumMetadata(SpotifyEntityMetadata):
-    def __init__(self, request: MottleHttpRequest, album_id: str) -> None:
-        super().__init__(request, album_id)
-
-        self._track_image_url: str | None = self._get_attr_from_header("Trackimageurl")
-
-    @property
-    async def track_image_url(self) -> str | None:
-        if self._track_image_url == UNDEFINED:
-            logger.warning(f"Track image URL of {self._entity_name} {self._id} is UNDEFINED")
-            await self._fetch_data()
-        return None if self._track_image_url is None else unquote(self._track_image_url)
-
-    def _fetch_additional_data(self, entity: Any) -> None:
-        self._track_image_url = get_smallest_image(entity.images)
-
-
 async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: str, template_path: str) -> HttpResponse:
-    playlist_metadata = PlaylistMetadata(request, playlist_id)
-    playlist_name = await playlist_metadata.name
+    playlist = await request.spotify_client.get_playlist(playlist_id)
 
     try:
         playlists = await request.spotify_client.get_current_user_playlists()
@@ -185,9 +29,7 @@ async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: s
 
     # TODO: This could probably be made more efficient by filtering playlist inside get_current_user_playlists
     playlists = [
-        playlist
-        for playlist in playlists
-        if playlist.owner.id == request.session["spotify_user_spotify_id"] and playlist.id != playlist_id
+        p for p in playlists if p.owner.id == request.session["spotify_user_spotify_id"] and p.id != playlist_id
     ]
     return render(
         request,
@@ -195,8 +37,8 @@ async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: s
         context={
             "playlists": playlists,
             "playlist_id": playlist_id,
-            "playlist_name": playlist_name,
-            "playlist_image_url": await playlist_metadata.image_url_small,
+            "playlist_name": playlist.name,
+            "playlist_image_url": get_smallest_image(playlist.images),
         },
     )
 
@@ -312,12 +154,6 @@ async def compile_playlist_updates_email(
 
         template_data.append((playlist_data.name, updates_data))
 
-    from django.template.loader import render_to_string
-
     html = await sync_to_async(render_to_string)("web/email/playlist_updates.html", {"updates": template_data})
 
     return html.strip()
-
-
-def camel_to_snake(string: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", string).lower()
