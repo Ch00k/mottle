@@ -9,7 +9,6 @@ from minify_html import minify
 from tekore.model import FullPlaylist, Image, PublicUser
 
 from tests.conftest import (
-    create_mock_album_getter,
     create_mock_albums_getter,
     create_mock_artist_getter,
     create_mock_playlist_getter,
@@ -20,22 +19,10 @@ from web.events.enums import EventType
 from web.models import Artist, Event, EventArtist, EventUpdate, Playlist, PlaylistUpdate
 from web.utils import MottleException, MottleSpotifyClient
 from web.views_utils import (
-    AlbumMetadata,
-    ArtistMetadata,
-    PlaylistMetadata,
-    camel_to_snake,
     compile_event_updates_email,
     compile_playlist_updates_email,
     get_playlist_modal_response,
 )
-
-
-def test_camel_to_snake() -> None:
-    assert camel_to_snake("Playlist") == "playlist"
-    assert camel_to_snake("PlaylistMetadata") == "playlist_metadata"
-    assert camel_to_snake("HTTPResponse") == "h_t_t_p_response"
-    assert camel_to_snake("Artist") == "artist"
-    assert camel_to_snake("already_snake") == "already_snake"
 
 
 @pytest.mark.asyncio
@@ -441,345 +428,11 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
 
 
 @pytest.mark.asyncio
-class TestSpotifyEntityMetadata(TestCase):
-    async def test_artist_metadata_id_property(self) -> None:
-        """Test that id property returns the artist ID."""
-        request = create_mock_request()
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        artist_id = await metadata.id
-        assert artist_id == "test_artist_id"
-
-    async def test_artist_metadata_name_from_header(self) -> None:
-        """Test that name is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-artist-Name": "Test%20Artist"})
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        name = await metadata.name
-        assert name == "Test Artist"
-
-    async def test_artist_metadata_name_fetch_when_undefined(self) -> None:
-        """Test that name is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_artist = create_mock_artist_getter(
-            {
-                "test_artist_id": {
-                    "name": "Fetched Artist",
-                    "external_urls": {"spotify": "https://spotify.com/artist"},
-                    "images": [Mock(spec=Image, url="http://example.com/small.jpg", height=64, width=64)],
-                }
-            }
-        )
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING") as logs:
-            name = await metadata.name
-            assert name == "Fetched Artist"
-            assert any("Name of artist test_artist_id is UNDEFINED" in log for log in logs.output)
-            assert any("Fetching data for artist test_artist_id" in log for log in logs.output)
-
-    async def test_artist_metadata_url_from_header(self) -> None:
-        """Test that URL is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-artist-Url": "https%3A%2F%2Fspotify.com%2Fartist"})
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        url = await metadata.url
-        assert url == "https://spotify.com/artist"
-
-    async def test_artist_metadata_url_fetch_when_undefined(self) -> None:
-        """Test that URL is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_artist = create_mock_artist_getter(
-            {
-                "test_artist_id": {
-                    "name": "Test Artist",
-                    "external_urls": {"spotify": "https://spotify.com/artist/fetched"},
-                }
-            }
-        )
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING") as logs:
-            url = await metadata.url
-            assert url == "https://spotify.com/artist/fetched"
-            assert any("Spotify URL of artist test_artist_id is UNDEFINED" in log for log in logs.output)
-
-    async def test_artist_metadata_image_url_small_from_header(self) -> None:
-        """Test that small image URL is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-artist-Imageurlsmall": "http%3A%2F%2Fexample.com%2Fsmall.jpg"})
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        image_url = await metadata.image_url_small
-        assert image_url == "http://example.com/small.jpg"
-
-    async def test_artist_metadata_image_url_small_none(self) -> None:
-        """Test that small image URL returns default image when not available."""
-        request = create_mock_request()
-        request.spotify_client.get_artist = create_mock_artist_getter(
-            {"test_artist_id": {"name": "Test Artist", "images": None}}
-        )
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            image_url = await metadata.image_url_small
-            assert image_url == "/static/web/spotify_icon_black_70.png"
-
-    async def test_artist_metadata_image_url_large_from_header(self) -> None:
-        """Test that large image URL is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-artist-Imageurllarge": "http%3A%2F%2Fexample.com%2Flarge.jpg"})
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        image_url = await metadata.image_url_large
-        assert image_url == "http://example.com/large.jpg"
-
-    async def test_artist_metadata_image_url_large_fetch_when_undefined(self) -> None:
-        """Test that large image URL is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_artist = create_mock_artist_getter(
-            {
-                "test_artist_id": {
-                    "name": "Test Artist",
-                    "images": [
-                        Mock(spec=Image, url="http://example.com/small.jpg", height=64, width=64),
-                        Mock(spec=Image, url="http://example.com/large.jpg", height=640, width=640),
-                    ],
-                }
-            }
-        )
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            image_url = await metadata.image_url_large
-            assert image_url == "http://example.com/large.jpg"
-
-    async def test_artist_metadata_fetch_data_missing_method(self) -> None:
-        """Test that _fetch_data raises MottleException when spotify client method is missing."""
-        request = create_mock_request()
-        del request.spotify_client.get_artist
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with pytest.raises(MottleException, match="Method get_artist not found in Spotify client"):
-            await metadata.name
-
-    async def test_artist_metadata_fetch_data_only_once(self) -> None:
-        """Test that data is only fetched once even when multiple properties are accessed."""
-        request = create_mock_request()
-
-        call_count = 0
-        base_getter = create_mock_artist_getter(
-            {
-                "test_artist_id": {
-                    "name": "Test Artist",
-                    "images": [Mock(spec=Image, url="http://example.com/small.jpg", height=64, width=64)],
-                }
-            }
-        )
-
-        async def counting_get_artist(artist_id: str) -> Mock:
-            nonlocal call_count
-            call_count += 1
-            return await base_getter(artist_id)
-
-        request.spotify_client.get_artist = counting_get_artist
-
-        metadata = ArtistMetadata(request, "test_artist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            await metadata.name
-            await metadata.url
-            await metadata.image_url_small
-            await metadata.image_url_large
-
-        assert call_count == 1
-
-
-@pytest.mark.asyncio
-class TestPlaylistMetadata(TestCase):
-    async def test_playlist_metadata_owner_id_from_header(self) -> None:
-        """Test that owner ID is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-playlist-Ownerid": "owner123"})
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        owner_id = await metadata.owner_id
-        assert owner_id == "owner123"
-
-    async def test_playlist_metadata_owner_id_fetch_when_undefined(self) -> None:
-        """Test that owner ID is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_playlist = create_mock_playlist_getter(
-            {
-                "test_playlist_id": {
-                    "name": "Test Playlist",
-                    "owner_id": "fetched_owner_id",
-                    "owner_name": "Owner Name",
-                    "num_tracks": 42,
-                }
-            }
-        )
-
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            owner_id = await metadata.owner_id
-            assert owner_id == "fetched_owner_id"
-
-    async def test_playlist_metadata_owner_name_from_header(self) -> None:
-        """Test that owner name is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-playlist-Ownername": "Test%20Owner"})
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        owner_name = await metadata.owner_name
-        assert owner_name == "Test Owner"
-
-    async def test_playlist_metadata_owner_name_fetch_when_undefined(self) -> None:
-        """Test that owner name is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_playlist = create_mock_playlist_getter(
-            {"test_playlist_id": {"name": "Test Playlist", "owner_name": "Fetched Owner Name", "num_tracks": 42}}
-        )
-
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            owner_name = await metadata.owner_name
-            assert owner_name == "Fetched Owner Name"
-
-    async def test_playlist_metadata_owner_url_from_header(self) -> None:
-        """Test that owner URL is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-playlist-Ownerurl": "https%3A%2F%2Fspotify.com%2Fuser"})
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        owner_url = await metadata.owner_url
-        assert owner_url == "https://spotify.com/user"
-
-    async def test_playlist_metadata_owner_url_fetch_when_undefined(self) -> None:
-        """Test that owner URL is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_playlist = create_mock_playlist_getter(
-            {
-                "test_playlist_id": {
-                    "name": "Test Playlist",
-                    "owner_name": "Owner Name",
-                    "owner_external_urls": {"spotify": "https://spotify.com/user/fetched"},
-                    "num_tracks": 42,
-                }
-            }
-        )
-
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            owner_url = await metadata.owner_url
-            assert owner_url == "https://spotify.com/user/fetched"
-
-    async def test_playlist_metadata_snapshot_id_from_header(self) -> None:
-        """Test that snapshot ID is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-playlist-Snapshotid": "snapshot_from_header"})
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        snapshot_id = await metadata.snapshot_id
-        assert snapshot_id == "snapshot_from_header"
-
-    async def test_playlist_metadata_snapshot_id_fetch_when_undefined(self) -> None:
-        """Test that snapshot ID is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_playlist = create_mock_playlist_getter(
-            {
-                "test_playlist_id": {
-                    "name": "Test Playlist",
-                    "owner_name": "Owner Name",
-                    "snapshot_id": "fetched_snapshot",
-                    "num_tracks": 42,
-                }
-            }
-        )
-
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            snapshot_id = await metadata.snapshot_id
-            assert snapshot_id == "fetched_snapshot"
-
-    async def test_playlist_metadata_num_tracks_from_header(self) -> None:
-        """Test that number of tracks is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-playlist-Numtracks": "99"})
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        num_tracks = await metadata.num_tracks
-        assert num_tracks == 99
-
-    async def test_playlist_metadata_num_tracks_fetch_when_undefined(self) -> None:
-        """Test that number of tracks is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_playlist = create_mock_playlist_getter(
-            {"test_playlist_id": {"name": "Test Playlist", "owner_name": "Owner Name", "num_tracks": 123}}
-        )
-
-        metadata = PlaylistMetadata(request, "test_playlist_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            num_tracks = await metadata.num_tracks
-            assert num_tracks == 123
-
-
-@pytest.mark.asyncio
-class TestAlbumMetadata(TestCase):
-    async def test_album_metadata_track_image_url_from_header(self) -> None:
-        """Test that track image URL is retrieved from headers when available."""
-        request = create_mock_request(headers={"M-album-Trackimageurl": "http%3A%2F%2Fexample.com%2Ftrack.jpg"})
-        metadata = AlbumMetadata(request, "test_album_id")
-
-        track_image_url = await metadata.track_image_url
-        assert track_image_url == "http://example.com/track.jpg"
-
-    async def test_album_metadata_track_image_url_fetch_when_undefined(self) -> None:
-        """Test that track image URL is fetched from Spotify when not in headers."""
-        request = create_mock_request()
-        request.spotify_client.get_album = create_mock_album_getter(
-            {
-                "test_album_id": {
-                    "name": "Test Album",
-                    "images": [Mock(spec=Image, url="http://example.com/track_fetched.jpg", height=64, width=64)],
-                }
-            }
-        )
-
-        metadata = AlbumMetadata(request, "test_album_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            track_image_url = await metadata.track_image_url
-            assert track_image_url == "http://example.com/track_fetched.jpg"
-
-    async def test_album_metadata_track_image_url_none(self) -> None:
-        """Test that track image URL returns default image when not available."""
-        request = create_mock_request()
-        request.spotify_client.get_album = create_mock_album_getter(
-            {"test_album_id": {"name": "Test Album", "images": None}}
-        )
-
-        metadata = AlbumMetadata(request, "test_album_id")
-
-        with self.assertLogs("web.views_utils", level="WARNING"):
-            track_image_url = await metadata.track_image_url
-            assert track_image_url == "/static/web/spotify_icon_black_70.png"
-
-
-@pytest.mark.asyncio
 class TestGetPlaylistModalResponse(TestCase):
     @patch("web.views_utils.render")
     async def test_get_playlist_modal_response_success(self, mock_render: Mock) -> None:
         """Test successful playlist modal response generation."""
-        mock_request = create_mock_request(
-            headers={
-                "M-playlist-Name": "My%20Playlist",
-                "M-playlist-Imageurlsmall": "http%3A%2F%2Fexample.com%2Fsmall.jpg",
-            }
-        )
+        mock_request = create_mock_request()
         mock_request.session = {"spotify_user_spotify_id": "user123"}
 
         mock_playlist1 = Mock(spec=FullPlaylist)
@@ -814,6 +467,14 @@ class TestGetPlaylistModalResponse(TestCase):
             return [mock_playlist1, mock_playlist2, mock_playlist3, mock_playlist4]
 
         mock_spotify_client = Mock(spec=MottleSpotifyClient)
+        mock_spotify_client.get_playlist = create_mock_playlist_getter(
+            {
+                "target_playlist": {
+                    "name": "My Playlist",
+                    "images": [Image(url="http://example.com/small.jpg", height=64, width=64)],
+                }
+            }
+        )
         mock_spotify_client.get_current_user_playlists = mock_get_current_user_playlists
         mock_request.spotify_client = mock_spotify_client
 
@@ -839,13 +500,14 @@ class TestGetPlaylistModalResponse(TestCase):
 
     async def test_get_playlist_modal_response_spotify_exception(self) -> None:
         """Test that MottleException is raised when Spotify client fails."""
-        mock_request = create_mock_request(headers={"M-playlist-Name": "My%20Playlist"})
+        mock_request = create_mock_request()
         mock_request.session = {"spotify_user_spotify_id": "user123"}
 
         async def mock_get_current_user_playlists() -> list[Mock]:
             raise MottleException("Spotify API error")
 
         mock_spotify_client = Mock(spec=MottleSpotifyClient)
+        mock_spotify_client.get_playlist = create_mock_playlist_getter()
         mock_spotify_client.get_current_user_playlists = mock_get_current_user_playlists
         mock_request.spotify_client = mock_spotify_client
 

@@ -12,12 +12,10 @@
                 hx-post="{% url 'rename_playlist' playlist.id %}"
                 hx-target="#playlist-name-container"
                 hx-include="previous input"
-                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
                 title="Save changes">{% include "web/icons/tw_checkmark.html" with class="w-5 h-5" %}</button>
         <button class="inline-flex items-center p-2 text-gray-400 hover:text-red-600 transition-colors"
                 hx-delete="{% url 'rename_playlist' playlist.id %}"
                 hx-target="#playlist-name-container"
-                hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'
                 title="Cancel">{% include "web/icons/tw_close.html" with class="w-5 h-5" %}</button>
     </div>
 </div>

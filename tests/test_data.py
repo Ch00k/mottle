@@ -199,32 +199,6 @@ class TestAlbumData:
         assert result.image_url_small is not None  # Should get default image
         assert result.image_url_large is not None  # Should get default image
 
-    @pytest.mark.asyncio
-    async def test_from_metadata(self) -> None:
-        """Test creating AlbumData from AlbumMetadata."""
-        from typing import Any
-        from unittest.mock import Mock
-
-        async def async_property(value: Any) -> Any:
-            return value
-
-        metadata = Mock()
-        metadata.id = async_property("album123")
-        metadata.name = async_property("Test Album")
-        metadata.url = async_property("https://open.spotify.com/album/album123")
-        metadata.image_url_small = async_property("https://small.jpg")
-        metadata.image_url_large = async_property("https://large.jpg")
-        metadata.track_image_url = async_property("https://track.jpg")
-
-        result = await AlbumData.from_metadata(metadata)
-
-        assert result.id == "album123"
-        assert result.name == "Test Album"
-        assert result.url == "https://open.spotify.com/album/album123"
-        assert result.image_url_small == "https://small.jpg"
-        assert result.image_url_large == "https://large.jpg"
-        assert result.track_image_url == "https://track.jpg"
-
     def test_ordering_inherited_from_parent(self) -> None:
         """Test that AlbumData ordering works correctly."""
         album_a = AlbumData(id="1", name="Zebra Album", url="url1")
@@ -280,30 +254,6 @@ class TestArtistData:
         result = ArtistData.from_tekore_model(artist)
 
         assert result.genres == []
-
-    @pytest.mark.asyncio
-    async def test_from_metadata(self) -> None:
-        """Test creating ArtistData from ArtistMetadata."""
-        from typing import Any
-        from unittest.mock import Mock
-
-        async def async_property(value: Any) -> Any:
-            return value
-
-        metadata = Mock()
-        metadata.id = async_property("artist123")
-        metadata.name = async_property("Test Artist")
-        metadata.url = async_property("https://open.spotify.com/artist/artist123")
-        metadata.image_url_small = async_property("https://small.jpg")
-        metadata.image_url_large = async_property("https://large.jpg")
-
-        result = await ArtistData.from_metadata(metadata)
-
-        assert result.id == "artist123"
-        assert result.name == "Test Artist"
-        assert result.url == "https://open.spotify.com/artist/artist123"
-        assert result.image_url_small == "https://small.jpg"
-        assert result.image_url_large == "https://large.jpg"
 
     def test_ordering_by_name(self) -> None:
         """Test that artists are sorted by name (case-insensitive)."""
@@ -608,40 +558,6 @@ class TestPlaylistData:
         assert result.owner_id == "user456"
         assert result.owner_name is None
         assert result.num_tracks == 0
-
-    @pytest.mark.asyncio
-    async def test_from_metadata(self) -> None:
-        """Test creating PlaylistData from PlaylistMetadata."""
-        from typing import Any
-        from unittest.mock import Mock
-
-        async def async_property(value: Any) -> Any:
-            return value
-
-        metadata = Mock()
-        metadata.id = async_property("playlist123")
-        metadata.name = async_property("Test Playlist")
-        metadata.url = async_property("https://open.spotify.com/playlist/playlist123")
-        metadata.image_url_small = async_property("https://small.jpg")
-        metadata.image_url_large = async_property("https://large.jpg")
-        metadata.owner_id = async_property("user123")
-        metadata.owner_name = async_property("Test User")
-        metadata.owner_url = async_property("https://open.spotify.com/user/user123")
-        metadata.snapshot_id = async_property("snapshot123")
-        metadata.num_tracks = async_property(42)
-
-        result = await PlaylistData.from_metadata(metadata)
-
-        assert result.id == "playlist123"
-        assert result.name == "Test Playlist"
-        assert result.url == "https://open.spotify.com/playlist/playlist123"
-        assert result.image_url_small == "https://small.jpg"
-        assert result.image_url_large == "https://large.jpg"
-        assert result.owner_id == "user123"
-        assert result.owner_name == "Test User"
-        assert result.owner_url == "https://open.spotify.com/user/user123"
-        assert result.snapshot_id == "snapshot123"
-        assert result.num_tracks == 42
 
     def test_ordering_inherited(self) -> None:
         """Test that PlaylistData ordering works correctly."""

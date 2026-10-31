@@ -594,10 +594,11 @@ class TestEventDetails(SignedInTestCase):
         )
         self.spotify.get_artist = AsyncMock(return_value=make_artist("artist1", "The Artist"))
 
-        response = await self.async_client.get(f"/event/{event.id}/", headers={"M-Artist-Name": "The%20Artist"})
+        response = await self.async_client.get(f"/event/{event.id}/")
 
         assert response.status_code == 200
         assert "<h2>The Artist</h2>" in response.content.decode()
+        self.spotify.get_artist.assert_awaited_once_with("artist1")
 
 
 @pytest.mark.asyncio

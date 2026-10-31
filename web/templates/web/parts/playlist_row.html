@@ -7,8 +7,7 @@
     <div class="image-container-square">
         <a href="{% url 'playlist' playlist.id %}"
            hx-boost="true"
-           hx-indicator="#spinner"
-           hx-headers='{% include "web/parts/playlist_metadata_headers.html" %}'>
+           hx-indicator="#spinner">
             <img src="{{ playlist.image_url_large }}"
                  alt="{{ playlist.name }} cover art"
                  class="cover-image">
