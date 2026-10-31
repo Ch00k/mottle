@@ -6,6 +6,7 @@ import uuid
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
+from asgiref.sync import sync_to_async
 from dirtyfields import DirtyFieldsMixin
 from django.conf import settings
 from django.contrib.gis.db import models as gis_models
@@ -164,7 +165,9 @@ class SpotifyAuthRequest(BaseModel):
             raise MottleException(f"{self}: state is None")
 
         try:
-            token = authenticate(code, self.state)
+            # tekore's credentials send their requests synchronously, so they run in a thread of their own, leaving the
+            # event loop and the shared database thread free while Spotify answers
+            token = await sync_to_async(authenticate, thread_sensitive=False)(code, self.state)
         except Exception as e:
             raise MottleException("Failed to authenticate") from e
 
@@ -221,7 +224,10 @@ class SpotifyAuth(BaseModel):
         logger.debug(f"Refreshing {self}")
 
         try:
-            tekore_token = settings.SPOTIFY_CREDEINTIALS.refresh(self.as_tekore_token)
+            # tekore's credentials send the request synchronously, so it runs in a thread of its own
+            tekore_token = await sync_to_async(settings.SPOTIFY_CREDEINTIALS.refresh, thread_sensitive=False)(
+                self.as_tekore_token
+            )
         except Exception as e:
             raise MottleException("Failed to refresh token") from e
 

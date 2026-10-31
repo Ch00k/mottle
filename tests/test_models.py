@@ -1,5 +1,7 @@
+import asyncio
 import datetime
 import json
+import threading
 import uuid
 from unittest.mock import patch
 
@@ -235,6 +237,31 @@ class TestSpotifyAuth(TestCase):
         assert auth.access_token == "access_token"
         assert auth.refresh_token == "refresh_token"
 
+    async def test_maybe_refresh_leaves_event_loop_running(self) -> None:
+        """The event loop goes on running other tasks while Spotify answers a refresh.
+
+        The stand-in for Spotify's answer waits until a task on the event loop signals it. A refresh sent on the event
+        loop would keep that task from running until the wait timed out.
+        """
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=30)
+        )
+        event_loop_ran = threading.Event()
+
+        def refresh(_: Token) -> Token:
+            if not event_loop_ran.wait(timeout=5):
+                raise TimeoutError("The event loop did not run while the token was refreshed")
+            return refreshed_token()
+
+        async def signal_event_loop_ran() -> None:
+            event_loop_ran.set()
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=refresh):
+            await asyncio.gather(auth.maybe_refresh(), signal_event_loop_ran())
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "refreshed_access_token"
+
 
 async def create_spotify_auth(expires_at: datetime.datetime) -> SpotifyAuth:
     spotify_user = await SpotifyUser.objects.acreate(spotify_id="user_refresh", display_name="Refresh User")
@@ -272,6 +299,28 @@ class TestSpotifyAuthRequest(TestCase):
 
         assert token.access_token == "refreshed_access_token"
         request_user_token.assert_called_once_with("code_1")
+
+    async def test_request_token_leaves_event_loop_running(self) -> None:
+        """The event loop goes on running other tasks while Spotify answers the code exchange.
+
+        The stand-in for Spotify's answer waits until a task on the event loop signals it. An exchange sent on the event
+        loop would keep that task from running until the wait timed out.
+        """
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+        event_loop_ran = threading.Event()
+
+        def request_user_token(_: str) -> Token:
+            if not event_loop_ran.wait(timeout=5):
+                raise TimeoutError("The event loop did not run while the code was exchanged")
+            return refreshed_token()
+
+        async def signal_event_loop_ran() -> None:
+            event_loop_ran.set()
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "request_user_token", side_effect=request_user_token):
+            token, _ = await asyncio.gather(auth_request.request_token("code_1"), signal_event_loop_ran())
+
+        assert token.access_token == "refreshed_access_token"
 
     async def test_request_token_failure(self) -> None:
         """A code Spotify refuses raises MottleException."""
