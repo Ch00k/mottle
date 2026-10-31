@@ -4,9 +4,11 @@ import random
 import string
 import time
 import timeit
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import httpx
+import httpx2
+from curl_cffi.requests import AsyncSession
+from curl_cffi.requests import exceptions as curl_exceptions
 from django.conf import settings
 from lxml import html as lh
 
@@ -20,10 +22,70 @@ from .constants import (
 )
 from .exceptions import HTTPClientException, RetriesExhaustedException
 
+if TYPE_CHECKING:
+    from curl_cffi.requests.impersonate import BrowserTypeLiteral
+
 logger = logging.getLogger(__name__)
 
+# Headers curl sets itself from the connection and the body it sends. It decodes the body it receives, so a response's
+# own encoding and length no longer describe it.
+CURL_REQUEST_HEADERS = {"host", "connection", "accept-encoding", "content-length"}
+CURL_RESPONSE_HEADERS = {"content-encoding", "content-length", "transfer-encoding"}
+# Headers an impersonated browser sends with its own values, which a request's would give away
+BROWSER_REQUEST_HEADERS = {"user-agent", "accept"}
 
-class AsyncRetryingClient(httpx.AsyncClient):
+
+class CurlCffiTransport(httpx2.AsyncBaseTransport):
+    """Sends requests with curl_cffi, which can present a browser's TLS and HTTP/2 fingerprint.
+
+    Every request opens a new connection, which through a rotating proxy gets a new exit IP, so a retry after a
+    refusal comes from a different address.
+    """
+
+    def __init__(self, proxy: str | None = None, impersonate: BrowserTypeLiteral | None = None) -> None:
+        self.proxy = proxy
+        self.impersonate = impersonate
+
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        dropped_headers = CURL_REQUEST_HEADERS | (BROWSER_REQUEST_HEADERS if self.impersonate else set())
+        headers = [(k, v) for k, v in request.headers.multi_items() if k.lower() not in dropped_headers]
+        timeout = request.extensions.get("timeout", {})
+
+        try:
+            async with AsyncSession() as session:
+                response = await session.request(
+                    request.method,
+                    str(request.url),
+                    headers=headers,
+                    content=await request.aread(),
+                    timeout=(timeout.get("connect"), timeout.get("read")),
+                    allow_redirects=False,
+                    proxy=self.proxy,
+                    impersonate=self.impersonate,
+                    quote=False,
+                )
+        except curl_exceptions.ProxyError as e:
+            raise httpx2.ProxyError(str(e), request=request) from e
+        except curl_exceptions.ConnectTimeout as e:
+            raise httpx2.ConnectTimeout(str(e), request=request) from e
+        except curl_exceptions.Timeout as e:
+            raise httpx2.ReadTimeout(str(e), request=request) from e
+        except curl_exceptions.ConnectionError as e:
+            raise httpx2.ConnectError(str(e), request=request) from e
+
+        return httpx2.Response(
+            response.status_code,
+            headers=[
+                (k, v)
+                for k, v in response.headers.multi_items()
+                if v is not None and k.lower() not in CURL_RESPONSE_HEADERS
+            ],
+            content=response.content,
+            request=request,
+        )
+
+
+class AsyncRetryingClient(httpx2.AsyncClient):
     def __init__(
         self,
         name: str,
@@ -52,13 +114,13 @@ class AsyncRetryingClient(httpx.AsyncClient):
         self.requests_retries_exhausted = 0
         self.next_request_allowed_at = time.time()
 
-    def _merge_headers(self, headers: httpx._types.HeaderTypes | None = None) -> httpx._types.HeaderTypes | None:
-        merged_headers = httpx.Headers(super()._merge_headers(headers))
+    def _merge_headers(self, headers: httpx2._types.HeaderTypes | None = None) -> httpx2._types.HeaderTypes | None:
+        merged_headers = httpx2.Headers(super()._merge_headers(headers))
         random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))  # noqa: S311
         merged_headers["User-Agent"] = merged_headers["User-Agent"] + "-" + random_str
         return merged_headers
 
-    async def send(self, request: httpx.Request, *args: Any, **kwargs: Any) -> httpx.Response:
+    async def send(self, request: httpx2.Request, *args: Any, **kwargs: Any) -> httpx2.Response:
         retries = self.retries
 
         while retries > 0:
@@ -75,17 +137,17 @@ class AsyncRetryingClient(httpx.AsyncClient):
 
             try:
                 response = await super().send(request, *args, **kwargs)
-            except httpx.ConnectError as e:
+            except httpx2.ConnectError as e:
                 self.requests_failed_to_connect += 1
                 logger.warning(f"Failed to connect while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
-            except httpx.ProxyError as e:
+            except httpx2.ProxyError as e:
                 self.requests_failed_to_proxy += 1
                 logger.warning(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
                 continue
-            except httpx.TimeoutException as e:
+            except httpx2.TimeoutException as e:
                 self.requests_timedout += 1
                 logger.warning(f"Timeout {self.timeout} reached while requesting {request.url}: {e}. Retrying...")
                 retries -= 1
@@ -171,33 +233,30 @@ async_musicbrainz_client = AsyncRetryingClient(
     name="musicbrainz",
     throttle_response_code=503,
     # log_request_details=True,
-    timeout=httpx.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
+    timeout=httpx2.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
-    proxy=settings.PROXY_URL,
-    limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
+    transport=CurlCffiTransport(proxy=settings.PROXY_URL),
 )
 
 async_songkick_client = AsyncRetryingClient(
     name="songkick",
     throttle_response_code=429,
-    timeout=httpx.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
+    timeout=httpx2.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
     # log_request_details=True,
     base_url=SONGKICK_BASE_URL,
-    headers={"User-Agent": settings.HTTP_USER_AGENT},
-    proxy=settings.PROXY_URL,
-    limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
+    transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),
 )
 
 async_bandsintown_client = AsyncRetryingClient(
     name="bandsintown",
     throttle_response_code=403,
-    timeout=httpx.Timeout(BANDSINTOWN_API_REQUEST_TIMEOUT),
+    # About one attempt in five gets past Cloudflare
+    retries=20,
+    timeout=httpx2.Timeout(BANDSINTOWN_API_REQUEST_TIMEOUT),
     # log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
-    headers={"User-Agent": settings.HTTP_USER_AGENT},
-    proxy=settings.PROXY_URL,
-    limits=httpx.Limits(max_connections=1000, max_keepalive_connections=1000),
+    transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),
 )
 
 

@@ -23,7 +23,8 @@ changes to their playlists, settings and notifications.
 - Type checking is ty with django-stubs; Django's reverse relations are annotated on the models for it.
 - pandas stays below 3, which country-converter cannot import with (`[tool.uv]` in `pyproject.toml`).
 - No metrics: Prometheus was dropped in October 2026, as nothing scraped it. Sentry and the JSON logs remain.
-- Events are scraped from Songkick and Bandsintown, whose markup changes break them silently. Bandsintown has been
-  behind a Cloudflare challenge since August 2026. Details: `docs/event-sources.md`.
+- Events are scraped from Songkick and Bandsintown, whose markup changes break them silently. Bandsintown's Cloudflare
+  bot protection is passed by impersonating Chrome (curl_cffi) and retrying from new proxy IPs. Details:
+  `docs/event-sources.md`.
 - Spotify's February 2026 API changes have not reached the production app yet: `docs/spotify-feb-2026.md`.
 - Repository: <https://github.com/Ch00k/mottle>. Changes go through pull requests; no merging without an explicit go.
