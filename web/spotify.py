@@ -69,23 +69,24 @@ class MottleRetryingSender(RetryingSender):
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
                 r = self.sender.send(request)
 
-            if r.status_code >= 400:  # pyright: ignore[reportAttributeAccessIssue]
-                metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
-                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()  # pyright: ignore[reportAttributeAccessIssue]
+            # A synchronous sender returns the response itself
+            assert isinstance(r, Response)
 
-            if r.status_code == 401 and tries > 1:  # pyright: ignore[reportAttributeAccessIssue]
+            if r.status_code >= 400:
+                metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
+                SPOTIFY_API_RESPONSES.labels(request.method, metric_url, r.status_code).inc()
+
+            if r.status_code == 401 and tries > 1:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 401")
                 tries -= 1
                 time.sleep(delay_seconds)
                 delay_seconds *= 2
-            elif r.status_code == 429:  # pyright: ignore[reportAttributeAccessIssue]
+            elif r.status_code == 429:
                 logger.warning(f"Retrying request {request.method} {request.url} due to 429")
-                seconds = r.headers.get("Retry-After", 1)  # pyright: ignore[reportAttributeAccessIssue]
+                seconds = r.headers.get("Retry-After", 1)
                 time.sleep(int(seconds) + 1)
-            elif r.status_code >= 500 and tries > 1:  # pyright: ignore[reportAttributeAccessIssue]
-                logger.warning(
-                    f"Retrying request {request.method} {request.url} due to {r.status_code}"  # pyright: ignore[reportAttributeAccessIssue]
-                )
+            elif r.status_code >= 500 and tries > 1:
+                logger.warning(f"Retrying request {request.method} {request.url} due to {r.status_code}")
                 tries -= 1
                 time.sleep(delay_seconds)
                 delay_seconds *= 2
@@ -94,13 +95,14 @@ class MottleRetryingSender(RetryingSender):
 
         raise RuntimeError("Retry loop exited without returning a response")
 
-    async def _async_send(self, request: Request) -> Response:  # pyright: ignore[reportReturnType]
+    async def _async_send(self, request: Request) -> Response:
         tries = self.retries + 1
         delay_seconds = 1
 
         while tries > 0:
             with SPOTIFY_API_RESPONSE_TIME_SECONDS.time():
-                r = await self.sender.send(request)  # pyright: ignore[reportGeneralTypeIssues]
+                # tekore types send as returning a response or a coroutine; the async sender returns a coroutine
+                r = await self.sender.send(request)  # ty: ignore[invalid-await]
 
             if r.status_code >= 400:
                 metric_url = re.sub(SPOTIFY_ID_PATTERN, SPOTIFY_ID_PLACEHOLDER, request.url)
@@ -143,24 +145,23 @@ def get_client(
     chunked_on: bool = True,
     async_on: bool = True,
 ) -> Spotify:
-    httpx_client_class: type[Client | AsyncClient]
-    tekore_sender_class: type[SyncSender | AsyncSender]
-
+    tekore_sender: SyncSender | AsyncSender
     if async_on:
-        httpx_client_class = AsyncClient
-        tekore_sender_class = AsyncSender
+        tekore_sender = AsyncSender(AsyncClient(timeout=Timeout(http_timeout)))
     else:
-        httpx_client_class = Client
-        tekore_sender_class = SyncSender
+        tekore_sender = SyncSender(Client(timeout=Timeout(http_timeout)))
 
-    httpx_client = httpx_client_class(timeout=Timeout(http_timeout))
-    sender = CachingSender(sender=MottleRetryingSender(retries=retries, sender=tekore_sender_class(httpx_client)))  # pyright: ignore[reportArgumentType]
+    sender = CachingSender(sender=MottleRetryingSender(retries=retries, sender=tekore_sender))
     return Spotify(token=access_token, sender=sender, max_limits_on=max_limits_on, chunked_on=chunked_on)
 
 
 def authenticate(code: str, state: str) -> Token:
     auth = get_auth(credentials=settings.SPOTIFY_CREDEINTIALS, scope=settings.SPOTIFY_TOKEN_SCOPE, state=state)
-    return auth.request_token(code, state)  # pyright: ignore[reportReturnType]
+    token = auth.request_token(code, state)
+
+    # Plain Credentials, as opposed to RefreshingCredentials, issue a plain Token
+    assert isinstance(token, Token)
+    return token
 
 
 def get_client_token() -> Token:

@@ -238,7 +238,7 @@ async def test_fetch_events_keeps_bandsintown_events_when_songkick_markup_breaks
     assert artist.failed_sources == [EventDataSource.songkick]
     errors = [r for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
     assert len(errors) == 1
-    assert errors[0].exc_info is not None
+    assert isinstance(errors[0].exc_info, tuple)
     assert isinstance(errors[0].exc_info[1], json.JSONDecodeError)
 
 

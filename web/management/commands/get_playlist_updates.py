@@ -28,15 +28,12 @@ class Command(BaseCommand):
         playlist_id = cast("str", options.get("playlist_id"))
         send_notifications = bool(options.get("send_notifications", False))
 
-        token = get_client_token()
-        spotify_client = MottleSpotifyClient(token.access_token)
-
         if user_id:
             try:
                 user = SpotifyUser.objects.get(spotify_id=user_id)
             except SpotifyUser.DoesNotExist as e:
                 raise CommandError("User does not exist") from e
-            if user.playlists is None:  # pyright: ignore[reportAttributeAccessIssue]
+            if not user.playlists.exists():
                 raise CommandError("User has no playlists")
 
             async_to_sync(partial(check_user_playlists_for_updates, user, send_notifications))()
@@ -46,6 +43,7 @@ class Command(BaseCommand):
             except Playlist.DoesNotExist as e:
                 raise CommandError("Playlist does not exist") from e
 
+            spotify_client = MottleSpotifyClient(get_client_token().access_token)
             async_to_sync(partial(check_playlist_for_updates, playlist, spotify_client))()
         else:
-            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()  # pyright: ignore[reportUnknownMemberType]
+            async_to_sync(partial(acheck_playlists_for_updates, send_notifications))()

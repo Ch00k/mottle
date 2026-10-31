@@ -1,0 +1,138 @@
+{
+  "artists": {
+    "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=deep%20purple&type=artist",
+    "limit": 2,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 2,
+    "items": [
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/568ZhdwyaiCyOGJRtNYhWf"
+        },
+        "followers": {
+          "href": null,
+          "total": 6308640
+        },
+        "genres": [
+          "hard rock",
+          "classic rock",
+          "rock"
+        ],
+        "href": "https://api.spotify.com/v1/artists/568ZhdwyaiCyOGJRtNYhWf",
+        "id": "568ZhdwyaiCyOGJRtNYhWf",
+        "images": [
+          {
+            "url": "https://i.scdn.co/image/ab6761610000e5eb0097f1c2830a6ecdda16d4de",
+            "height": 640,
+            "width": 640
+          },
+          {
+            "url": "https://i.scdn.co/image/ab676161000051740097f1c2830a6ecdda16d4de",
+            "height": 320,
+            "width": 320
+          },
+          {
+            "url": "https://i.scdn.co/image/ab6761610000f1780097f1c2830a6ecdda16d4de",
+            "height": 160,
+            "width": 160
+          }
+        ],
+        "name": "Deep Purple",
+        "popularity": 68,
+        "type": "artist",
+        "uri": "spotify:artist:568ZhdwyaiCyOGJRtNYhWf"
+      },
+      {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/artist/2WBJQGf1bT1kxuoqziH5g4"
+        },
+        "followers": {
+          "href": null,
+          "total": 930536
+        },
+        "genres": [
+          "disco house",
+          "nu disco",
+          "funky house",
+          "house"
+        ],
+        "href": "https://api.spotify.com/v1/artists/2WBJQGf1bT1kxuoqziH5g4",
+        "id": "2WBJQGf1bT1kxuoqziH5g4",
+        "images": [
+          {
+            "url": "https://i.scdn.co/image/ab6761610000e5eb4d37c0ca1cae351c458221f7",
+            "height": 640,
+            "width": 640
+          },
+          {
+            "url": "https://i.scdn.co/image/ab676161000051744d37c0ca1cae351c458221f7",
+            "height": 320,
+            "width": 320
+          },
+          {
+            "url": "https://i.scdn.co/image/ab6761610000f1784d37c0ca1cae351c458221f7",
+            "height": 160,
+            "width": 160
+          }
+        ],
+        "name": "Purple Disco Machine",
+        "popularity": 71,
+        "type": "artist",
+        "uri": "spotify:artist:2WBJQGf1bT1kxuoqziH5g4"
+      }
+    ]
+  },
+  "playlists": {
+    "href": "https://api.spotify.com/v1/search?offset=0&limit=2&query=deep%20purple&type=playlist",
+    "limit": 2,
+    "next": null,
+    "offset": 0,
+    "previous": null,
+    "total": 2,
+    "items": [
+      {
+        "collaborative": false,
+        "description": "The definitive Deep Purple collection - all of their greatest hits in one playlist.",
+        "external_urls": {
+          "spotify": "https://open.spotify.com/playlist/4X7RPexaMm2XwDb6g1fRmQ"
+        },
+        "href": "https://api.spotify.com/v1/playlists/4X7RPexaMm2XwDb6g1fRmQ",
+        "id": "4X7RPexaMm2XwDb6g1fRmQ",
+        "images": [
+          {
+            "height": null,
+            "url": "https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da848c9198ddeb232a067d894ea7",
+            "width": null
+          }
+        ],
+        "name": "Deep Purple - Greatest Hits",
+        "owner": {
+          "display_name": "earMUSIC",
+          "external_urls": {
+            "spotify": "https://open.spotify.com/user/1137005085"
+          },
+          "href": "https://api.spotify.com/v1/users/1137005085",
+          "id": "1137005085",
+          "type": "user",
+          "uri": "spotify:user:1137005085"
+        },
+        "primary_color": null,
+        "public": true,
+        "snapshot_id": "AAABIL8Uee+wAFds+d2bL+/2gI3pLJQy",
+        "tracks": {
+          "href": "https://api.spotify.com/v1/playlists/4X7RPexaMm2XwDb6g1fRmQ/tracks",
+          "total": 70
+        },
+        "items": {
+          "href": "https://api.spotify.com/v1/playlists/4X7RPexaMm2XwDb6g1fRmQ/items",
+          "total": 70
+        },
+        "type": "playlist",
+        "uri": "spotify:playlist:4X7RPexaMm2XwDb6g1fRmQ"
+      },
+      null
+    ]
+  }
+}

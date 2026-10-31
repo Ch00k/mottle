@@ -37,10 +37,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *_: Any, **options: str) -> None:
-        user_id: str | None = options.get("user_id")  # pyright: ignore[reportAssignmentType]
-        artist_id: str | None = options.get("artist_id")  # pyright: ignore[reportAssignmentType]
-        playlist_id: str | None = options.get("playlist_id")  # pyright: ignore[reportAssignmentType]
-        force_reevaluate: bool = cast("bool", options.get("force_reevaluate", False))  # pyright: ignore[reportAssignmentType]
+        user_id: str | None = options.get("user_id")
+        artist_id: str | None = options.get("artist_id")
+        playlist_id: str | None = options.get("playlist_id")
+        force_reevaluate: bool = cast("bool", options.get("force_reevaluate", False))
         concurrency_limit: int = cast("int", options.get("concurrency_limit", settings.EVENTS_FETCH_CONCURRENCY_LIMIT))
 
         if not user_id:
