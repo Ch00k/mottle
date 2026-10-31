@@ -5,6 +5,8 @@ import sentry_sdk
 from cryptography.fernet import Fernet, MultiFernet
 from environs import Env
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.httpx import HttpxIntegration
+from sentry_sdk.integrations.httpx2 import Httpx2Integration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from tekore import Credentials
 
@@ -109,8 +111,13 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
     release=f"mottle@{APP_VERSION}",
     environment=env.str("SENTRY_ENVIRONMENT", "dev"),
+    # Integrations are enabled by name, as an auto-enabled OpenAI integration would load the OpenAI library into every
+    # process
+    auto_enabling_integrations=False,
     integrations=[
         DjangoIntegration(transaction_style="url", middleware_spans=True, signals_spans=False, cache_spans=False),
+        HttpxIntegration(),
+        Httpx2Integration(),
         LoggingIntegration(level=None, event_level=None),
     ],
 )

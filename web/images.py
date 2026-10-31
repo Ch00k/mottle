@@ -2,19 +2,29 @@ import logging
 import math
 import uuid
 from base64 import b64decode, b64encode
+from functools import cache
 from io import BytesIO
+from typing import TYPE_CHECKING
 
 from django.conf import settings
-from openai import OpenAI
 from PIL import Image
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
 
 GPT_MODEL = "gpt-4o"
 IMAGE_MODEL = "dall-e-3"
+
+
+@cache
+def get_openai_client() -> OpenAI:
+    # The OpenAI library takes about 18 MB of memory, so only a process that generates a cover image loads it
+    from openai import OpenAI
+
+    return OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def generate_image_prompt(playlist_title: str) -> str:
@@ -28,7 +38,9 @@ def generate_image_prompt(playlist_title: str) -> str:
 
     logger.debug(f"Input message size: {len(message)} chars")
 
-    completion = client.chat.completions.create(model=GPT_MODEL, messages=[{"role": "user", "content": message}], n=1)
+    completion = get_openai_client().chat.completions.create(
+        model=GPT_MODEL, messages=[{"role": "user", "content": message}], n=1
+    )
 
     result = completion.choices[0].message.content
     if not result:
@@ -40,7 +52,7 @@ def generate_image_prompt(playlist_title: str) -> str:
 
 
 def generate_image(prompt: str) -> bytes:
-    image = client.images.generate(
+    image = get_openai_client().images.generate(
         prompt=prompt,
         model=IMAGE_MODEL,
         quality="standard",
