@@ -84,7 +84,6 @@ def bandsintown_site(request: httpx2.Request) -> httpx2.Response:
 @pytest.fixture
 def bandsintown(monkeypatch: pytest.MonkeyPatch) -> None:
     client = AsyncRetryingClient(
-        name="bandsintown",
         base_url=BANDSINTOWN_BASE_URL,
         transport=httpx2.MockTransport(bandsintown_site),
     )
@@ -94,7 +93,6 @@ def bandsintown(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def songkick(monkeypatch: pytest.MonkeyPatch) -> None:
     client = AsyncRetryingClient(
-        name="songkick",
         base_url=SONGKICK_BASE_URL,
         transport=httpx2.MockTransport(songkick_site),
     )
@@ -179,8 +177,10 @@ async def test_fetch_events_keeps_songkick_events_when_bandsintown_fails(
     The failure is logged as an error naming the Bandsintown page that could not be read.
     """
     bandsintown = AsyncRetryingClient(
-        name="bandsintown",
-        retries=2,
+        attempts=2,
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
         base_url=BANDSINTOWN_BASE_URL,
         transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
     )
@@ -320,8 +320,7 @@ async def test_find_in_bandsintown_tries_every_name_when_search_is_refused(
         data,
         "async_bandsintown_client",
         AsyncRetryingClient(
-            name="bandsintown",
-            retries=1,
+            attempts=1,
             base_url=BANDSINTOWN_BASE_URL,
             transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
         ),
@@ -410,8 +409,7 @@ async def test_update_events_saves_events_then_reports_failed_source(monkeypatch
         data,
         "async_bandsintown_client",
         AsyncRetryingClient(
-            name="bandsintown",
-            retries=1,
+            attempts=1,
             base_url=BANDSINTOWN_BASE_URL,
             transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
         ),

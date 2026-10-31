@@ -1,12 +1,8 @@
-import asyncio
 import logging
-import random
-import string
-import time
-import timeit
 from typing import TYPE_CHECKING, Any
 
 import httpx2
+import stamina
 from curl_cffi.requests import AsyncSession
 from curl_cffi.requests import exceptions as curl_exceptions
 from django.conf import settings
@@ -20,7 +16,7 @@ from .constants import (
     SONGKICK_API_REQUEST_TIMEOUT,
     SONGKICK_BASE_URL,
 )
-from .exceptions import HTTPClientException, RetriesExhaustedException
+from .exceptions import HTTPClientException
 
 if TYPE_CHECKING:
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
@@ -64,14 +60,19 @@ class CurlCffiTransport(httpx2.AsyncBaseTransport):
                     impersonate=self.impersonate,
                     quote=False,
                 )
-        except curl_exceptions.ProxyError as e:
-            raise httpx2.ProxyError(str(e), request=request) from e
-        except curl_exceptions.ConnectTimeout as e:
-            raise httpx2.ConnectTimeout(str(e), request=request) from e
-        except curl_exceptions.Timeout as e:
-            raise httpx2.ReadTimeout(str(e), request=request) from e
-        except curl_exceptions.ConnectionError as e:
-            raise httpx2.ConnectError(str(e), request=request) from e
+        except curl_exceptions.RequestException as e:
+            # curl's messages leave out the URL, which the retry logs need to name the failed request
+            message = f"{e} ({request.method} {request.url})"
+
+            if isinstance(e, curl_exceptions.ProxyError):
+                raise httpx2.ProxyError(message, request=request) from e
+            if isinstance(e, curl_exceptions.ConnectTimeout):
+                raise httpx2.ConnectTimeout(message, request=request) from e
+            if isinstance(e, curl_exceptions.Timeout):
+                raise httpx2.ReadTimeout(message, request=request) from e
+            if isinstance(e, curl_exceptions.ConnectionError):
+                raise httpx2.ConnectError(message, request=request) from e
+            raise httpx2.TransportError(message, request=request) from e
 
         return httpx2.Response(
             response.status_code,
@@ -86,150 +87,51 @@ class CurlCffiTransport(httpx2.AsyncBaseTransport):
 
 
 class AsyncRetryingClient(httpx2.AsyncClient):
+    """Retries a request that fails to reach the site or gets a response saying to try again later.
+
+    Those are a 429, a 5xx and the client's `retry_statuses`. Any other response is returned as it is, as asking again
+    would get the same answer. Each client sets how long it waits before a retry: the wait starts at `wait_initial` and
+    doubles up to `wait_max`.
+    """
+
     def __init__(
         self,
-        name: str,
-        throttle_response_code: int | None = None,
-        retries: int = 10,
-        delay_seconds: float = 0.0,
-        log_request_details: bool = False,
         *args: Any,
+        attempts: int = 10,
+        wait_initial: float = 1.0,
+        wait_max: float = 10.0,
+        retry_statuses: frozenset[int] = frozenset(),
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
 
-        self.name = name
-        self.throttle_response_code = throttle_response_code
-        self.retries = retries
-        self.delay_seconds = delay_seconds
-        self.log_request_details = log_request_details
-        self.requests_total = 0
-        self.requests_timedout = 0
-        self.requests_failed_to_connect = 0
-        self.requests_failed_to_proxy = 0
-        self.requests_errored = 0
-        self.requests_accepted = 0
-        self.requests_gte_400 = 0
-        self.requests_throttled = 0
-        self.requests_retries_exhausted = 0
-        self.next_request_allowed_at = time.time()
-
-    def _merge_headers(self, headers: httpx2._types.HeaderTypes | None = None) -> httpx2._types.HeaderTypes | None:
-        merged_headers = httpx2.Headers(super()._merge_headers(headers))
-        random_str = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))  # noqa: S311
-        merged_headers["User-Agent"] = merged_headers["User-Agent"] + "-" + random_str
-        return merged_headers
+        self.attempts = attempts
+        self.wait_initial = wait_initial
+        self.wait_max = wait_max
+        self.retry_statuses = retry_statuses | {httpx2.codes.TOO_MANY_REQUESTS}
 
     async def send(self, request: httpx2.Request, *args: Any, **kwargs: Any) -> httpx2.Response:
-        retries = self.retries
-
-        while retries > 0:
-            if self.delay_seconds:
-                time_to_sleep_seconds = max(self.next_request_allowed_at - time.time(), 0.0)
-
-                if time_to_sleep_seconds:
-                    logger.debug(f"Sleeping for {time_to_sleep_seconds} seconds")
-                    await asyncio.sleep(time_to_sleep_seconds)
-
-            self.requests_total += 1
-
-            start = timeit.default_timer()
-
-            try:
+        async for attempt in stamina.retry_context(
+            on=(httpx2.TransportError, httpx2.HTTPStatusError),
+            attempts=self.attempts,
+            timeout=None,
+            wait_initial=self.wait_initial,
+            wait_max=self.wait_max,
+            # Up to as much again at random, which keeps a client that does not wait from waiting at all
+            wait_jitter=self.wait_initial,
+        ):
+            with attempt:
                 response = await super().send(request, *args, **kwargs)
-            except httpx2.ConnectError as e:
-                self.requests_failed_to_connect += 1
-                logger.warning(f"Failed to connect while requesting {request.url}: {e}. Retrying...")
-                retries -= 1
-                continue
-            except httpx2.ProxyError as e:
-                self.requests_failed_to_proxy += 1
-                logger.warning(f"Failed to proxy while requesting {request.url}: {e}. Retrying...")
-                retries -= 1
-                continue
-            except httpx2.TimeoutException as e:
-                self.requests_timedout += 1
-                logger.warning(f"Timeout {self.timeout} reached while requesting {request.url}: {e}. Retrying...")
-                retries -= 1
-                continue
-            except Exception as e:
-                self.requests_errored += 1
 
-                exc_msg = e.__class__.__name__
-                if str(e):
-                    exc_msg += f"({e})"
+                if response.is_server_error or response.status_code in self.retry_statuses:
+                    response.raise_for_status()
 
-                logger.warning(f"Unexpected error while requesting {request.url}: {exc_msg}. Retrying...")
-                retries -= 1
-                continue
-
-            # else:
-            request_time = max(timeit.default_timer() - start, 0)
-
-            if self.delay_seconds:
-                # Assuming the request time is the time for request to reach the server + the time for response
-                # to reach us, and that these times are equal. Hence dividing by 2.
-                delay_before_next_request = max(self.delay_seconds - request_time / 2, 0.0)
-
-                now = time.time()
-                self.next_request_allowed_at = now + delay_before_next_request
-                next_request_allowed_in_seconds = self.next_request_allowed_at - now
-            else:
-                next_request_allowed_in_seconds = None
-
-            if self.throttle_response_code is not None and response.status_code == self.throttle_response_code:
-                self.requests_throttled += 1
-            else:
-                self.requests_accepted += 1
-
-            if response.status_code >= 400:
-                self.requests_gte_400 += 1
-
-            if self.log_request_details:
-                self.log(request_time=request_time, next_request_allowed_in_seconds=next_request_allowed_in_seconds)
-
-            if response.status_code < 400 or response.status_code == 404:  # Can't retry a 404
                 return response
 
-            logger.warning(f"Received {response.status_code} response while requesting {request.url}. Retrying...")
-            retries -= 1
-
-        self.requests_retries_exhausted += 1
-
-        logger.error(f"Retries exhausted while requesting {request.url}")
-        self.log()
-
-        raise RetriesExhaustedException(
-            f"Failed to get a successful response from {request.url} after {self.retries} retries"
-        )
-
-    def log(self, request_time: float | None = None, next_request_allowed_in_seconds: float | None = None) -> None:
-        log_msg = (
-            f"{self.__class__.__name__}({self.name}): "
-            f"REQUESTS: total {self.requests_total}, "
-            f"accepted {self.requests_accepted}, "
-            f"failed to connect {self.requests_failed_to_connect}, "
-            f"failed to proxy {self.requests_failed_to_proxy}, "
-            f"timed out {self.requests_timedout}, "
-            f"errored {self.requests_errored}, "
-            f"throttled {self.requests_throttled}, "
-            f">=400 {self.requests_gte_400}, "
-            f"retries exhausted {self.requests_retries_exhausted}"
-        )
-
-        if request_time is not None:
-            log_msg += f", request time {request_time}"
-
-        if self.delay_seconds and next_request_allowed_in_seconds is not None:
-            log_msg += f", next request allowed in {next_request_allowed_in_seconds} seconds"
-
-        logger.debug(log_msg)
+        raise AssertionError("stamina raises the last error once the attempts run out")
 
 
 async_musicbrainz_client = AsyncRetryingClient(
-    name="musicbrainz",
-    throttle_response_code=503,
-    # log_request_details=True,
     timeout=httpx2.Timeout(MUSICBRAINZ_API_REQUEST_TIMEOUT),
     base_url=MUSICBRAINZ_API_BASE_URL,
     headers={"Accept": "application/json", "User-Agent": settings.HTTP_USER_AGENT},
@@ -237,21 +139,19 @@ async_musicbrainz_client = AsyncRetryingClient(
 )
 
 async_songkick_client = AsyncRetryingClient(
-    name="songkick",
-    throttle_response_code=429,
     timeout=httpx2.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
-    # log_request_details=True,
     base_url=SONGKICK_BASE_URL,
     transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),
 )
 
 async_bandsintown_client = AsyncRetryingClient(
-    name="bandsintown",
-    throttle_response_code=403,
-    # About one attempt in five gets past Cloudflare
-    retries=20,
+    # Cloudflare refuses about four attempts in five with a 403. Each attempt comes from a new proxy IP, so it can go
+    # at once.
+    attempts=20,
+    wait_initial=0,
+    wait_max=0,
+    retry_statuses=frozenset({httpx2.codes.FORBIDDEN}),
     timeout=httpx2.Timeout(BANDSINTOWN_API_REQUEST_TIMEOUT),
-    # log_request_details=True,
     base_url=BANDSINTOWN_BASE_URL,
     transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),
 )
@@ -280,10 +180,6 @@ async def asend_get_request(
         else:  # noqa: PLR5501
             if response.is_error:
                 response.raise_for_status()
-    except RetriesExhaustedException as e:
-        raise HTTPClientException(
-            f"Retries ({client.retries}) exhausted while sending GET request to {url}: {e}"
-        ) from e
     except Exception as e:
         raise HTTPClientException(f"Failed to send GET request to {url}: {e}") from e
 

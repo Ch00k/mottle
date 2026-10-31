@@ -41,6 +41,12 @@ class SiteHandler(BaseHTTPRequestHandler):
         elif self.path == "/slow":
             time.sleep(2)
             self.send_body(b"Too late")
+        elif self.path == "/slow-once":
+            if len(self.site.client_ports) == 1:
+                time.sleep(2)
+            self.send_body(b"Deep Purple")
+        elif self.path == "/bad-request":
+            self.send_body(b"", status=400)
         elif self.path == "/refused-twice":
             refused = len(self.site.client_ports) <= 2
             self.send_body(b"Just a moment..." if refused else b"Deep Purple", status=403 if refused else 200)
@@ -173,18 +179,76 @@ async def test_retrying_client_retries_refusals_on_new_connections(
 ) -> None:
     """Refused requests are retried, each on a new connection, until one is let through.
 
-    Each refusal is logged as a warning naming the refused URL.
+    Each retry is logged as a warning naming the refusal and the refused URL.
     """
     client = AsyncRetryingClient(
-        name="site", throttle_response_code=403, base_url=site.url, transport=CurlCffiTransport()
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
+        base_url=site.url,
+        transport=CurlCffiTransport(),
     )
 
-    with caplog.at_level(logging.WARNING, logger="web.events.http"):
+    with caplog.at_level(logging.WARNING, logger="stamina"):
         response = await client.get("/refused-twice")
 
     assert response.text == "Deep Purple"
-    assert client.requests_throttled == 2
     assert len(set(site.client_ports)) == 3
-    assert [r.getMessage() for r in caplog.records] == [
-        f"Received 403 response while requesting {site.url}/refused-twice. Retrying...",
-    ] * 2
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"] * 2
+    for record in caplog.records:
+        caused_by = getattr(record, "stamina.caused_by")
+        assert "403 Forbidden" in caused_by
+        assert f"{site.url}/refused-twice" in caused_by
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_raises_last_error_when_attempts_run_out(
+    site: Site, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A request refused on every attempt raises the last refusal once the attempts run out."""
+    client = AsyncRetryingClient(
+        attempts=2,
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
+        base_url=site.url,
+        transport=CurlCffiTransport(),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="stamina"), pytest.raises(httpx2.HTTPStatusError, match="403"):
+        await client.get("/refused-twice")
+
+    assert len(site.client_ports) == 2
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("path", "status"), [("/missing", 404), ("/bad-request", 400), ("/refused-twice", 403)])
+async def test_retrying_client_returns_other_errors_without_retrying(site: Site, path: str, status: int) -> None:
+    """An error response other than a 429, a 5xx or the client's own retry statuses is returned at once.
+
+    Asking again would get the same answer, so retrying would only delay the failure.
+    """
+    client = AsyncRetryingClient(wait_initial=0, wait_max=0, base_url=site.url, transport=CurlCffiTransport())
+
+    response = await client.get(path)
+
+    assert response.status_code == status
+    assert len(site.client_ports) == 1
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_retries_timeout_and_logs_its_url(site: Site, caplog: pytest.LogCaptureFixture) -> None:
+    """A request that times out is retried, and the retry's warning names the request that timed out."""
+    client = AsyncRetryingClient(
+        wait_initial=0, wait_max=0, timeout=0.5, base_url=site.url, transport=CurlCffiTransport()
+    )
+
+    with caplog.at_level(logging.WARNING, logger="stamina"):
+        response = await client.get("/slow-once")
+
+    assert response.text == "Deep Purple"
+    assert [r.getMessage() for r in caplog.records] == ["stamina.retry_scheduled"]
+    caused_by = getattr(caplog.records[0], "stamina.caused_by")
+    assert caused_by.startswith("ReadTimeout(")
+    assert f"GET {site.url}/slow-once" in caused_by
