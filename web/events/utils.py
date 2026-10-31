@@ -2,7 +2,6 @@ import logging
 import unicodedata
 from typing import TYPE_CHECKING
 
-import country_converter as coco
 from django.conf import settings
 from thefuzz import fuzz
 from unidecode import unidecode
@@ -16,15 +15,25 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-cc = coco.CountryConverter()
+# Short names for the country names event sources send in another form. Bandsintown sends short names. Songkick sends
+# ISO 3166 names and abbreviates the United Kingdom and the United States.
+COUNTRY_SHORT_NAMES = {
+    "UK": "United Kingdom",
+    "US": "United States",
+    "Czech Republic": "Czechia",
+    "Korea, Republic Of": "South Korea",
+    "Moldova, Republic Of": "Moldova",
+    "Russian Federation": "Russia",
+    "Macedonia": "North Macedonia",
+    "Isle Of Man": "Isle of Man",
+}
 
 
 def get_normalized_country_name(country_name: str | None) -> str | None:
     if country_name is None:
         return None
 
-    normalized_name: str | None = cc.convert(country_name, to="name_short", not_found=None)
-    return normalized_name
+    return COUNTRY_SHORT_NAMES.get(country_name, country_name)
 
 
 def find_best_artist_name_match_simple(

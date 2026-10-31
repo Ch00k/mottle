@@ -24,7 +24,6 @@ changes to their playlists, settings and notifications.
 - Type checking is ty with django-stubs; Django's reverse relations are annotated on the models for it.
 - There is no task queue. Work a request starts (cover images, tracking artists' events) runs on daphne's event loop via
   `web/background.py`, and is lost if the process restarts before it finishes.
-- pandas stays below 3, which country-converter cannot import with (`[tool.uv]` in `pyproject.toml`).
 - No metrics: Prometheus was dropped in October 2026, as nothing scraped it. Sentry and the JSON logs remain.
 - Events are scraped from Songkick and Bandsintown, whose markup changes break them silently. Bandsintown's Cloudflare
   bot protection is passed by impersonating Chrome (curl_cffi) and retrying from new proxy IPs. Details:
