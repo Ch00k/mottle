@@ -7,25 +7,55 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse, HttpResponseServerError
-from django_htmx.http import trigger_client_event
 
 from .models import SpotifyAuth
 from .utils import MottleException, MottleSpotifyClient
+from .views_utils import toast
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    from django.contrib.sessions.backends.base import SessionBase
     from django_hosts import host
     from django_htmx.middleware import HtmxDetails
 
 logger = logging.getLogger(__name__)
 
 
-async def get_token_scope_changes(spotify_auth: SpotifyAuth) -> tuple[list, list]:
-    common = set(spotify_auth.token_scope) & set(settings.SPOTIFY_TOKEN_SCOPE)
-    missing = set(settings.SPOTIFY_TOKEN_SCOPE) - common
-    redundant = set(spotify_auth.token_scope) - common
-    return list(missing), list(redundant)
+async def get_signed_in_auth(session: SessionBase) -> SpotifyAuth | None:
+    """Return the Spotify authorization of the session's user, refreshed if it is about to expire.
+
+    Return None, signing the user out, when the session names no user with an authorization, or the authorization has
+    no refresh token, is for another scope than the app asks for, or fails to refresh.
+    """
+    spotify_user_id = await sync_to_async(session.get)("spotify_user_id")
+    logger.debug(f"SpotifyUser ID: {spotify_user_id}")
+    if spotify_user_id is None:
+        return None
+
+    try:
+        spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
+    except SpotifyAuth.DoesNotExist:
+        logger.debug(f"SpotifyAuth for spotify user ID {spotify_user_id} does not exist")
+        return None
+
+    logger.debug(spotify_auth)
+
+    if spotify_auth.refresh_token is None:
+        logger.debug(f"{spotify_auth} refresh_token is None")
+        return None
+
+    if set(spotify_auth.token_scope) != set(settings.SPOTIFY_TOKEN_SCOPE):
+        logger.debug(f"{spotify_auth} token scope {spotify_auth.token_scope} is not {settings.SPOTIFY_TOKEN_SCOPE}")
+        return None
+
+    try:
+        await spotify_auth.maybe_refresh()
+    except MottleException as e:
+        logger.error(e)
+        return None
+
+    return spotify_auth
 
 
 class MottleHttpRequest(HttpRequest):
@@ -54,34 +84,8 @@ class SpotifyAuthMiddleware:
             logger.debug(f"Skipping {self.__class__.__name__} middleware")
             return await self.get_response(request)
 
-        spotify_user_id = await sync_to_async(request.session.get)("spotify_user_id")
-        logger.debug(f"SpotifyUser ID: {spotify_user_id}")
-        if spotify_user_id is None:
-            return redirect_to_login(request.get_full_path())
-
-        try:
-            spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
-            logger.debug(spotify_auth)
-        except SpotifyAuth.DoesNotExist:
-            logger.debug(f"SpotifyAuth for spotify user ID {spotify_user_id} does not exist")
-            return redirect_to_login(request.get_full_path())
-
-        if spotify_auth.refresh_token is None:
-            logger.debug(f"{spotify_auth} refresh_token is None")
-            return redirect_to_login(request.get_full_path())
-
-        token_permissions_added, token_permissions_removed = await get_token_scope_changes(spotify_auth)
-        if token_permissions_added or token_permissions_removed:
-            logger.debug(
-                f"{spotify_auth} token scope is outdated: "
-                f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
-            )
-            return redirect_to_login(request.get_full_path())
-
-        try:
-            await spotify_auth.maybe_refresh()
-        except MottleException as e:
-            logger.error(e)
+        spotify_auth = await get_signed_in_auth(request.session)
+        if spotify_auth is None:
             return redirect_to_login(request.get_full_path())
 
         request.spotify_client = MottleSpotifyClient(spotify_auth.access_token)
@@ -109,8 +113,4 @@ class MottleExceptionMiddleware:
         logger.error(exception, exc_info=exception)
         sentry_sdk.capture_exception(exception)
 
-        return trigger_client_event(
-            HttpResponseServerError(),
-            "HXToast",
-            {"type": "error", "body": f"Error: {exception}"},
-        )
+        return toast(HttpResponseServerError(), "error", f"Error: {exception}")

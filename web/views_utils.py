@@ -2,20 +2,30 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from asgiref.sync import sync_to_async
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django_htmx.http import trigger_client_event
 
 from .models import Artist, EventArtist, EventUpdate, Playlist
 from .spotify_items import get_smallest_image
 from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
-    from django.http import HttpResponse
-
     from .middleware import MottleHttpRequest
 
 logger = logging.getLogger(__name__)
+
+
+def toast(response: HttpResponse, toast_type: str, body: str) -> HttpResponse:
+    """Return the response, with an HTMX trigger that shows the user a toast of the type ("success" or "error")."""
+    return trigger_client_event(response, "HXToast", {"type": toast_type, "body": body})
+
+
+def bad_request_toast(message: str) -> HttpResponse:
+    """Return a bad request response with the message, which an error toast shows the user."""
+    return toast(HttpResponseBadRequest(message), "error", message)
 
 
 async def get_playlist_modal_response(request: MottleHttpRequest, playlist_id: str, template_path: str) -> HttpResponse:

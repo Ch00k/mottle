@@ -10,7 +10,6 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseServerError,
-    QueryDict,
 )
 from django.shortcuts import aget_object_or_404, redirect, render
 from django.views.decorators.http import (
@@ -19,14 +18,14 @@ from django.views.decorators.http import (
     require_POST,
     require_safe,
 )
-from django_htmx.http import push_url, trigger_client_event
+from django_htmx.http import push_url
 from tekore.model import AlbumType, FullPlaylistTrack
 
 from web.spotify_items import get_smallest_image
 
 from .background import run_in_background
 from .data import AlbumData, ArtistData, PlaylistData, TrackData
-from .middleware import MottleHttpRequest, get_token_scope_changes
+from .middleware import MottleHttpRequest, get_signed_in_auth
 from .models import (
     Event,
     Playlist,
@@ -39,7 +38,7 @@ from .models import (
 from .spotify import get_auth
 from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
 from .utils import MottleException, MottleSpotifyClient
-from .views_utils import get_playlist_modal_response
+from .views_utils import bad_request_toast, get_playlist_modal_response, toast
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -51,47 +50,13 @@ async def login(request: MottleHttpRequest) -> HttpResponse:
     redirect_uri: str | None
 
     if request.method == "GET":
+        if await get_signed_in_auth(request.session) is not None:
+            return redirect("index")
+
         # Django template does not undestand None (it will treat it as a literal 'None'),
         # so we need to pass an empty string
         redirect_uri = request.GET.get("next", "")
-
-        spotify_user_id = await sync_to_async(request.session.get)("spotify_user_id")
-        logger.debug(f"SpotifyAuth ID: {spotify_user_id}")
-
-        if spotify_user_id is None:
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-        # TODO: This duplicates what already exists in `SpotifyAuthMiddleware.__call__`
-        try:
-            spotify_auth = await SpotifyAuth.objects.aget(spotify_user__id=spotify_user_id)
-        except SpotifyAuth.DoesNotExist:
-            logger.debug(f"SpotifyAuth for user ID {spotify_user_id} does not exist")
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-        logger.debug(spotify_auth)
-
-        if spotify_auth.refresh_token is None:
-            logger.debug(f"{spotify_auth} refresh_token is None")
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-        (
-            token_permissions_added,
-            token_permissions_removed,
-        ) = await get_token_scope_changes(spotify_auth)
-        if token_permissions_added or token_permissions_removed:
-            logger.debug(
-                f"{spotify_auth} token scope is outdated: "
-                f"permissions missing {token_permissions_added}, permissions redundant {token_permissions_removed}"
-            )
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-        try:
-            await spotify_auth.maybe_refresh()
-        except MottleException as e:
-            logger.error(e)
-            return render(request, "web/login.html", {"redirect_uri": redirect_uri})
-
-        return redirect("index")
+        return render(request, "web/login.html", {"redirect_uri": redirect_uri})
 
     redirect_uri = request.POST.get("redirect_uri")
 
@@ -270,10 +235,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
 
     requested_album_ids = request.POST.getlist("album")
     if not requested_album_ids:
-        error_message = "No albums selected"
-        return trigger_client_event(
-            HttpResponseBadRequest(error_message), "HXToast", {"type": "error", "body": error_message}
-        )
+        return bad_request_toast("No albums selected")
 
     name = request.POST.get("name", f"{artist.name} discography")
     is_public = bool(request.POST.get("is-public", False))
@@ -410,11 +372,7 @@ async def accept_playlist_update(request: MottleHttpRequest, playlist_id: str, u
     )
 
     await update.accept(request.spotify_client)
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Update accepted"},
-    )
+    return toast(HttpResponse(), "success", "Update accepted")
 
 
 @require_POST
@@ -428,11 +386,7 @@ async def accept_playlist_updates(request: MottleHttpRequest, playlist_id: str) 
     async for update in updates:
         await update.accept(request.spotify_client)
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Update accepted"},
-    )
+    return toast(HttpResponse(), "success", "Update accepted")
 
 
 @require_GET
@@ -444,17 +398,11 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
     user_playlists = await request.spotify_client.get_current_user_playlists()
     user_playlist_ids = [playlist.id for playlist in user_playlists]
 
-    try:
-        await PlaylistWatchConfig.objects.aget(
-            watching_playlist__spotify_user__id=request.session["spotify_user_id"],
-            watching_playlist__spotify_id=playlist_id,
-        )
-    except PlaylistWatchConfig.DoesNotExist:
-        watching_playlists = []
-    except PlaylistWatchConfig.MultipleObjectsReturned:
-        watching_playlists = [playlist_id]
-    else:
-        watching_playlists = [playlist_id]
+    is_watching = await PlaylistWatchConfig.objects.filter(
+        watching_playlist__spotify_user__id=request.session["spotify_user_id"],
+        watching_playlist__spotify_id=playlist_id,
+    ).aexists()
+    watching_playlists = [playlist_id] if is_watching else []
 
     tracks = [
         TrackData.from_tekore_model(track.track, added_at=track.added_at.date())
@@ -487,11 +435,7 @@ async def playlist_items(request: MottleHttpRequest, playlist_id: str) -> HttpRe
 async def follow_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
     await request.spotify_client.follow_playlist(playlist_id)
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Successfully added playlist"},
-    )
+    return toast(HttpResponse(), "success", "Successfully added playlist")
 
 
 @require_POST
@@ -505,11 +449,7 @@ async def unfollow_playlist(request: MottleHttpRequest, playlist_id: str) -> Htt
     else:
         await db_playlist.unfollow()
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Successfully removed playlist"},
-    )
+    return toast(HttpResponse(), "success", "Successfully removed playlist")
 
 
 @require_http_methods(["GET", "POST"])
@@ -559,11 +499,7 @@ async def remove_tracks_from_playlist(request: MottleHttpRequest, playlist_id: s
 
     await request.spotify_client.remove_tracks_from_playlist(playlist_id, track_uris)
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Track(s) removed from playlist"},
-    )
+    return toast(HttpResponse(), "success", "Track(s) removed from playlist")
 
 
 @require_POST
@@ -610,17 +546,9 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
             )
             target_playlist_id = target_playlist.id
         else:
-            return trigger_client_event(
-                HttpResponseBadRequest("No new playlist name provided"),
-                "HXToast",
-                {"type": "error", "body": "No new playlist name provided"},
-            )
+            return bad_request_toast("No new playlist name provided")
     elif not target_playlist_id:
-        return trigger_client_event(
-            HttpResponseBadRequest("No merge target provided"),
-            "HXToast",
-            {"type": "error", "body": "No merge target provided"},
-        )
+        return bad_request_toast("No merge target provided")
 
     source_playlist_items = await request.spotify_client.get_playlist_tracks(source_playlist_id)
 
@@ -648,11 +576,7 @@ async def merge_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
             auto_accept_updates=auto_accept,
         )
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Successfully merged playlists"},
-    )
+    return toast(HttpResponse(), "success", "Successfully merged playlists")
 
 
 @require_GET
@@ -717,11 +641,7 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
     if request.method == "POST":
         name = request.POST.get("name")
         if not name:
-            return trigger_client_event(
-                HttpResponseBadRequest("No name provided"),
-                "HXToast",
-                {"type": "error", "body": "No name provided"},
-            )
+            return bad_request_toast("No name provided")
 
         await request.spotify_client.change_playlist_details(playlist_id, name)
 
@@ -744,11 +664,7 @@ async def playlist_cover_image(request: MottleHttpRequest, playlist_id: str) -> 
             spotify_user_id=request.session["spotify_user_id"],
         )
     )
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Cover image generation requested. It may take a while to update."},
-    )
+    return toast(HttpResponse(), "success", "Cover image generation requested. It may take a while to update.")
 
 
 @require_http_methods(["GET", "POST"])
@@ -769,24 +685,12 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
                 )
                 watching_playlist_id = watching_playlist.id
             else:
-                return trigger_client_event(
-                    HttpResponseBadRequest("No watching playlist name provided"),
-                    "HXToast",
-                    {"type": "error", "body": "No watching playlist name provided"},
-                )
+                return bad_request_toast("No watching playlist name provided")
     else:
-        return trigger_client_event(
-            HttpResponseBadRequest("No watching playlist provided"),
-            "HXToast",
-            {"type": "error", "body": "No watching playlist provided"},
-        )
+        return bad_request_toast("No watching playlist provided")
 
     if not watching_playlist_id:
-        return trigger_client_event(
-            HttpResponseBadRequest("No watching playlist ID provided"),
-            "HXToast",
-            {"type": "error", "body": "No watching playlist ID provided"},
-        )
+        return bad_request_toast("No watching playlist ID provided")
 
     auto_accept = bool(request.POST.get("auto-accept", False))
     if auto_accept:
@@ -799,26 +703,15 @@ async def watch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRe
         auto_accept_updates=auto_accept,
     )
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Successfully started watching playlist"},
-    )
+    return toast(HttpResponse(), "success", "Successfully started watching playlist")
 
 
 @require_POST
 async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpResponse:
-    # https://stackoverflow.com/a/22294734
-    # TODO: This is probably not needed anymore since we are using POST. A leftover from an appempt to use DELETE?
-    body = QueryDict(request.body)
-    watching_playlist_id = body.get("watching-playlist-id")
+    watching_playlist_id = request.POST.get("watching-playlist-id")
 
     if not watching_playlist_id:
-        return trigger_client_event(
-            HttpResponseBadRequest("No watching playlist ID provided"),
-            "HXToast",
-            {"type": "error", "body": "No watching playlist ID provided"},
-        )
+        return bad_request_toast("No watching playlist ID provided")
 
     watching_playlist = await aget_object_or_404(
         Playlist,
@@ -828,11 +721,7 @@ async def unwatch_playlist(request: MottleHttpRequest, playlist_id: str) -> Http
     watched_playlist = await aget_object_or_404(Playlist, spotify_id=playlist_id)
 
     await watching_playlist.unwatch(watched_playlist)
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Successfully unwatched playlist"},
-    )
+    return toast(HttpResponse(), "success", "Successfully unwatched playlist")
 
 
 @require_POST
@@ -859,21 +748,16 @@ async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: 
             watched_artist__spotify_id=watched_artist_id,
         )
     else:
-        return trigger_client_event(
-            HttpResponseBadRequest("No watched playlist or artist ID provided"),
-            "HXToast",
-            {"type": "error", "body": "No watched playlist or artist ID provided"},
-        )
+        return bad_request_toast("No watched playlist or artist ID provided")
 
     new_setting = not config.auto_accept_updates
     config.auto_accept_updates = new_setting
     await config.asave()
 
-    # TODO: Toast
-    return trigger_client_event(
+    return toast(
         render(request, "web/parts/accept.html", {"playlist_id": playlist_id, "enabled": new_setting}),
-        "HXToast",
-        {"type": "success", "body": f"Auto-accept {'enabled' if new_setting else 'disabled'}"},
+        "success",
+        f"Auto-accept {'enabled' if new_setting else 'disabled'}",
     )
 
 
@@ -896,66 +780,50 @@ async def user_settings(request: MottleHttpRequest) -> HttpResponse:
     user = spotify_user.user
 
     if request.method == "GET":
+        template = "web/settings.html"
+
         if user.location:
             longitude, latitude = user.location
             radius = user.event_distance_threshold
         else:
             longitude, latitude, radius = None, None, None
+    else:
+        template = "web/parts/settings.html"
 
-        return render(
-            request,
-            "web/settings.html",
-            context={
-                "playlist_notifications": user.playlist_notifications,
-                "release_notifications": user.release_notifications,
-                "event_notifications": user.event_notifications,
-                "latitude": latitude,
-                "longitude": longitude,
-                "radius": radius,
-            },
-        )
+        latitude = float(lat) if (lat := request.POST.get("latitude")) else None
+        longitude = float(lon) if (lon := request.POST.get("longitude")) else None
+        radius = float(rad) if (rad := request.POST.get("radius")) else None
 
-    playlist_notifications = bool(request.POST.get("playlist-notifications", False))
-    release_notifications = bool(request.POST.get("release-notifications", False))
-    event_notifications = bool(request.POST.get("event-notifications", False))
+        user.playlist_notifications = bool(request.POST.get("playlist-notifications", False))
+        user.release_notifications = bool(request.POST.get("release-notifications", False))
+        user.event_notifications = bool(request.POST.get("event-notifications", False))
 
-    latitude = float(lat) if (lat := request.POST.get("latitude")) else None
-    longitude = float(lon) if (lon := request.POST.get("longitude")) else None
-    radius = float(rad) if (rad := request.POST.get("radius")) else None
+        if user.event_notifications:
+            if all((latitude, longitude, radius)):
+                user.location = Point(longitude, latitude, srid=settings.GEODJANGO_SRID)
+                user.event_distance_threshold = radius
+            else:
+                return bad_request_toast("Location and radius must be provided for event notifications")
 
-    user.playlist_notifications = playlist_notifications
-    user.release_notifications = release_notifications
-    user.event_notifications = event_notifications
+        await user.asave()
 
-    if event_notifications:
-        if all((latitude, longitude, radius)):
-            user.location = Point(longitude, latitude, srid=settings.GEODJANGO_SRID)
-            user.event_distance_threshold = radius
-        else:
-            return trigger_client_event(
-                HttpResponseBadRequest("Location and radius must be provided for event notifications"),
-                "HXToast",
-                {"type": "error", "body": "Location and radius must be provided for event notifications"},
-            )
-
-    await user.asave()
-
-    return trigger_client_event(
-        render(
-            request,
-            "web/parts/settings.html",
-            context={
-                "playlist_notifications": user.playlist_notifications,
-                "release_notifications": user.release_notifications,
-                "event_notifications": user.event_notifications,
-                "latitude": latitude,
-                "longitude": longitude,
-                "radius": radius,
-            },
-        ),
-        "HXToast",
-        {"type": "success", "body": "Settings updated successfully"},
+    response = render(
+        request,
+        template,
+        context={
+            "playlist_notifications": user.playlist_notifications,
+            "release_notifications": user.release_notifications,
+            "event_notifications": user.event_notifications,
+            "latitude": latitude,
+            "longitude": longitude,
+            "radius": radius,
+        },
     )
+
+    if request.method == "GET":
+        return response
+
+    return toast(response, "success", "Settings updated successfully")
 
 
 @require_GET
@@ -966,11 +834,7 @@ async def user_events(request: MottleHttpRequest) -> HttpResponse:
     events_enabled = settings.EVENTS_ENABLED
 
     if not events_enabled:
-        return trigger_client_event(
-            HttpResponseBadRequest("Events are not available yet. Please check back later"),
-            "HXToast",
-            {"type": "error", "body": "Events are not available yet. Please check back later"},
-        )
+        return bad_request_toast("Events are not available yet. Please check back later")
 
     user = spotify_user.user
 
@@ -1008,8 +872,4 @@ async def remove_saved_tracks(request: MottleHttpRequest) -> HttpResponse:
 
     await request.spotify_client.remove_user_saved_tracks(track_ids)
 
-    return trigger_client_event(
-        HttpResponse(),
-        "HXToast",
-        {"type": "success", "body": "Saved track(s) removed"},
-    )
+    return toast(HttpResponse(), "success", "Saved track(s) removed")

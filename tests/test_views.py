@@ -5,8 +5,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from django.conf import settings
+from django.contrib.gis.geos import Point
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import AsyncClient, RequestFactory, TestCase
+from lxml import html as lh
 from tekore.model import (
     Followers,
     FullAlbum,
@@ -42,6 +44,8 @@ from web.utils import MottleException, MottleSpotifyClient
 from web.views import playlist_updates
 
 if TYPE_CHECKING:
+    from django.http import HttpResponse
+
     from web.middleware import MottleHttpRequest
 
 
@@ -297,6 +301,79 @@ class SignedInTestCase(TestCase):
 
 
 @pytest.mark.asyncio
+class TestSignIn(SignedInTestCase):
+    """A user is signed in while their session names a Spotify authorization that can still be used.
+
+    That is one with a refresh token and the scope the app asks for, which is refreshed when it is about to expire.
+    The login page sends a signed-in user on, and any other page sends anyone else to the login page.
+    """
+
+    async def assert_signed_out(self) -> None:
+        response = await self.async_client.get("/login/", {"next": "/playlists/"})
+        assert response.status_code == 200
+        assert '<input type="hidden" name="redirect_uri" value="/playlists/">' in response.content.decode()
+
+        response = await self.async_client.get("/playlists/")
+        assert response.status_code == 302
+        assert response["Location"] == "/login/?next=/playlists/"
+
+    async def test_signed_in(self) -> None:
+        """A signed-in user is sent from the login page to the index, and gets other pages."""
+        self.spotify.get_current_user_playlists = AsyncMock(return_value=[])
+
+        response = await self.async_client.get("/login/")
+        assert response.status_code == 302
+        assert response["Location"] == "/"
+
+        response = await self.async_client.get("/playlists/")
+        assert response.status_code == 200
+
+    async def test_without_session(self) -> None:
+        """A visitor without a session is signed out."""
+        self.async_client.cookies.clear()
+
+        await self.assert_signed_out()
+
+    async def test_without_authorization(self) -> None:
+        """A session whose user has no authorization is signed out."""
+        await SpotifyAuth.objects.all().adelete()
+
+        await self.assert_signed_out()
+
+    async def test_without_refresh_token(self) -> None:
+        """An authorization without a refresh token is signed out."""
+        await SpotifyAuth.objects.all().aupdate(refresh_token=None)
+
+        await self.assert_signed_out()
+
+    async def test_outdated_scope(self) -> None:
+        """An authorization for another scope than the app asks for is signed out, so the user grants the app's."""
+        await SpotifyAuth.objects.all().aupdate(token_scope=settings.SPOTIFY_TOKEN_SCOPE[1:])
+
+        await self.assert_signed_out()
+
+    async def test_refresh_failure(self) -> None:
+        """An expired authorization that Spotify refuses to refresh is signed out, and the failure is logged."""
+        await SpotifyAuth.objects.all().aupdate(expires_at=datetime.now(tz=UTC) - timedelta(minutes=1))
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=Exception("invalid_grant")),
+            self.assertLogs("web", level="ERROR") as logs,
+        ):
+            await self.assert_signed_out()
+
+        assert [record.getMessage() for record in logs.records] == ["Failed to refresh token"] * 2
+
+    async def test_exempt_page_without_session(self) -> None:
+        """A page anyone may see is shown without a session."""
+        self.async_client.cookies.clear()
+
+        response = await self.async_client.get("/changelog/")
+
+        assert response.status_code == 200
+
+
+@pytest.mark.asyncio
 class TestAlbums(SignedInTestCase):
     async def test_get_lists_artist_releases_by_type(self) -> None:
         """The discography modal names the artist and lists its releases, albums before singles."""
@@ -384,6 +461,243 @@ class TestPlaylistItems(SignedInTestCase):
         assert "My Playlist" in content
         assert "Track track1" in content
         self.spotify.get_playlist.assert_awaited_once_with("playlist1")
+
+    async def get_page_with_watch_configs(self, num_configs: int) -> str:
+        """Return the playlist page of a playlist of the user's that watches as many playlists as given."""
+        self.spotify.get_playlist = AsyncMock(return_value=make_playlist("playlist1", "My Playlist", "me"))
+        self.spotify.get_playlist_tracks = AsyncMock(return_value=[])
+        self.spotify.get_current_user_playlists = AsyncMock(return_value=[])
+
+        watching = await Playlist.objects.acreate(spotify_id="playlist1", spotify_user=self.spotify_user)
+        for i in range(num_configs):
+            watched = await Playlist.objects.acreate(spotify_id=f"watched{i}")
+            await PlaylistWatchConfig.objects.acreate(watching_playlist=watching, watched_playlist=watched)
+
+        response = await self.async_client.get("/playlist/playlist1/")
+
+        assert response.status_code == 200
+        return response.content.decode()
+
+    async def test_offers_updates_of_a_watching_playlist(self) -> None:
+        """A playlist watching one or more others gets a button to its updates, and one watching none does not."""
+        updates_button = 'hx-get="/playlist/playlist1/updates/"'
+
+        assert updates_button not in await self.get_page_with_watch_configs(0)
+        await Playlist.objects.all().adelete()
+        assert updates_button in await self.get_page_with_watch_configs(1)
+        await PlaylistWatchConfig.objects.all().adelete()
+        await Playlist.objects.all().adelete()
+        assert updates_button in await self.get_page_with_watch_configs(2)
+
+
+# How htmx encodes the form fields it posts
+FORM_CONTENT_TYPE = "application/x-www-form-urlencoded"
+
+
+@pytest.mark.asyncio
+class TestUnwatchPlaylist(SignedInTestCase):
+    async def test_stops_watching_the_playlist(self) -> None:
+        """The watching playlist's config and updates for the watched playlist go, and the user is told in a toast.
+
+        The configuration modal posts the watching playlist's ID as a form field.
+        """
+        watching = await Playlist.objects.acreate(spotify_id="watching", spotify_user=self.spotify_user)
+        watched = await Playlist.objects.acreate(spotify_id="watched")
+        other = await Playlist.objects.acreate(spotify_id="other")
+        await PlaylistWatchConfig.objects.acreate(watching_playlist=watching, watched_playlist=watched)
+        await PlaylistWatchConfig.objects.acreate(watching_playlist=watching, watched_playlist=other)
+        await PlaylistUpdate.objects.acreate(target_playlist=watching, source_playlist=watched, tracks_added=["t1"])
+
+        response = await self.async_client.post(
+            "/playlist/watched/unwatch/", "watching-playlist-id=watching", content_type=FORM_CONTENT_TYPE
+        )
+
+        assert response.status_code == 200
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "success", "body": "Successfully unwatched playlist"}
+        }
+        assert [c.watched_playlist_id async for c in PlaylistWatchConfig.objects.all()] == [other.id]
+        assert not await PlaylistUpdate.objects.aexists()
+
+    async def test_without_watching_playlist_is_rejected_with_a_toast(self) -> None:
+        """A request naming no watching playlist is a bad request, which the user is told about in an error toast."""
+        response = await self.async_client.post("/playlist/watched/unwatch/", "", content_type=FORM_CONTENT_TYPE)
+
+        assert response.status_code == 400
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "error", "body": "No watching playlist ID provided"}
+        }
+
+    async def test_another_users_playlist_is_not_found(self) -> None:
+        """A watching playlist of another user's is not found."""
+        someone = await SpotifyUser.objects.acreate(spotify_id="someone")
+        await Playlist.objects.acreate(spotify_id="watching", spotify_user=someone)
+        await Playlist.objects.acreate(spotify_id="watched")
+
+        response = await self.async_client.post(
+            "/playlist/watched/unwatch/", "watching-playlist-id=watching", content_type=FORM_CONTENT_TYPE
+        )
+
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+class TestUserSettings(SignedInTestCase):
+    async def test_get_shows_saved_settings(self) -> None:
+        """The settings page shows the user's notification choices and event location."""
+        await User.objects.filter(spotify_user=self.spotify_user).aupdate(
+            playlist_notifications=False,
+            event_notifications=True,
+            location=Point(13.4, 52.5, srid=settings.GEODJANGO_SRID),
+            event_distance_threshold=50,
+        )
+
+        response = await self.async_client.get("/settings/")
+
+        assert response.status_code == 200
+        page = lh.fromstring(response.content)
+        assert page.xpath("//input[@type='checkbox'][@checked]/@name") == ["event-notifications"]
+        assert page.xpath("//input[@name='latitude']/@value") == ["52.5"]
+        assert page.xpath("//input[@name='longitude']/@value") == ["13.4"]
+        assert page.xpath("//input[@name='radius']/@value") == ["50.0"]
+
+    async def test_post_saves_settings(self) -> None:
+        """Posted notification choices and location are saved, shown again, and confirmed in a toast."""
+        response = await self.async_client.post(
+            "/settings/",
+            {"event-notifications": "on", "latitude": "52.5", "longitude": "13.4", "radius": "25"},
+        )
+
+        assert response.status_code == 200
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "success", "body": "Settings updated successfully"}
+        }
+        assert 'value="25.0"' in response.content.decode()
+        user = await User.objects.aget(spotify_user=self.spotify_user)
+        assert user.playlist_notifications is False
+        assert user.event_notifications is True
+        assert user.location is not None
+        assert user.location.coords == (13.4, 52.5)
+        assert user.event_distance_threshold == 25
+
+    async def test_post_event_notifications_without_location_is_rejected_with_a_toast(self) -> None:
+        """Event notifications need a location and radius, without which nothing is saved and the user is told so."""
+        response = await self.async_client.post("/settings/", {"event-notifications": "on"})
+
+        assert response.status_code == 400
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "error", "body": "Location and radius must be provided for event notifications"}
+        }
+        user = await User.objects.aget(spotify_user=self.spotify_user)
+        assert user.event_notifications is False
+
+
+@pytest.mark.asyncio
+class TestToasts(SignedInTestCase):
+    """Views that answer with nothing but a toast tell the user how the action went."""
+
+    async def assert_toast(self, response: HttpResponse, status_code: int, toast_type: str, body: str) -> None:
+        assert response.status_code == status_code
+        assert json.loads(response["HX-Trigger"]) == {"HXToast": {"type": toast_type, "body": body}}
+
+    async def test_follow_and_unfollow(self) -> None:
+        """Following and unfollowing a playlist is confirmed in a toast."""
+        self.spotify.follow_playlist = AsyncMock()
+        self.spotify.unfollow_playlist = AsyncMock()
+
+        response = await self.async_client.post("/playlist/playlist1/follow/")
+        await self.assert_toast(response, 200, "success", "Successfully added playlist")
+
+        response = await self.async_client.post("/playlist/playlist1/unfollow/")
+        await self.assert_toast(response, 200, "success", "Successfully removed playlist")
+
+    async def test_merge_without_target(self) -> None:
+        """Merging into a new playlist needs its name, and merging into an existing one needs the target."""
+        response = await self.async_client.post("/playlist/playlist1/merge/", {"merge-type": "new"})
+        await self.assert_toast(response, 400, "error", "No new playlist name provided")
+
+        response = await self.async_client.post("/playlist/playlist1/merge/", {"merge-type": "existing"})
+        await self.assert_toast(response, 400, "error", "No merge target provided")
+
+    async def test_merge(self) -> None:
+        """A merge adds the source's tracks to the target and is confirmed in a toast."""
+        self.spotify.get_playlist_tracks = AsyncMock(return_value=[make_playlist_item("track1")])
+        self.spotify.add_tracks_to_playlist = AsyncMock()
+
+        response = await self.async_client.post(
+            "/playlist/playlist1/merge/", {"merge-type": "existing", "merge-target": "target"}
+        )
+
+        await self.assert_toast(response, 200, "success", "Successfully merged playlists")
+        self.spotify.add_tracks_to_playlist.assert_awaited_once_with("target", ["spotify:track:track1"])
+
+    async def test_watch_without_watching_playlist(self) -> None:
+        """Watching needs a watching playlist, and a name for one to create."""
+        response = await self.async_client.post("/playlist/playlist1/watch/", {})
+        await self.assert_toast(response, 400, "error", "No watching playlist provided")
+
+        response = await self.async_client.post(
+            "/playlist/playlist1/watch/", {"watching-playlist-id": "--- Create new ---"}
+        )
+        await self.assert_toast(response, 400, "error", "No watching playlist name provided")
+
+    async def test_watch(self) -> None:
+        """Starting to watch a playlist is confirmed in a toast."""
+        self.spotify.get_current_user = AsyncMock(return_value=Mock(id="me", display_name="Me", email=None))
+
+        response = await self.async_client.post("/playlist/watched/watch/", {"watching-playlist-id": "watching"})
+
+        await self.assert_toast(response, 200, "success", "Successfully started watching playlist")
+        assert await PlaylistWatchConfig.objects.filter(
+            watching_playlist__spotify_id="watching", watched_playlist__spotify_id="watched"
+        ).aexists()
+
+    async def test_auto_accept_toggle(self) -> None:
+        """Auto-accept needs the watched playlist or artist, and its toggling is confirmed in a toast."""
+        watching = await Playlist.objects.acreate(spotify_id="watching", spotify_user=self.spotify_user)
+        watched = await Playlist.objects.acreate(spotify_id="watched")
+        await PlaylistWatchConfig.objects.acreate(watching_playlist=watching, watched_playlist=watched)
+
+        response = await self.async_client.post("/playlist/watching/auto-accept-updates/", {})
+        await self.assert_toast(response, 400, "error", "No watched playlist or artist ID provided")
+
+        response = await self.async_client.post(
+            "/playlist/watching/auto-accept-updates/", {"watched-playlist-id": "watched"}
+        )
+        await self.assert_toast(response, 200, "success", "Auto-accept enabled")
+
+    async def test_accept_updates(self) -> None:
+        """Accepting one or all of a playlist's updates is confirmed in a toast."""
+        watching = await Playlist.objects.acreate(spotify_id="watching", spotify_user=self.spotify_user)
+        watched = await Playlist.objects.acreate(spotify_id="watched")
+        update = await PlaylistUpdate.objects.acreate(
+            target_playlist=watching, source_playlist=watched, tracks_added=["track1"]
+        )
+        self.spotify.add_tracks_to_playlist = AsyncMock()
+
+        response = await self.async_client.post(f"/playlist/watching/updates/{update.id}/accept/")
+        await self.assert_toast(response, 200, "success", "Update accepted")
+
+        response = await self.async_client.post("/playlist/watching/accept-all-updates/")
+        await self.assert_toast(response, 200, "success", "Update accepted")
+
+    async def test_remove_tracks(self) -> None:
+        """Removing tracks from a playlist or from the saved tracks is confirmed in a toast."""
+        self.spotify.remove_tracks_from_playlist = AsyncMock()
+        self.spotify.remove_user_saved_tracks = AsyncMock()
+
+        response = await self.async_client.post("/playlist/playlist1/remove-tracks/", {"track-id": ["track1"]})
+        await self.assert_toast(response, 200, "success", "Track(s) removed from playlist")
+
+        response = await self.async_client.post("/remove-saved-tracks/", {"track-id": ["track1"]})
+        await self.assert_toast(response, 200, "success", "Saved track(s) removed")
+
+    async def test_events_disabled(self) -> None:
+        """With events turned off the events page answers with an error toast."""
+        with self.settings(EVENTS_ENABLED=False):
+            response = await self.async_client.get("/events/")
+
+        await self.assert_toast(response, 400, "error", "Events are not available yet. Please check back later")
 
 
 @pytest.mark.asyncio
