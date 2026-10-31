@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import uuid
 from unittest.mock import AsyncMock, Mock, patch
@@ -6,12 +7,13 @@ import pytest
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from tekore import Token
 from tekore.model import FullArtist
 
+from web.events.data import EventSourceArtist
 from web.models import Artist, Event, EventArtist, SpotifyAuth, SpotifyUser, User
-from web.tasks import acheck_artists_for_event_updates, upload_cover_image
+from web.tasks import acheck_artists_for_event_updates, track_artist_events, upload_cover_image
 from web.utils import MottleSpotifyClient
 
 
@@ -21,8 +23,8 @@ class TestEventUpdateNotifications(TestCase):
         """A user who turned event notifications off is skipped, and the users after them still get their email.
 
         Both users watch an artist with an upcoming live stream, whose creation records an unnotified update. The user
-        with notifications off is created first, so the check reaches them first. No artist matches the given IDs, so
-        no event source is fetched.
+        with notifications off is created first, and the check goes through users oldest first. No artist matches the
+        given IDs, so no event source is fetched.
         """
         artist = await Artist.objects.acreate(spotify_id="artist_1")
         event_artist = await EventArtist.objects.acreate(
@@ -113,3 +115,33 @@ class TestUploadCoverImage(TestCase):
         create_cover_image.assert_called_once_with("Road Trip", dump_to_disk=True)
         client_class.assert_called_once_with("refreshed_token")
         spotify_client.upload_playlist_cover_image.assert_awaited_once_with("playlist_1", b"jpeg")
+
+
+# Creating an EventArtist that already exists fails the insert, which would abort the transaction a TestCase wraps the
+# test in.
+@pytest.mark.asyncio
+class TestTrackArtistEvents(TransactionTestCase):
+    async def test_overlapping_jobs_both_watch_the_artist(self) -> None:
+        """Two jobs tracking the same new artist at once create one EventArtist, and both users end up watching it.
+
+        The event source search is replaced by one that waits until both jobs are searching, so both have seen that
+        the artist has no EventArtist before either creates it.
+        """
+        spotify_users = [
+            await SpotifyUser.objects.acreate(spotify_id=spotify_id) for spotify_id in ("first_user", "second_user")
+        ]
+        both_searching = asyncio.Barrier(2)
+
+        async def find_event_data_sources(_: str, artist_name: str) -> tuple[None, EventSourceArtist]:
+            await both_searching.wait()
+            return None, EventSourceArtist(artist_name)
+
+        with patch("web.tasks.find_event_data_sources", find_event_data_sources):
+            first, second = await asyncio.gather(
+                *(track_artist_events("artist_1", "Artist One", str(user.id)) for user in spotify_users)
+            )
+
+        assert first.id == second.id
+        assert await EventArtist.objects.acount() == 1
+        watching_user_ids = {user.id async for user in first.watching_users.all()}
+        assert watching_user_ids == {user.id for user in spotify_users}

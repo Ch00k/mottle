@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.gis.measure import Distance
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
+from django.db import IntegrityError
 from django.db.models import Q
 from sentry_sdk import capture_exception
 
@@ -262,7 +263,7 @@ async def acheck_artists_for_event_updates(
             email__isnull=False,
             user__location__isnull=False,
             user__event_distance_threshold__isnull=False,
-        ):
+        ).order_by("created_at"):
             artists_with_events = defaultdict(list)
             user = await sync_to_async(lambda: spotify_user.user)()
 
@@ -473,10 +474,22 @@ async def track_artist_events(
         musicbrainz_artist, fetched_artist = await find_event_data_sources(artist_spotify_id, artist_name)
         musicbrainz_id = None if musicbrainz_artist is None else musicbrainz_artist.id
 
-        event_artist = await EventArtist.create_from_fetched_artist(
-            artist, musicbrainz_id, fetched_artist, [spotify_user_id]
-        )
-        logger.debug(f"Created EventArtist: {event_artist}")
+        try:
+            event_artist = await EventArtist.create_from_fetched_artist(
+                artist, musicbrainz_id, fetched_artist, [spotify_user_id]
+            )
+        except IntegrityError:
+            # Another tracking job created the artist's EventArtist while this one was searching the event sources
+            existing_event_artist = await EventArtist.objects.filter(artist=artist).afirst()
+            if existing_event_artist is None:
+                raise
+
+            event_artist = existing_event_artist
+            logger.debug(f"EventArtist {event_artist} was created by another job")
+            # https://github.com/typeddjango/django-stubs/issues/997
+            await event_artist.watching_users.aadd(spotify_user_id)  # ty: ignore[invalid-argument-type]
+        else:
+            logger.debug(f"Created EventArtist: {event_artist}")
     else:
         logger.debug(f"Artist {artist} already has an EventArtist: {artist.event_artist}")
         # https://github.com/typeddjango/django-stubs/issues/997
