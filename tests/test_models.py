@@ -1,6 +1,7 @@
 import datetime
 import json
 import uuid
+from unittest.mock import patch
 
 import pytest
 from django.conf import settings
@@ -24,12 +25,14 @@ from web.models import (
     PlaylistUpdate,
     PlaylistWatchConfig,
     SpotifyAuth,
+    SpotifyAuthRequest,
     SpotifyUser,
     User,
     decrypt_value,
     encrypt_value,
     generate_playlist_update_hash,
 )
+from web.utils import MottleException
 
 pytestmark = pytest.mark.django_db
 
@@ -182,6 +185,117 @@ class TestSpotifyAuth(TestCase):
         assert auth.access_token == "new_access_token"
         assert auth.access_token != original_access
         assert auth.refresh_token == "new_refresh_token"
+
+    async def test_maybe_refresh_keeps_token_far_from_expiry(self) -> None:
+        """A token that expires in an hour is left as it is, without asking Spotify for a new one."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(hours=1)
+        )
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh") as refresh:
+            await auth.maybe_refresh()
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "access_token"
+        assert auth.refresh_token == "refresh_token"
+        refresh.assert_not_called()
+
+    async def test_maybe_refresh_replaces_expiring_token(self) -> None:
+        """A token about to expire is refreshed with its refresh token, and the token Spotify issues is saved."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=30)
+        )
+
+        with patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", return_value=refreshed_token()) as refresh:
+            await auth.maybe_refresh()
+
+        refresh.assert_called_once()
+        sent_token = refresh.call_args.args[0]
+        assert sent_token.access_token == "access_token"
+        assert sent_token.refresh_token == "refresh_token"
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "refreshed_access_token"
+        assert auth.refresh_token == "refreshed_refresh_token"
+        assert auth.expires_in > 3500
+
+    async def test_maybe_refresh_failure_keeps_token(self) -> None:
+        """A refresh Spotify refuses raises MottleException and leaves the saved token as it was."""
+        auth = await create_spotify_auth(
+            expires_at=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(hours=1)
+        )
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=RuntimeError("invalid_grant")),
+            pytest.raises(MottleException, match="Failed to refresh token"),
+        ):
+            await auth.maybe_refresh()
+
+        await auth.arefresh_from_db()
+        assert auth.access_token == "access_token"
+        assert auth.refresh_token == "refresh_token"
+
+
+async def create_spotify_auth(expires_at: datetime.datetime) -> SpotifyAuth:
+    spotify_user = await SpotifyUser.objects.acreate(spotify_id="user_refresh", display_name="Refresh User")
+    return await SpotifyAuth.objects.acreate(
+        spotify_user=spotify_user,
+        access_token="access_token",
+        refresh_token="refresh_token",
+        expires_at=expires_at,
+        token_scope=["user-read-private"],
+    )
+
+
+def refreshed_token() -> Token:
+    return Token(
+        token_info={
+            "token_type": "Bearer",
+            "access_token": "refreshed_access_token",
+            "refresh_token": "refreshed_refresh_token",
+            "expires_in": 3600,
+        },
+        uses_pkce=False,
+    )
+
+
+@pytest.mark.asyncio
+class TestSpotifyAuthRequest(TestCase):
+    async def test_request_token_exchanges_code(self) -> None:
+        """The authorisation code from Spotify's callback is exchanged for the user's token."""
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+
+        with patch.object(
+            settings.SPOTIFY_CREDEINTIALS, "request_user_token", return_value=refreshed_token()
+        ) as request_user_token:
+            token = await auth_request.request_token("code_1")
+
+        assert token.access_token == "refreshed_access_token"
+        request_user_token.assert_called_once_with("code_1")
+
+    async def test_request_token_failure(self) -> None:
+        """A code Spotify refuses raises MottleException."""
+        auth_request = await SpotifyAuthRequest.objects.acreate(state="state_1")
+
+        with (
+            patch.object(
+                settings.SPOTIFY_CREDEINTIALS, "request_user_token", side_effect=RuntimeError("invalid_grant")
+            ),
+            pytest.raises(MottleException, match="Failed to authenticate"),
+        ):
+            await auth_request.request_token("code_1")
+
+    async def test_request_token_without_state(self) -> None:
+        """A request with no state is refused before Spotify is asked for a token."""
+        auth_request = SpotifyAuthRequest(state=None)
+
+        with (
+            patch.object(settings.SPOTIFY_CREDEINTIALS, "request_user_token") as request_user_token,
+            pytest.raises(MottleException, match="state is None"),
+        ):
+            await auth_request.request_token("code_1")
+
+        request_user_token.assert_not_called()
 
 
 @pytest.mark.asyncio
