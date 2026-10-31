@@ -356,6 +356,39 @@ async def test_find_in_bandsintown_tries_every_name_when_search_is_refused(
 
 
 @pytest.mark.asyncio
+async def test_find_in_bandsintown_tries_every_name_when_search_answer_is_malformed(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A Bandsintown search answer without the artists moves on to the artist's next name, and fails once every name
+    has been tried.
+
+    Each malformed answer is logged as an error naming the name searched for and the missing key.
+    """
+    monkeypatch.setattr(
+        data,
+        "async_bandsintown_client",
+        AsyncRetryingClient(
+            attempts=1,
+            base_url=BANDSINTOWN_BASE_URL,
+            transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json={})),
+        ),
+    )
+    artist = EventSourceArtist(name="Deep Purple", alternative_names=["Deep Purple Mk II"])
+
+    with pytest.raises(
+        BandsintownException, match=r"^Artist 'Deep Purple' not found in Bandsintown using any of the names$"
+    ):
+        await artist.find_in_bandsintown()
+
+    assert artist.bandsintown_url is None
+    errors = [r.getMessage() for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
+    assert errors == [
+        "Failed to search for artist in Bandsintown by name 'Deep Purple': 'artists'. Trying next name",
+        "Failed to search for artist in Bandsintown by name 'Deep Purple Mk II': 'artists'. Trying next name",
+    ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.usefixtures("songkick")
 async def test_fetch_events_rejects_songkick_redirect_away_from_a_calendar(caplog: pytest.LogCaptureFixture) -> None:
     """A calendar URL Songkick redirects to a page that is not an artist calendar is kept, and the failure logged.
