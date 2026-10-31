@@ -930,7 +930,7 @@ class TestEventDetails(SignedInTestCase):
         assert "Jan. 1, 2100 The Venue Berlin, Germany" in text
         links = modal.xpath("//a[@target='_blank']")
         assert [a.get("href") for a in links] == ["https://s.example/a", "https://s.example/b"]
-        assert [" ".join(a.text_content().split()) for a in links] == ["Tickets Buy tickets 1", "Tickets Buy tickets 2"]
+        assert [" ".join(a.text_content().split()) for a in links] == ["Buy tickets 1", "Buy tickets 2"]
         assert modal.xpath("//input[@id='latitude']/@value") == ["52.5"]
         assert modal.xpath("//input[@id='longitude']/@value") == ["13.4"]
         assert modal.xpath("//div[@id='map']")
@@ -954,7 +954,7 @@ class TestEventDetails(SignedInTestCase):
         assert "None" not in text
         links = modal.xpath("//a[@target='_blank']")
         assert [a.get("href") for a in links] == ["https://s.example/stream"]
-        assert " ".join(links[0].text_content().split()) == "Live stream Watch"
+        assert " ".join(links[0].text_content().split()) == "Watch"
         assert not modal.xpath("//div[@id='map']")
 
 

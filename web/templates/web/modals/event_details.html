@@ -38,8 +38,8 @@
                                 <a href="{{ u }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-md transition-colors">
-                                    {% include "web/icons/video.html" with title="Live stream" %}
+                                   class="modal-button-link">
+                                    {% include "web/icons/video.html" %}
                                     Watch{% if event.stream_urls|length > 1 %} {{ forloop.counter }}{% endif %}
                                 </a>
                             {% empty %}
@@ -53,7 +53,7 @@
                                 <a href="{{ u }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
-                                   class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-md transition-colors">
+                                   class="modal-button-link">
                                     {% include "web/icons/ticket.html" %}
                                     Buy tickets{% if event.tickets_urls|length > 1 %} {{ forloop.counter }}{% endif %}
                                 </a>
