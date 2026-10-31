@@ -7,80 +7,17 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from tekore import AsyncSender, Spotify
-from tekore.model import AlbumType, SimpleAlbum
 
 from web.utils import (
     MottleException,
     MottleSpotifyClient,
-    chunked_off,
     gather_with_concurrency,
     get_all_chunked,
     get_qualname,
-    list_has,
     perform_parallel_chunked_requests,
-    perform_parallel_requests,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
-
-
-class TestListHas:
-    def test_returns_true_when_album_type_exists(self) -> None:
-        albums = [
-            Mock(spec=SimpleAlbum, album_type=AlbumType.album),
-            Mock(spec=SimpleAlbum, album_type=AlbumType.single),
-        ]
-        assert list_has(albums, AlbumType.album) is True
-
-    def test_returns_true_when_album_type_exists_multiple_times(self) -> None:
-        albums = [
-            Mock(spec=SimpleAlbum, album_type=AlbumType.album),
-            Mock(spec=SimpleAlbum, album_type=AlbumType.album),
-            Mock(spec=SimpleAlbum, album_type=AlbumType.single),
-        ]
-        assert list_has(albums, AlbumType.album) is True
-
-    def test_returns_false_when_album_type_does_not_exist(self) -> None:
-        albums = [
-            Mock(spec=SimpleAlbum, album_type=AlbumType.album),
-            Mock(spec=SimpleAlbum, album_type=AlbumType.single),
-        ]
-        assert list_has(albums, AlbumType.compilation) is False
-
-    def test_returns_false_when_list_is_empty(self) -> None:
-        albums: list[SimpleAlbum] = []
-        assert list_has(albums, AlbumType.album) is False
-
-
-class TestChunkedOff:
-    def test_disables_and_reenables_chunking(self) -> None:
-        client = Mock(spec=Spotify)
-        client.chunked_on = True
-
-        with chunked_off(client):
-            assert client.chunked_on is False
-
-        assert client.chunked_on is True
-
-    def test_reenables_chunking_even_on_exception(self) -> None:
-        client = Mock(spec=Spotify)
-        client.chunked_on = True
-
-        with chunked_off(client):
-            assert client.chunked_on is False
-            with pytest.raises(ValueError, match="test error"):
-                raise ValueError("test error")
-
-        assert client.chunked_on is True
-
-    def test_does_nothing_when_chunking_already_disabled(self) -> None:
-        client = Mock(spec=Spotify)
-        client.chunked_on = False
-
-        with chunked_off(client):
-            assert client.chunked_on is False
-
-        assert client.chunked_on is False
 
 
 @pytest.mark.asyncio
@@ -124,28 +61,6 @@ class TestGatherWithConcurrency:
 
         with pytest.raises(ValueError, match="error"):
             await gather_with_concurrency(2, failure(), return_exceptions=False)
-
-
-@pytest.mark.asyncio
-class TestPerformParallelRequests:
-    async def test_calls_function_for_each_item(self) -> None:
-        async def mock_func(x: str) -> str:
-            return f"result_{x}"
-
-        items = ["a", "b", "c"]
-
-        results = await perform_parallel_requests(mock_func, items)
-
-        assert results == ["result_a", "result_b", "result_c"]
-
-    async def test_wraps_exceptions_in_mottle_exception(self) -> None:
-        async def mock_func(x: str) -> None:
-            raise Exception("api error")
-
-        items = ["a"]
-
-        with pytest.raises(MottleException, match="Failed to perform parallel requests"):
-            await perform_parallel_requests(mock_func, items)
 
 
 @pytest.mark.asyncio
@@ -227,12 +142,6 @@ def spotify_client() -> MottleSpotifyClient:
 
 @pytest.mark.asyncio
 class TestMottleSpotifyClient:
-    async def test_find_playlists_skips_null_results(self, spotify_client: MottleSpotifyClient) -> None:
-        """Spotify's search results hold null in place of some playlists, which are left out."""
-        playlists = await spotify_client.find_playlists("deep purple")
-
-        assert [p.name for p in playlists] == ["Deep Purple - Greatest Hits"]
-
     async def test_find_artists_and_playlists_skips_null_playlists(self, spotify_client: MottleSpotifyClient) -> None:
         """Searching artists and playlists together also leaves out the null playlists."""
         artists, playlists = await spotify_client.find_artists_and_playlists("deep purple")
@@ -250,11 +159,11 @@ class TestMottleSpotifyClient:
 class TestGetQualname:
     def test_function(self) -> None:
         """A function is named by its qualified name."""
-        assert get_qualname(list_has) == "list_has"
+        assert get_qualname(get_all_chunked) == "get_all_chunked"
 
     def test_partial(self) -> None:
         """A partial is named by the function it wraps."""
-        assert get_qualname(partial(list_has, [])) == "list_has"
+        assert get_qualname(partial(get_all_chunked, len)) == "get_all_chunked"
 
     def test_callable_without_qualname(self) -> None:
         """A callable object without a qualified name is named by its repr."""

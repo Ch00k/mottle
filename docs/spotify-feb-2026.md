@@ -82,7 +82,7 @@ Used in `MottleSpotifyClient.create_playlist` and `create_playlist_with_tracks` 
 
 #### 3. `DELETE /me/tracks` removed
 
-Used in `MottleSpotifyClient.remove_user_saved_tracks` and `delete_current_user_saved_tracks` via `saved_tracks_delete(track_ids)`.
+Used in `MottleSpotifyClient.remove_user_saved_tracks` via `saved_tracks_delete(track_ids)`.
 
 **Migration**: Use `DELETE /me/library` with Spotify URIs instead of track IDs.
 
@@ -168,4 +168,4 @@ Mottle uses Tekore 6.2 as its Spotify client library. 6.2 models the playlist `i
 
 ## Rate Limit Context
 
-Spotify does not publish exact rate limits. Community estimates suggest ~20 requests/second is safe. Spotify's own best practices previously recommended using batch endpoints to reduce call volume -- removing them while keeping the same rate limits makes throttling and concurrency control more important. Mottle's `MottleRetryingSender` (in `web/spotify.py`) already handles 429 responses with exponential backoff, but the volume increase from individual calls may require adding a proactive concurrency limiter.
+Spotify does not publish exact rate limits. Community estimates suggest ~20 requests/second is safe. Spotify's own best practices previously recommended using batch endpoints to reduce call volume -- removing them while keeping the same rate limits makes throttling and concurrency control more important. Mottle's Spotify client (`get_client` in `web/spotify.py`) sends through Tekore's `RetryingSender`, which waits out a 429 for as long as its `Retry-After` header says and retries a 5xx with exponential backoff, but the volume increase from individual calls may require adding a proactive concurrency limiter.

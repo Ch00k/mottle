@@ -592,9 +592,6 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
         name=f"Copy of {playlist_name}",
         track_uris=[track.track.uri for track in playlist_items if isinstance(track.track, FullPlaylistTrack)],
         is_public=True,  # TODO: How do we decide on the value?
-        cover_image=None,
-        add_tracks_parallelized=settings.PLAYLIST_ADD_TRACKS_PARALLELIZED,
-        fail_on_cover_image_upload_error=False,
     )
 
     # When the playlist is initially created, it is empty, and its attributes (e.g. owner) are still not defined.
