@@ -19,6 +19,7 @@ from django.views.decorators.http import (
     require_POST,
     require_safe,
 )
+from django.views.decorators.vary import vary_on_headers
 from django_htmx.http import push_url
 from tekore.model import AlbumType, FullPlaylistTrack
 
@@ -39,7 +40,13 @@ from .models import (
 from .spotify import get_auth
 from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
 from .utils import MottleException, MottleSpotifyClient
-from .views_utils import bad_request_toast, get_playlist_modal_response, toast, wants_fragment
+from .views_utils import (
+    FRAGMENT_REQUEST_HEADERS,
+    bad_request_toast,
+    get_playlist_modal_response,
+    toast,
+    wants_fragment,
+)
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -151,6 +158,7 @@ def changelog(request: MottleHttpRequest) -> HttpResponse:
 
 
 @require_GET
+@vary_on_headers(*FRAGMENT_REQUEST_HEADERS)
 async def search(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query", "")
 
@@ -203,6 +211,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
 
 
 @require_http_methods(["GET", "POST"])
+@vary_on_headers(*FRAGMENT_REQUEST_HEADERS)
 async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
 

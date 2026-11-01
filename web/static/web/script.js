@@ -58,15 +58,29 @@ function refreshPage() {
 // - an element with data-success-refresh refreshes the page; in a dialog, once the dialog closes
 // - an element with data-close-dialog closes the dialog it is in
 // - an element with data-success-redirect goes to the URL the attribute names
+// - a dialog with data-close-when-empty="<selector>" closes once nothing in it matches the selector
+// The swap may have taken the element out of the page, in which case htmx reports the request on an ancestor, so
+// what to do is read from the element before the request is sent.
+document.addEventListener('htmx:beforeRequest', (event) => {
+    const element = event.detail.elt;
+
+    event.detail.requestConfig.onSuccess = {
+        refresh: 'successRefresh' in element.dataset,
+        closeDialog: element.closest('[data-close-dialog]') !== null,
+        redirect: element.dataset.successRedirect,
+        dialog: element.closest('dialog'),
+    };
+});
+
 document.addEventListener('htmx:afterRequest', (event) => {
-    if (!event.detail.successful) {
+    const onSuccess = event.detail.requestConfig?.onSuccess;
+    if (!event.detail.successful || !onSuccess) {
         return;
     }
 
-    const element = event.detail.elt;
-    const dialog = element.closest('dialog');
+    const { refresh, closeDialog, redirect, dialog } = onSuccess;
 
-    if ('successRefresh' in (element.dataset || {})) {
+    if (refresh) {
         if (dialog) {
             dialog.dataset.refreshOnClose = '';
         } else {
@@ -74,11 +88,11 @@ document.addEventListener('htmx:afterRequest', (event) => {
         }
     }
 
-    if (element.closest('[data-close-dialog]')) {
+    const emptied = dialog?.dataset.closeWhenEmpty && !dialog.querySelector(dialog.dataset.closeWhenEmpty);
+    if (closeDialog || emptied) {
         dialog?.close();
     }
 
-    const redirect = element.dataset?.successRedirect;
     if (redirect) {
         window.location.assign(redirect);
     }
@@ -217,10 +231,12 @@ function finishProgress() {
 document.addEventListener('htmx:beforeRequest', startProgress);
 document.addEventListener('htmx:afterRequest', finishProgress);
 
-// Going back to a page HTMX no longer has in its history cache loads the page again, without the events above
-document.addEventListener('htmx:historyCacheMiss', startProgress);
-document.addEventListener('htmx:historyCacheMissLoad', finishProgress);
-document.addEventListener('htmx:historyCacheMissLoadError', finishProgress);
+// Going back to a page HTMX no longer has in its history cache loads the page again, without the events above. The
+// request's loadend comes however it ends: loaded, failed, aborted or timed out.
+document.addEventListener('htmx:historyCacheMiss', (event) => {
+    startProgress();
+    event.detail.xhr.addEventListener('loadend', finishProgress, { once: true });
+});
 
 // Menus (<details class="menu">) close on a click outside them, on a click on one of their items, and on Escape
 document.addEventListener('click', (event) => {

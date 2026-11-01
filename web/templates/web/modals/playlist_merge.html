@@ -4,7 +4,8 @@
           hx-post="{% url 'merge_playlist' playlist_id %}"
           hx-swap="none"
           hx-indicator="#merge-submit"
-          data-close-dialog>
+          data-close-dialog
+          data-success-refresh>
         <div class="modal-body">
             <div class="flex items-center gap-3">
                 {% if playlist_image_url %}

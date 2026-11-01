@@ -434,6 +434,7 @@ class TestSearch(SignedInTestCase):
         assert page.xpath("//a[@href='/artist/artist1/']//h3/text()") == ["The Artist"]
         assert page.xpath("//a[@href='/playlist/theirs/']//h5/text()") == ["Their Playlist"]
         assert response["HX-Push-Url"] == "?query=the artist"
+        assert response["Vary"] == "HX-Request, HX-Boosted, HX-History-Restore-Request, Cookie"
 
     async def test_emptying_the_box_shows_the_empty_state_in_place(self) -> None:
         """Emptying the search box gets only the results' empty state, and the search page's own URL."""
@@ -482,6 +483,7 @@ class TestAlbums(SignedInTestCase):
         assert page.tag == "dialog"
         assert page.xpath("//h2[@class='modal-title']/text()") == ["Create The Artist discography"]
         assert page.xpath("//input[@name='album']/@value") == ["album1", "single1"]
+        assert response["Vary"] == "HX-Request, HX-Boosted, HX-History-Restore-Request, Cookie"
         self.spotify.get_artist.assert_awaited_once_with("artist1")
 
     async def test_get_from_a_link_shows_the_artist_page(self) -> None:

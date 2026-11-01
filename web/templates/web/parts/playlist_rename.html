@@ -1,6 +1,7 @@
 <form class="flex min-w-0 flex-1 items-center gap-2"
       hx-post="{% url 'rename_playlist' playlist.id %}"
-      hx-target="#playlist-name-container">
+      hx-target="#playlist-name-container"
+      data-success-refresh>
     <input type="text"
            name="name"
            value="{{ playlist.name }}"

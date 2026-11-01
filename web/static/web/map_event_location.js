@@ -17,11 +17,16 @@ function drawEventMap() {
         var marker = L.marker([latInput.value, lonInput.value]).addTo(map);
         map.setView([latInput.value, lonInput.value], 13);
 
-        // The map is drawn in a dialog that may not be open yet, and so has no size; once it has one, the map fills
-        // it and centres on the venue again
-        new ResizeObserver(() => {
+        // The map is drawn in a dialog that may not be open yet, and so has no size. It fills its container whenever
+        // that changes size, and centres on the venue again only when it first gets one, keeping the user's pan and
+        // zoom after that.
+        var centred = false;
+        new ResizeObserver((entries) => {
             map.invalidateSize();
-            map.setView([latInput.value, lonInput.value], 13);
+            if (!centred && entries[0].contentRect.width > 0) {
+                map.setView([latInput.value, lonInput.value], 13);
+                centred = true;
+            }
         }).observe(document.getElementById('map'));
     }
 }

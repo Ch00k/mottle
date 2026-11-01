@@ -23,6 +23,11 @@ def toast(response: HttpResponse, toast_type: str, body: str) -> HttpResponse:
     return trigger_client_event(response, "HXToast", {"type": toast_type, "body": body})
 
 
+# The request headers `wants_fragment` goes by, which a response it chose must vary on, so that a browser does not serve
+# a cached fragment as the page at the same URL, or the page as the fragment
+FRAGMENT_REQUEST_HEADERS = ("HX-Request", "HX-Boosted", "HX-History-Restore-Request")
+
+
 def wants_fragment(request: MottleHttpRequest) -> bool:
     """Return whether the request is an HTMX one for part of a page, which a page's own control makes.
 
