@@ -164,7 +164,7 @@ After the deprecation, replace with concurrent individual calls (`artist()`, `al
 
 ## Tekore Dependency
 
-Mottle uses Tekore 6.2 as its Spotify client library. 6.2 models the playlist `items` field alongside `tracks`, but still calls `POST /users/{user_id}/playlists`, the batch endpoints and the per-type library endpoints, so the rest of these changes still need a Tekore release that covers them. Monitor https://github.com/felix-hilden/tekore for one.
+Mottle uses Tekore 6.2 as its Spotify client library. 6.2 models the playlist `items` field alongside `tracks`, but still calls `POST /users/{user_id}/playlists`, the batch endpoints and the per-type library endpoints, so the rest of these changes still need a Tekore release that covers them. Monitor https://github.com/felix-hilden/tekore for one. Until a release includes https://github.com/felix-hilden/tekore/pull/351, mottle installs 6.2 with that fix from the fork at https://github.com/Ch00k/tekore (see `pyproject.toml`).
 
 ## Rate Limit Context
 

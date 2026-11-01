@@ -110,6 +110,9 @@ sentry_sdk.init(
     traces_sample_rate=1.0,
     release=f"mottle@{APP_VERSION}",
     environment=env.str("SENTRY_ENVIRONMENT", "dev"),
+    # Strings, the frames' local variables among them, are truncated to this length. Untruncated, the tekore models of
+    # a page of Spotify items in an exception's frames take its event over Sentry's 1 MB limit, and Sentry drops it
+    max_value_length=1024,
     # Integrations are enabled by name, as an auto-enabled OpenAI integration would load the OpenAI library into every
     # process
     auto_enabling_integrations=False,
