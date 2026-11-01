@@ -433,8 +433,17 @@ class TestSearch(SignedInTestCase):
         assert page.get("id") == "search-results"
         assert page.xpath("//a[@href='/artist/artist1/']//h3/text()") == ["The Artist"]
         assert page.xpath("//a[@href='/playlist/theirs/']//h5/text()") == ["Their Playlist"]
-        assert response["HX-Push-Url"] == "?query=the artist"
+        assert response["HX-Push-Url"] == "?query=the+artist"
         assert response["Vary"] == "HX-Request, HX-Boosted, HX-History-Restore-Request, Cookie"
+
+    async def test_query_is_encoded_in_the_pushed_url(self) -> None:
+        """A query mid-typing, or with characters a URL or a header cannot carry as they are, is pushed encoded."""
+        response = await self.async_client.get(
+            "/search/", {"query": "sinners & 100% Пікнік #1 "}, headers={"HX-Request": "true"}
+        )
+
+        assert response.status_code == 200
+        assert response["HX-Push-Url"] == ("?query=sinners+%26+100%25+%D0%9F%D1%96%D0%BA%D0%BD%D1%96%D0%BA+%231+")
 
     async def test_emptying_the_box_shows_the_empty_state_in_place(self) -> None:
         """Emptying the search box gets only the results' empty state, and the search page's own URL."""
