@@ -624,7 +624,10 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
 async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str, Any]]:
     try:
-        scripts, _ = await get_xpath(async_bandsintown_client, bandsintown_url, BANDSINTOWN_JSON_LD_XPATH)
+        # The page of an artist with no upcoming events redirects to itself with `?noindex=1`
+        scripts, _ = await get_xpath(
+            async_bandsintown_client, bandsintown_url, BANDSINTOWN_JSON_LD_XPATH, follow_redirects=True
+        )
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}") from e
 

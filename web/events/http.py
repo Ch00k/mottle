@@ -139,6 +139,8 @@ async_musicbrainz_client = AsyncRetryingClient(
 )
 
 async_songkick_client = AsyncRetryingClient(
+    # Songkick refuses some requests with a 406 that the next attempt gets past
+    retry_statuses=frozenset({httpx2.codes.NOT_ACCEPTABLE}),
     timeout=httpx2.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
     base_url=SONGKICK_BASE_URL,
     transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),

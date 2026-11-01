@@ -20,7 +20,7 @@ from web.events.exceptions import (
     HTTPClientException,
     SongkickException,
 )
-from web.events.http import AsyncRetryingClient
+from web.events.http import AsyncRetryingClient, async_songkick_client
 from web.models import Artist, EventArtist
 
 if TYPE_CHECKING:
@@ -64,17 +64,30 @@ def songkick_site(request: httpx2.Request) -> httpx2.Response:
     return httpx2.Response(200, text=(DATA_DIR / page).read_text())
 
 
+def bandsintown_artist_page_without_events() -> str:
+    """Return the saved Bandsintown artist page with its list of upcoming events emptied."""
+    artist = (DATA_DIR / "bandsintown_artist.html").read_text()
+    events_start = artist.index('[{"@context"')
+    return artist[:events_start] + "[]" + artist[artist.index("}]</script>") + 2 :]
+
+
 def bandsintown_site(request: httpx2.Request) -> httpx2.Response:
-    """Serve the saved Bandsintown artist and event pages."""
+    """Serve the saved Bandsintown artist and event pages.
+
+    Like Bandsintown, the page of an artist with no upcoming events at `/a/5` redirects to itself with `?noindex=1`.
+    """
     pages = {
         BANDSINTOWN_ARTIST_PATH: "bandsintown_artist.html",
         BANDSINTOWN_EVENT_PATH: "bandsintown_event.html",
     }
 
     if request.url.path == "/a/2-deep-purple-no-events":
-        artist = (DATA_DIR / "bandsintown_artist.html").read_text()
-        events_start = artist.index('[{"@context"')
-        return httpx2.Response(200, text=artist[:events_start] + "[]" + artist[artist.index("}]</script>") + 2 :])
+        return httpx2.Response(200, text=bandsintown_artist_page_without_events())
+
+    if request.url.path == "/a/5":
+        if request.url.params.get("noindex") != "1":
+            return httpx2.Response(301, headers={"Location": "/a/5?noindex=1"})
+        return httpx2.Response(200, text=bandsintown_artist_page_without_events())
 
     if request.url.path == "/a/3-deep-purple-no-event-list":
         artist = (DATA_DIR / "bandsintown_artist.html").read_text()
@@ -275,6 +288,55 @@ async def test_fetch_events_reads_no_bandsintown_events_from_an_empty_list() -> 
 
     assert artist.events == []
     assert artist.failed_sources == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("bandsintown")
+async def test_fetch_events_follows_bandsintown_redirect_of_artist_without_events() -> None:
+    """The page of an artist with no upcoming concerts redirects to itself with `?noindex=1`, which is not a failure."""
+    artist = EventSourceArtist(name="Deep Purple", bandsintown_url=f"{BANDSINTOWN_BASE_URL}/a/5")
+
+    await artist.fetch_events()
+
+    assert artist.events == []
+    assert artist.failed_sources == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_events_retries_songkick_refusal(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Songkick's 406 refusing a request is retried with the production client's retry statuses, and read once let in.
+
+    The client serving the saved pages refuses the first request for the calendar, and does not wait before the retry,
+    which is logged as a warning naming the refusal.
+    """
+    refused: list[httpx2.Request] = []
+
+    def songkick_site_refusing_once(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == CALENDAR_PATH and not refused:
+            refused.append(request)
+            return httpx2.Response(406)
+        return songkick_site(request)
+
+    songkick = AsyncRetryingClient(
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=async_songkick_client.retry_statuses,
+        base_url=SONGKICK_BASE_URL,
+        transport=httpx2.MockTransport(songkick_site_refusing_once),
+    )
+    monkeypatch.setattr(data, "async_songkick_client", songkick)
+    artist = EventSourceArtist(name="Deep Purple", songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}")
+
+    with caplog.at_level(logging.WARNING, logger="stamina"):
+        await artist.fetch_events()
+
+    assert [e.url for e in artist.events] == [f"{SONGKICK_BASE_URL}{CONCERT_PATH}"]
+    assert artist.failed_sources == []
+    retries = [r for r in caplog.records if r.name == "stamina"]
+    assert [r.getMessage() for r in retries] == ["stamina.retry_scheduled"]
+    assert "406 Not Acceptable" in getattr(retries[0], "stamina.caused_by")
 
 
 @pytest.mark.asyncio
