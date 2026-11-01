@@ -34,14 +34,14 @@
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="{% static 'web/favicon.png' %}">
         <link rel="apple-touch-icon" href="{% static 'web/favicon.png' %}">
+        <!-- Maps, before the app's styles, which restyle them -->
+        {% block maps_resources %}
+            {% include "web/parts/leaflet.html" %}
+        {% endblock %}
         <!-- Styles -->
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap"
               rel="stylesheet">
         <link href="{% static 'web/style.css' %}" rel="stylesheet">
-        <!-- Maps -->
-        {% block maps_resources %}
-            {% include "web/parts/leaflet.html" %}
-        {% endblock %}
         <title>{% block title %}mottle{% endblock %} - mottle</title>
         {% block head %}{% endblock %}
     </head>

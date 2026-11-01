@@ -16,6 +16,13 @@ function drawEventMap() {
     if (latInput.value && lonInput.value) {
         var marker = L.marker([latInput.value, lonInput.value]).addTo(map);
         map.setView([latInput.value, lonInput.value], 13);
+
+        // The map is drawn in a dialog that may not be open yet, and so has no size; once it has one, the map fills
+        // it and centres on the venue again
+        new ResizeObserver(() => {
+            map.invalidateSize();
+            map.setView([latInput.value, lonInput.value], 13);
+        }).observe(document.getElementById('map'));
     }
 }
 

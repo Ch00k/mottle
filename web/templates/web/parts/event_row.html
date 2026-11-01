@@ -21,7 +21,13 @@
                 {{ event.date|date:"l, Y" }}
             </span>
         </span>
-        <span class="btn btn-secondary btn-sm hidden sm:inline-flex">{% include "web/icons/ticket.html" %}<span>Tickets</span></span>
+        <span class="btn btn-secondary btn-sm hidden sm:inline-flex">
+            {% if event.type == "live_stream" %}
+                {% include "web/icons/video.html" %}<span>Watch</span>
+            {% else %}
+                {% include "web/icons/ticket.html" %}<span>Tickets</span>
+            {% endif %}
+        </span>
         {% include "web/icons/chevron_right.html" with class="size-4 text-fg-subtle sm:hidden" %}
     </button>
 </li>

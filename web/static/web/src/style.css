@@ -171,6 +171,7 @@
     @apply block h-10 w-full rounded-lg border border-line bg-surface-2 px-3 text-sm text-fg transition-colors placeholder:text-fg-subtle hover:border-line-strong focus:border-accent focus-visible:ring-0;
   }
 
+  /* The select's chevron, and the checkbox's check and dash, are Lucide's chevron-down, check and minus */
   .select {
     @apply appearance-none bg-no-repeat pr-9;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
@@ -196,7 +197,7 @@
 
   .checkbox:indeterminate {
     @apply border-accent bg-accent;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305070c' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M6 12h12'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305070c' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
     background-size: 0.75rem;
     background-position: center;
     background-repeat: no-repeat;

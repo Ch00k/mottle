@@ -49,6 +49,7 @@ document.addEventListener('htmx:afterRequest', (event) => {
 });
 
 // Toasts: views send an "HXToast" event with a type ("success" or "error") and a body
+// Lucide's check and x icons
 const TOAST_ICONS = {
     success: '<path d="M20 6 9 17l-5-5" />',
     error: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
