@@ -1,7 +1,7 @@
 import logging
 from datetime import UTC, datetime
 from itertools import groupby
-from urllib.parse import unquote
+from urllib.parse import urlencode
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -202,7 +202,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
                     "query": query,
                 },
             ),
-            "?query=" + unquote(query),
+            "?" + urlencode({"query": query}),
         )
 
     return render(
