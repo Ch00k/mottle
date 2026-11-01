@@ -3,6 +3,7 @@ FROM ghcr.io/astral-sh/uv:python3.14-trixie-slim AS builder
 RUN apt-get update && apt-get install \
     --no-install-recommends --no-install-suggests -y \
     curl \
+    git \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 ARG SUPERCRONIC_VERSION=v0.2.51
