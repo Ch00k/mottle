@@ -2,6 +2,7 @@ import gzip
 import json
 import logging
 import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -76,6 +77,12 @@ class Site(ThreadingHTTPServer):
     @property
     def url(self) -> str:
         return f"http://127.0.0.1:{self.server_port}"
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        # A client that timed out has gone by the time a slow page is written to it
+        if isinstance(sys.exception(), ConnectionError):
+            return
+        super().handle_error(request, client_address)
 
 
 @pytest.fixture
