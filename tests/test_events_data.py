@@ -89,6 +89,12 @@ def bandsintown_site(request: httpx2.Request) -> httpx2.Response:
             return httpx2.Response(301, headers={"Location": "/a/5?noindex=1"})
         return httpx2.Response(200, text=bandsintown_artist_page_without_events())
 
+    if request.url.path == "/a/6-deep-purple-removed":
+        return httpx2.Response(301, headers={"Location": "/v/10001-hamburg-sporthalle"})
+
+    if request.url.path == "/v/10001-hamburg-sporthalle":
+        return httpx2.Response(200, text=(DATA_DIR / "bandsintown_artist.html").read_text())
+
     if request.url.path == "/a/3-deep-purple-no-event-list":
         artist = (DATA_DIR / "bandsintown_artist.html").read_text()
         return httpx2.Response(200, text=artist.replace('<script type="application/ld+json">[', "<script>[", 1))
@@ -300,6 +306,30 @@ async def test_fetch_events_follows_bandsintown_redirect_of_artist_without_event
 
     assert artist.events == []
     assert artist.failed_sources == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("bandsintown")
+async def test_fetch_events_fails_bandsintown_redirected_away_from_the_artist(caplog: pytest.LogCaptureFixture) -> None:
+    """A redirect to a page other than the artist's fails the source, though that page lists events.
+
+    The redirect target serves the saved artist page with its events, which must not be read as the artist's. The
+    failure is logged as an error naming both pages.
+    """
+    bandsintown_url = f"{BANDSINTOWN_BASE_URL}/a/6-deep-purple-removed"
+    artist = EventSourceArtist(name="Deep Purple", bandsintown_url=bandsintown_url)
+
+    await artist.fetch_events()
+
+    assert artist.events == []
+    assert artist.failed_sources == [EventDataSource.bandsintown]
+    errors = [r for r in caplog.records if r.name == "web.events.data" and r.levelno == logging.ERROR]
+    assert [r.getMessage() for r in errors] == [
+        (
+            f"Bandsintown redirected {bandsintown_url} to {BANDSINTOWN_BASE_URL}/v/10001-hamburg-sporthalle, "
+            "which is not the artist's page"
+        )
+    ]
 
 
 @pytest.mark.asyncio

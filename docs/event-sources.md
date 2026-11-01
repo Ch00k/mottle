@@ -26,7 +26,8 @@ compare those with the live pages first.
 - Upcoming events: the JSON-LD `MusicEvent` list in the artist page's head (`BANDSINTOWN_JSON_LD_XPATH`), the only
   list among the head's JSON-LD scripts, empty when the artist has none. A page without that list fails the source.
   The page of an artist with no upcoming events redirects to itself with `?noindex=1`, which is followed; seen in
-  November 2026, when it failed about one tracked artist in five every day.
+  November 2026, when it failed about one tracked artist in five every day. A redirect to any other path fails the
+  source, as that page's events would be read as the artist's.
 - Venue and ticket links: `window.__data` on the event page (`BANDSINTOWN_WINDOW_DATA_XPATH`). The venue comes from
   `jsonLdContainer.eventJsonLd.location`, as the artist page's events leave out the address; the ticket links from
   `eventView.body.detailedTicketList.ticketList[].directTicketUrl`, and a stream's link from
@@ -64,8 +65,11 @@ mottle's own User-Agent, which MusicBrainz's API asks for.
 Each client retries, with stamina, a request that fails to reach the site and a 429 or 5xx response; the Bandsintown
 client also retries Cloudflare's 403, and the Songkick client Songkick's 406, which refused about one request in 70 in
 November 2026 and let nearly all of them through when asked again. Any other error response fails at once, as asking
-again would get the same answer. The MusicBrainz and Songkick clients wait before each retry, starting at about a second and doubling up to ten.
-The Bandsintown client retries at once, as only a new exit IP helps there.
+again would get the same answer. The MusicBrainz and Songkick clients wait before each retry, starting at about a
+second and doubling up to ten. The Bandsintown client retries at once, as only a new exit IP helps there.
+
+Each request of a redirect chain is retried on its own: a refused redirect target is requested again without the
+redirect. Retrying the whole chain would need Cloudflare to let every request in it through in the same attempt.
 
 Every request opens a new connection. The proxy assigns an exit IP per connection: a client that kept its
 connections open sent all its retries from one IP, which made retrying after a refusal useless.
