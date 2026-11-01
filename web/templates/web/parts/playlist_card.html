@@ -9,9 +9,7 @@
         {% endif %}
     </div>
     <div class="min-w-0 px-1 pb-1">
-        <a href="{% url 'playlist' playlist.id %}"
-           class="tile-link"
-           hx-boost="true">{% include "web/parts/playlist_name.html" %}</a>
+        <a href="{% url 'playlist' playlist.id %}" class="tile-link">{% include "web/parts/playlist_name.html" %}</a>
         <p class="tile-meta mt-0.5">
             {{ playlist.num_tracks }} track{{ playlist.num_tracks|pluralize }}
             {% if playlist.owner_id != request.session.spotify_user_spotify_id %}<span class="text-fg-subtle">by {{ playlist.owner_name }}</span>{% endif %}

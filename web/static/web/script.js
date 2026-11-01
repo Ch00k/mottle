@@ -128,20 +128,56 @@ document.addEventListener('htmx:confirm', (event) => {
     dialog.showModal();
 });
 
-// Progress bar: shown along the top edge while any request is in flight
+// Progress bar: grows along the top edge while any request is in flight, then fills and fades. It is a popover on
+// the root element, so that HTMX swapping the body keeps it, and showing it again puts it above an open dialog.
+const progress = document.createElement('div');
+progress.className = 'progress';
+progress.popover = 'manual';
+progress.setAttribute('aria-hidden', 'true');
+document.documentElement.appendChild(progress);
+
 let requestsInFlight = 0;
+let progressFade;
 
-document.addEventListener('htmx:beforeRequest', () => {
+function startProgress() {
     requestsInFlight += 1;
-    document.body.classList.add('is-loading');
-});
-
-document.addEventListener('htmx:afterRequest', () => {
-    requestsInFlight = Math.max(0, requestsInFlight - 1);
-    if (requestsInFlight === 0) {
-        document.body.classList.remove('is-loading');
+    if (requestsInFlight > 1) {
+        return;
     }
-});
+
+    clearTimeout(progressFade);
+    if (progress.matches(':popover-open')) {
+        progress.hidePopover();
+    }
+    progress.showPopover();
+
+    progress.style.transition = 'none';
+    progress.style.width = '0';
+    progress.style.opacity = '1';
+    progress.getBoundingClientRect(); // applies the reset before the transition starts
+    progress.style.transition = 'width 10s cubic-bezier(0.1, 0.7, 0.2, 1)';
+    progress.style.width = '90%';
+}
+
+function finishProgress() {
+    requestsInFlight = Math.max(0, requestsInFlight - 1);
+    if (requestsInFlight > 0) {
+        return;
+    }
+
+    progress.style.transition = 'width 200ms ease-out, opacity 300ms ease 200ms';
+    progress.style.width = '100%';
+    progress.style.opacity = '0';
+    progressFade = setTimeout(() => progress.hidePopover(), 500);
+}
+
+document.addEventListener('htmx:beforeRequest', startProgress);
+document.addEventListener('htmx:afterRequest', finishProgress);
+
+// Going back to a page HTMX no longer has in its history cache loads the page again, without the events above
+document.addEventListener('htmx:historyCacheMiss', startProgress);
+document.addEventListener('htmx:historyCacheMissLoad', finishProgress);
+document.addEventListener('htmx:historyCacheMissLoadError', finishProgress);
 
 // Menus (<details class="menu">) close on a click outside them, on a click on one of their items, and on Escape
 document.addEventListener('click', (event) => {

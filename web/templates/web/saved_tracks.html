@@ -30,9 +30,7 @@
                             <td class="track-index">{{ forloop.counter }}</td>
                             <td>{% include "web/parts/track_title.html" with cover=track.album.image_url_small %}</td>
                             <td class="hidden truncate md:table-cell">
-                                <a href="{% url 'album' track.album.id %}"
-                                   class="link-muted"
-                                   hx-boost="true">{{ track.album.name }}</a>
+                                <a href="{% url 'album' track.album.id %}" class="link-muted">{{ track.album.name }}</a>
                             </td>
                             <td class="hidden text-fg-muted lg:table-cell"
                                 data-value="{{ track.added_at|date:'Y-m-d' }}">{{ track.added_at|date:"M j, Y" }}</td>

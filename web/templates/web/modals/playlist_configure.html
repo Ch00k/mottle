@@ -63,8 +63,7 @@
                     {% for watched_artist, auto_accept_updates in watched_artists %}
                         <li class="flex items-center gap-3 px-4 py-3">
                             <a href="{% url 'albums' watched_artist.id %}"
-                               class="link min-w-0 flex-1 truncate text-sm font-medium"
-                               hx-boost="true">{{ watched_artist.name }}</a>
+                               class="link min-w-0 flex-1 truncate text-sm font-medium">{{ watched_artist.name }}</a>
                             <input type="hidden"
                                    name="watched-artist-id"
                                    value="{{ watched_artist.id }}">

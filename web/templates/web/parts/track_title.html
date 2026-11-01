@@ -8,8 +8,7 @@
            rel="noopener">{{ track.name }}</a>
         <p class="truncate text-xs text-fg-muted">
             {% for artist in track.artists %}<a href="{% url 'albums' artist.id %}"
-   class="link-muted"
-   hx-boost="true">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+   class="link-muted">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
         </p>
     </div>
 </div>

@@ -46,8 +46,8 @@
         {% block head %}{% endblock %}
     </head>
     <body class="flex min-h-dvh flex-col"
+          hx-boost="true"
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-        <div class="progress" aria-hidden="true"></div>
         <a href="#main-content"
            class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[80] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-fg">
             Skip to main content

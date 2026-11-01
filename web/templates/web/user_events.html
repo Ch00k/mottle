@@ -9,8 +9,7 @@
             <p class="page-subtitle">Concerts of the artists you watch, near you</p>
         </div>
         <a href="{% url 'user_settings' %}"
-           class="btn btn-secondary"
-           hx-boost="true">{% include "web/icons/map_pin.html" %}<span>Change location</span></a>
+           class="btn btn-secondary">{% include "web/icons/map_pin.html" %}<span>Change location</span></a>
     </div>
     <div class="page space-y-10">
         {% for artist, events in upcoming_events.items %}
@@ -21,9 +20,7 @@
                     {% endif %}
                     <div>
                         <h2 class="section-title">
-                            <a href="{% url 'albums' artist.id %}"
-                               class="hover:underline"
-                               hx-boost="true">{{ artist.name }}</a>
+                            <a href="{% url 'albums' artist.id %}" class="hover:underline">{{ artist.name }}</a>
                         </h2>
                         <p class="text-xs text-fg-muted">{{ events|length }} event{{ events|length|pluralize }}</p>
                     </div>

@@ -10,7 +10,7 @@
                         <img src="{{ album.image_url_large }}" alt="" loading="lazy">
                     </div>
                     <div class="min-w-0 px-1 pb-1">
-                        <a href="{% url 'album' album.id %}" class="tile-link" hx-boost="true">
+                        <a href="{% url 'album' album.id %}" class="tile-link">
                             <h3 class="tile-title" title="{{ album.name }}">{{ album.name }}</h3>
                         </a>
                         <p class="tile-meta mt-0.5">{{ album.release_year }} / {{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</p>

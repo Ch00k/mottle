@@ -1,7 +1,7 @@
 {% load static %}
 {% with signed_in=request.session.spotify_user_display_name %}
     <header class="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
-        <nav class="page flex h-16 items-center gap-4 sm:gap-6" hx-boost="true">
+        <nav class="page flex h-16 items-center gap-4 sm:gap-6">
             <a href="{% if signed_in %}{% url 'playlists' %}{% else %}{% url 'index' %}{% endif %}"
                class="flex shrink-0 items-center rounded-md">
                 <img class="h-7 w-auto" alt="mottle" src="{% static 'web/logo.png' %}">
@@ -22,7 +22,7 @@
                           method="get"
                           role="search"
                           class="relative ml-auto hidden w-full max-w-xs sm:block">
-                        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle">
+                        <span class="search-icon pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle">
                             {% include "web/icons/search.html" %}
                         </span>
                         <input type="search"

@@ -5,7 +5,6 @@
             <form action="{% url 'albums' artist.id %}"
                   method="post"
                   id="albums-form"
-                  hx-boost="true"
                   hx-indicator="#create-discography"
                   class="grid gap-6 p-5 md:grid-cols-2">
                 {% csrf_token %}

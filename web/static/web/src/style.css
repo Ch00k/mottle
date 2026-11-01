@@ -115,6 +115,7 @@
 
   .btn-primary {
     @apply bg-accent text-accent-fg hover:bg-accent-hover;
+    --spinner-color: var(--color-accent-fg);
   }
 
   .btn-secondary {
@@ -127,10 +128,12 @@
 
   .btn-danger {
     @apply bg-danger-soft text-danger hover:bg-danger hover:text-bg;
+    --spinner-color: var(--color-danger);
   }
 
   .btn-spotify {
     @apply bg-spotify text-black hover:bg-spotify-hover;
+    --spinner-color: black;
   }
 
   .btn-icon {
@@ -141,24 +144,43 @@
     @apply size-8;
   }
 
-  /* An element waiting for its HTMX request shows a spinner in place of its content */
+  /* Loading. Every request shows the bar along the top edge (see .progress), and the element it is for shows a
+     spinner where it has room for one: in place of a button's label, over a tile's cover, and in place of the search
+     box's magnifier. */
   .btn.htmx-request,
   .menu-item.htmx-request {
     @apply pointer-events-none;
   }
 
-  .btn.htmx-request > * {
-    @apply invisible;
+  .btn.htmx-request {
+    color: transparent !important;
   }
 
   .btn.htmx-request::after,
-  .menu-item.htmx-request::after {
+  .menu-item.htmx-request::after,
+  .tile:has(.tile-link.htmx-request) .tile-cover::after,
+  :is(form.htmx-request, form:has(.htmx-request)) .search-icon::after {
     content: "";
-    @apply absolute size-4 animate-spin rounded-full border-2 border-current border-t-transparent;
+    @apply absolute top-1/2 left-1/2 size-4 -translate-1/2 animate-spin rounded-full border-2;
+    border-color: var(--spinner-color, var(--color-fg));
+    border-top-color: transparent;
   }
 
   .menu-item.htmx-request::after {
-    @apply relative ml-auto;
+    @apply relative top-auto left-auto ml-auto translate-none;
+  }
+
+  .tile:has(.tile-link.htmx-request) .tile-cover::before {
+    content: "";
+    @apply absolute inset-0 z-10 bg-black/50;
+  }
+
+  .tile:has(.tile-link.htmx-request) .tile-cover::after {
+    @apply z-10 size-8 border-[3px];
+  }
+
+  :is(form.htmx-request, form:has(.htmx-request)) .search-icon > svg {
+    @apply invisible;
   }
 
   /* Forms */
@@ -544,13 +566,12 @@
   }
 
   /* The bar along the top edge while a request is in flight */
+  /* A popover, so that it shows above an open dialog too. script.js grows and fades it. */
   .progress {
-    @apply pointer-events-none fixed inset-x-0 top-0 z-[70] h-0.5 origin-left scale-x-0 bg-accent opacity-0;
-  }
-
-  .is-loading .progress {
-    @apply opacity-100;
-    animation: progress 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards;
+    @apply pointer-events-none fixed top-0 right-auto bottom-auto left-0 m-0 h-[3px] w-0 border-0 bg-accent p-0 opacity-0;
+    box-shadow:
+      0 0 10px var(--color-accent),
+      0 0 4px var(--color-accent);
   }
 
   /* Long-form text: the changelog */
@@ -625,14 +646,5 @@
   from {
     opacity: 0;
     transform: translateY(0.5rem);
-  }
-}
-
-@keyframes progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(0.9);
   }
 }

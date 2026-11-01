@@ -15,8 +15,7 @@
 {% block hero_meta %}
     <span>
         {% for artist in tracks.0.artists %}<a href="{% url 'albums' artist.id %}"
-   class="font-semibold text-fg hover:underline"
-   hx-boost="true">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+   class="font-semibold text-fg hover:underline">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
     </span>
     {% if album.release_year %}
         <span class="text-fg-subtle">/</span>

@@ -12,8 +12,9 @@
               role="search"
               action="{% url 'search' %}"
               method="get"
+              hx-boost="false"
               hx-on:submit="event.preventDefault()">
-            <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-fg-subtle">
+            <span class="search-icon pointer-events-none absolute inset-y-0 left-4 flex items-center text-fg-subtle">
                 {% include "web/icons/search.html" with class="size-5" %}
             </span>
             <input type="search"
