@@ -110,7 +110,10 @@ class AsyncRetryingClient(httpx2.AsyncClient):
         self.wait_max = wait_max
         self.retry_statuses = retry_statuses | {httpx2.codes.TOO_MANY_REQUESTS}
 
-    async def send(self, request: httpx2.Request, *args: Any, **kwargs: Any) -> httpx2.Response:
+    # Retrying each request of a redirect chain on its own, rather than the whole chain, keeps a refused redirect target
+    # from having the redirect requested again. Behind Cloudflare, every request in the chain would then have to be let
+    # through in the same attempt.
+    async def _send_single_request(self, request: httpx2.Request) -> httpx2.Response:
         async for attempt in stamina.retry_context(
             on=(httpx2.TransportError, httpx2.HTTPStatusError),
             attempts=self.attempts,
@@ -121,9 +124,10 @@ class AsyncRetryingClient(httpx2.AsyncClient):
             wait_jitter=self.wait_initial,
         ):
             with attempt:
-                response = await super().send(request, *args, **kwargs)
+                response = await super()._send_single_request(request)
 
                 if response.is_server_error or response.status_code in self.retry_statuses:
+                    await response.aclose()
                     response.raise_for_status()
 
                 return response
@@ -139,6 +143,8 @@ async_musicbrainz_client = AsyncRetryingClient(
 )
 
 async_songkick_client = AsyncRetryingClient(
+    # Songkick refuses some requests with a 406 that the next attempt gets past
+    retry_statuses=frozenset({httpx2.codes.NOT_ACCEPTABLE}),
     timeout=httpx2.Timeout(SONGKICK_API_REQUEST_TIMEOUT),
     base_url=SONGKICK_BASE_URL,
     transport=CurlCffiTransport(proxy=settings.PROXY_URL, impersonate="chrome"),

@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from django.conf import settings
 from sentry_sdk import capture_exception, capture_message
@@ -624,9 +624,18 @@ async def extract_bandsintown_event(event_data: dict[str, Any]) -> Event:
 
 async def extract_bandsintown_events_data(bandsintown_url: str) -> list[dict[str, Any]]:
     try:
-        scripts, _ = await get_xpath(async_bandsintown_client, bandsintown_url, BANDSINTOWN_JSON_LD_XPATH)
+        scripts, page_url = await get_xpath(
+            async_bandsintown_client, bandsintown_url, BANDSINTOWN_JSON_LD_XPATH, follow_redirects=True
+        )
     except HTTPClientException as e:
         raise BandsintownException(f"Failed to fetch data from {bandsintown_url}: {e}") from e
+
+    # The page of an artist with no upcoming events redirects to itself with `?noindex=1`, but a redirect to any other
+    # page could have its events read as the artist's
+    if urlsplit(page_url).path != urlsplit(bandsintown_url).path:
+        raise BandsintownException(
+            f"Bandsintown redirected {bandsintown_url} to {page_url}, which is not the artist's page"
+        )
 
     try:
         json_lds = [json.loads(script) for script in scripts]

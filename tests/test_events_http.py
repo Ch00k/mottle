@@ -2,6 +2,7 @@ import gzip
 import json
 import logging
 import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class SiteHandler(BaseHTTPRequestHandler):
-    """Answers the requests the tests send, and records the client port each one arrived from."""
+    """Answers the requests the tests send, and records the path and the client port each one arrived from."""
 
     protocol_version = "HTTP/1.1"
 
@@ -30,6 +31,7 @@ class SiteHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         self.site.client_ports.append(self.client_address[1])
+        self.site.paths.append(self.path)
 
         if self.path == "/echo":
             headers = {name.lower(): value for name, value in self.headers.items()}
@@ -38,6 +40,8 @@ class SiteHandler(BaseHTTPRequestHandler):
             self.send_body(gzip.compress(b"Deep Purple"), headers={"Content-Encoding": "gzip"})
         elif self.path == "/moved":
             self.send_body(b"", status=301, headers={"Location": "/echo"})
+        elif self.path == "/moved-to-refused-twice":
+            self.send_body(b"", status=301, headers={"Location": "/refused-twice"})
         elif self.path == "/slow":
             time.sleep(2)
             self.send_body(b"Too late")
@@ -72,10 +76,17 @@ class Site(ThreadingHTTPServer):
     def __init__(self) -> None:
         super().__init__(("127.0.0.1", 0), SiteHandler)
         self.client_ports: list[int] = []
+        self.paths: list[str] = []
 
     @property
     def url(self) -> str:
         return f"http://127.0.0.1:{self.server_port}"
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        # A client that timed out has gone by the time a slow page is written to it
+        if isinstance(sys.exception(), ConnectionError):
+            return
+        super().handle_error(request, client_address)
 
 
 @pytest.fixture
@@ -199,6 +210,26 @@ async def test_retrying_client_retries_refusals_on_new_connections(
         caused_by = getattr(record, "stamina.caused_by")
         assert "403 Forbidden" in caused_by
         assert f"{site.url}/refused-twice" in caused_by
+
+
+@pytest.mark.asyncio
+async def test_retrying_client_retries_refused_redirect_target_on_its_own(site: Site) -> None:
+    """A redirect target that is refused is requested again without the redirect being requested again.
+
+    Behind Cloudflare, retrying the whole redirect chain would need every request in it let through in the same attempt.
+    """
+    client = AsyncRetryingClient(
+        wait_initial=0,
+        wait_max=0,
+        retry_statuses=frozenset({403}),
+        base_url=site.url,
+        transport=CurlCffiTransport(),
+    )
+
+    response = await client.get("/moved-to-refused-twice", follow_redirects=True)
+
+    assert response.text == "Deep Purple"
+    assert site.paths == ["/moved-to-refused-twice", "/refused-twice", "/refused-twice"]
 
 
 @pytest.mark.asyncio
