@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from tekore import AsyncSender, Spotify
+from tekore.model import FullPlaylistTrack
 
 from web.utils import (
     MottleException,
@@ -154,6 +155,19 @@ class TestMottleSpotifyClient:
         duplicates = await spotify_client.find_duplicate_tracks_in_playlist("test_playlist_id")
 
         assert [(track.name, count) for track, count in duplicates] == [("Like a Rolling Stone", 2)]
+
+    async def test_get_playlist_tracks_skips_local_files(self, spotify_client: MottleSpotifyClient) -> None:
+        """A local file on the playlist, whose album Spotify returns empty with a null type, is left out."""
+        playlist_tracks = await spotify_client.get_playlist_tracks("test_playlist_id")
+        tracks = [item.track for item in playlist_tracks]
+
+        assert all(isinstance(track, FullPlaylistTrack) for track in tracks)
+        assert [track.name for track in tracks if track is not None] == [
+            "Like a Rolling Stone",
+            "Blowin' in the Wind",
+            "Like a Rolling Stone",
+            "Subterranean Homesick Blues",
+        ]
 
 
 class TestGetQualname:

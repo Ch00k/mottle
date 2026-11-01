@@ -24,7 +24,9 @@ dependencies = [
   "unidecode==1.4.0",
   "json-log-formatter==1.2.1",
   "django-hosts==7.0.0",
-  "tekore==6.2.0",
+  # tekore 6.2.0 with https://github.com/felix-hilden/tekore/pull/351, without which pydantic 2.14 fails to parse a
+  # playlist holding a local file. Back to the PyPI release once one includes it.
+  "tekore @ https://github.com/Ch00k/tekore/archive/be9eed62011da62852c7e6616f1b80153aa368f6.tar.gz",
   "curl-cffi==0.17.0",
   "httpx2==2.16.0",
   "stamina==26.1.0",

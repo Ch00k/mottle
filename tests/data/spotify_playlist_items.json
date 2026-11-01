@@ -684,11 +684,110 @@
       "video_thumbnail": {
         "url": null
       }
+    },
+    {
+      "added_at": "2025-02-25T14:52:11Z",
+      "added_by": {
+        "external_urls": {
+          "spotify": "https://open.spotify.com/user/test_user"
+        },
+        "href": "https://api.spotify.com/v1/users/test_user",
+        "id": "test_user",
+        "type": "user",
+        "uri": "spotify:user:test_user"
+      },
+      "is_local": true,
+      "primary_color": null,
+      "track": {
+        "album": {
+          "album_type": null,
+          "available_markets": [],
+          "external_urls": {},
+          "href": null,
+          "id": null,
+          "images": [],
+          "name": "",
+          "release_date": null,
+          "release_date_precision": null,
+          "type": "album",
+          "uri": null,
+          "artists": []
+        },
+        "artists": [
+          {
+            "external_urls": {},
+            "href": null,
+            "id": null,
+            "name": "",
+            "type": "artist",
+            "uri": null
+          }
+        ],
+        "available_markets": [],
+        "explicit": false,
+        "preview_url": null,
+        "type": "track",
+        "disc_number": 0,
+        "external_ids": {},
+        "external_urls": {},
+        "href": null,
+        "id": null,
+        "duration_ms": 364000,
+        "name": "Bob Dylan - Like a Rolling Stone (Live)",
+        "uri": "spotify:local:::Bob+Dylan+-+Like+a+Rolling+Stone+%28Live%29:364",
+        "popularity": 0,
+        "track_number": 0,
+        "is_local": true
+      },
+      "item": {
+        "album": {
+          "album_type": null,
+          "available_markets": [],
+          "external_urls": {},
+          "href": null,
+          "id": null,
+          "images": [],
+          "name": "",
+          "release_date": null,
+          "release_date_precision": null,
+          "type": "album",
+          "uri": null,
+          "artists": []
+        },
+        "artists": [
+          {
+            "external_urls": {},
+            "href": null,
+            "id": null,
+            "name": "",
+            "type": "artist",
+            "uri": null
+          }
+        ],
+        "available_markets": [],
+        "explicit": false,
+        "preview_url": null,
+        "type": "track",
+        "disc_number": 0,
+        "external_ids": {},
+        "external_urls": {},
+        "href": null,
+        "id": null,
+        "duration_ms": 364000,
+        "name": "Bob Dylan - Like a Rolling Stone (Live)",
+        "uri": "spotify:local:::Bob+Dylan+-+Like+a+Rolling+Stone+%28Live%29:364",
+        "popularity": 0,
+        "track_number": 0,
+        "is_local": true
+      },
+      "video_thumbnail": {
+        "url": null
+      }
     }
   ],
   "limit": 100,
   "next": null,
   "offset": 0,
   "previous": null,
-  "total": 4
+  "total": 5
 }

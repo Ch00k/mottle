@@ -820,7 +820,7 @@ requires-dist = [
     { name = "rapidfuzz", specifier = "==3.14.6" },
     { name = "sentry-sdk", extras = ["django"], specifier = "==2.73.0" },
     { name = "stamina", specifier = "==26.1.0" },
-    { name = "tekore", specifier = "==6.2.0" },
+    { name = "tekore", url = "https://github.com/Ch00k/tekore/archive/be9eed62011da62852c7e6616f1b80153aa368f6.tar.gz" },
     { name = "unidecode", specifier = "==1.4.0" },
     { name = "uvicorn", specifier = "==0.54.0" },
     { name = "whitenoise", specifier = "==6.12.0" },
@@ -1333,14 +1333,17 @@ wheels = [
 [[package]]
 name = "tekore"
 version = "6.2.0"
-source = { registry = "https://pypi.org/simple" }
+source = { url = "https://github.com/Ch00k/tekore/archive/be9eed62011da62852c7e6616f1b80153aa368f6.tar.gz" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/bd/0e1cfd14de8a58bef6ed3fc007abf31d88e2c9511b5c8131bc5fa4d32091/tekore-6.2.0.tar.gz", hash = "sha256:28bb06404e897aa66d7cbca2699c33ba7fdf7833a527c2b91226f44208e6930b", size = 271504, upload-time = "2026-07-27T16:07:39.69Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/bc/20b750ccdbb595d4bebb3c2a1a1f41e9901d4769a35507f46d24b334a754/tekore-6.2.0-py3-none-any.whl", hash = "sha256:00380de5ee1f08ff9778d959cec9fb71cf33270f4d2ccccece0d22728a87d9b5", size = 75669, upload-time = "2026-07-27T16:07:38.048Z" },
+sdist = { hash = "sha256:e293fa41fa3c34b1ea303e83952c1e4ebb2368882b483477179b9644f9496128" }
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.15,<0.29" },
+    { name = "pydantic", specifier = ">=1.8,!=2.4.0,!=2.5.0,!=2.5.1" },
 ]
 
 [[package]]
