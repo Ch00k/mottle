@@ -1,5 +1,5 @@
 {% load static %}
-{% with signed_in=request.session.spotify_user_display_name %}
+{% with signed_in=request.session.spotify_user_id %}
     <header class="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
         <nav class="page flex h-16 items-center gap-4 sm:gap-6">
             <a href="{% if signed_in %}{% url 'playlists' %}{% else %}{% url 'index' %}{% endif %}"
@@ -40,12 +40,12 @@
                     <summary class="flex items-center gap-2 rounded-full p-0.5 transition-colors hover:bg-surface-3 sm:pr-3"
                              aria-label="Account menu">
                         {% include "web/parts/avatar.html" with class="size-8" %}
-                        <span class="hidden max-w-32 truncate text-sm font-medium sm:inline">{{ signed_in }}</span>
+                        <span class="hidden max-w-32 truncate text-sm font-medium sm:inline">{% include "web/parts/user_name.html" %}</span>
                     </summary>
                     <div class="menu-panel">
                         <div class="px-3 py-2">
-                            <p class="truncate text-sm font-semibold">{{ signed_in }}</p>
-                            {% if request.session.spotify_user_email %}
+                            <p class="truncate text-sm font-semibold">{% include "web/parts/user_name.html" %}</p>
+                            {% if request.session.spotify_user_display_name and request.session.spotify_user_email %}
                                 <p class="truncate text-xs text-fg-muted">{{ request.session.spotify_user_email }}</p>
                             {% endif %}
                         </div>

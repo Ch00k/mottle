@@ -1,5 +1,5 @@
 // Behaviour shared by every page. Elements opt in through data attributes, so content HTMX swaps in works the same
-// as the page it lands on.
+// as the page it lands on. The script loads once, in the document's head, which boosted navigation leaves in place.
 
 // Dialogs: a <dialog class="modal"> that HTMX adds to the page opens at once, and leaves the page when it closes
 document.addEventListener('htmx:load', (event) => {
@@ -7,10 +7,23 @@ document.addEventListener('htmx:load', (event) => {
     const dialogs = element.matches?.('dialog.modal') ? [element] : element.querySelectorAll?.('dialog.modal') || [];
 
     for (const dialog of dialogs) {
-        if (dialog.open || dialog.id === 'confirm-dialog') {
+        if (dialog.id === 'confirm-dialog') {
             continue;
         }
-        dialog.addEventListener('close', () => dialog.remove());
+
+        // A dialog that arrives open was open when htmx saved the page to its history, and Back brings it back; as
+        // it is no longer modal, it goes
+        if (dialog.open) {
+            dialog.remove();
+            continue;
+        }
+
+        dialog.addEventListener('close', () => {
+            dialog.remove();
+            if ('refreshOnClose' in dialog.dataset) {
+                refreshPage();
+            }
+        });
         dialog.showModal();
 
         // Without an element of its own to focus, the dialog takes the focus itself, not its close button
@@ -22,24 +35,47 @@ document.addEventListener('htmx:load', (event) => {
     initDependentControls(element);
 });
 
-// A click on a dialog's backdrop, which is the dialog element itself, closes it
+// A click on a dialog's backdrop, which is the dialog element itself, closes it. The press has to start there too:
+// selecting text in the dialog and letting go over the backdrop also sends the dialog a click.
+let pressedOnBackdrop = false;
+
+document.addEventListener('pointerdown', (event) => {
+    pressedOnBackdrop = event.target instanceof HTMLDialogElement && event.target.classList.contains('modal');
+});
+
 document.addEventListener('click', (event) => {
-    if (event.target instanceof HTMLDialogElement && event.target.classList.contains('modal')) {
+    if (pressedOnBackdrop && event.target instanceof HTMLDialogElement && event.target.classList.contains('modal')) {
         event.target.close();
     }
 });
 
-// After a successful request, an element with data-close-dialog closes the dialog it is in, and one with
-// data-success-redirect goes to the URL the attribute names
+// Loads the page shown again, as a boosted link to it would, for what a request changed to show
+function refreshPage() {
+    htmx.ajax('GET', window.location.href, { target: 'body', swap: 'innerHTML', headers: { 'HX-Boosted': 'true' } });
+}
+
+// After a successful request:
+// - an element with data-success-refresh refreshes the page; in a dialog, once the dialog closes
+// - an element with data-close-dialog closes the dialog it is in
+// - an element with data-success-redirect goes to the URL the attribute names
 document.addEventListener('htmx:afterRequest', (event) => {
     if (!event.detail.successful) {
         return;
     }
 
     const element = event.detail.elt;
+    const dialog = element.closest('dialog');
+
+    if ('successRefresh' in (element.dataset || {})) {
+        if (dialog) {
+            dialog.dataset.refreshOnClose = '';
+        } else {
+            refreshPage();
+        }
+    }
 
     if (element.closest('[data-close-dialog]')) {
-        element.closest('dialog')?.close();
+        dialog?.close();
     }
 
     const redirect = element.dataset?.successRedirect;
@@ -55,8 +91,15 @@ const TOAST_ICONS = {
     error: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
 };
 
+// The container is a popover on the root element, so that a toast outlives the body being swapped, and shows above an
+// open dialog
+const toasts = document.createElement('div');
+toasts.className = 'toasts';
+toasts.popover = 'manual';
+toasts.setAttribute('aria-live', 'polite');
+document.documentElement.appendChild(toasts);
+
 function showToast(type, body) {
-    const container = document.getElementById('toasts');
     const toast = document.createElement('div');
     const colours = type === 'error' ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success';
 
@@ -69,20 +112,20 @@ function showToast(type, body) {
         </span>
         <span class="flex-1"></span>`;
     toast.querySelector('.flex-1').textContent = body;
-    container.appendChild(toast);
+    toasts.appendChild(toast);
 
     // Showing the popover again puts it above a dialog opened since
-    if (container.matches(':popover-open')) {
-        container.hidePopover();
+    if (toasts.matches(':popover-open')) {
+        toasts.hidePopover();
     }
-    container.showPopover();
+    toasts.showPopover();
 
     setTimeout(() => {
         toast.dataset.leaving = '';
         setTimeout(() => {
             toast.remove();
-            if (!container.hasChildNodes()) {
-                container.hidePopover();
+            if (!toasts.hasChildNodes()) {
+                toasts.hidePopover();
             }
         }, 300);
     }, type === 'error' ? 6000 : 3500);

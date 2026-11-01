@@ -155,6 +155,9 @@ class TestAlbumData:
         assert result.image_url_small is not None
         assert result.image_url_large is not None
         assert result.track_image_url is not None
+        assert [(a.id, a.name, a.url) for a in result.artists] == [
+            ("artist1", "Artist 1", "https://open.spotify.com/artist/artist1")
+        ]
 
     def test_from_tekore_model_with_partial_release_date(self) -> None:
         """Test creating AlbumData with year-only release date."""

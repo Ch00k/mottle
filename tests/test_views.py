@@ -21,6 +21,7 @@ from tekore.model import (
     PlaylistTrackPaging,
     PublicUser,
     SimpleAlbum,
+    SimpleArtist,
     SimpleTrack,
     SimpleTrackPaging,
 )
@@ -203,6 +204,17 @@ def make_full_album(album_id: str) -> FullAlbum:
     )
 
 
+def make_simple_artist(artist_id: str, name: str) -> SimpleArtist:
+    return SimpleArtist(
+        id=artist_id,
+        href=f"https://api.spotify.com/v1/artists/{artist_id}",
+        type="artist",
+        uri=f"spotify:artist:{artist_id}",
+        external_urls={"spotify": f"https://open.spotify.com/artist/{artist_id}"},
+        name=name,
+    )
+
+
 def make_simple_track(track_id: str) -> SimpleTrack:
     return SimpleTrack(
         id=track_id,
@@ -364,6 +376,21 @@ class TestSignIn(SignedInTestCase):
 
         assert [record.getMessage() for record in logs.records] == ["Failed to refresh token"] * 2
 
+    async def test_navigation_of_a_user_without_a_display_name(self) -> None:
+        """A user whose Spotify account has no display name is still signed in to the navigation bar, named by their
+        email, with the menu that logs them out."""
+        session = await self.async_client.asession()
+        await session.aset("spotify_user_display_name", None)
+        await session.aset("spotify_user_email", "me@example.com")
+        await session.asave()
+        self.spotify.get_current_user_playlists = AsyncMock(return_value=[])
+
+        page = lh.fromstring((await self.async_client.get("/playlists/")).content)
+
+        assert page.xpath("normalize-space(//header//summary)") == "m me@example.com"
+        assert page.xpath("//header//a[@href='/logout/']")
+        assert not page.xpath("//header//a[@href='/login/']")
+
     async def test_index_sends_a_signed_in_user_to_their_playlists(self) -> None:
         """The index is the landing page for visitors; a signed-in user goes on to their playlists."""
         response = await self.async_client.get("/")
@@ -408,9 +435,25 @@ class TestSearch(SignedInTestCase):
         assert page.xpath("//a[@href='/playlist/theirs/']//h5/text()") == ["Their Playlist"]
         assert response["HX-Push-Url"] == "?query=the artist"
 
+    async def test_emptying_the_box_shows_the_empty_state_in_place(self) -> None:
+        """Emptying the search box gets only the results' empty state, and the search page's own URL."""
+        response = await self.async_client.get("/search/", {"query": ""}, headers={"HX-Request": "true"})
+
+        assert response.status_code == 200
+        page = lh.fromstring(response.content)
+        assert page.get("id") == "search-results"
+        assert page.xpath("normalize-space(//h3)") == "Find an artist or a playlist"
+        assert response["HX-Push-Url"] == "/search/"
+        self.spotify.find_artists_and_playlists.assert_not_awaited()
+
     async def test_navigating_shows_the_whole_page(self) -> None:
-        """Searching from the navigation bar, boosted or not, leads to the whole search page."""
-        for headers in ({}, {"HX-Request": "true", "HX-Boosted": "true"}):
+        """Searching from the navigation bar, boosted or not, leads to the whole search page, and so does restoring it
+        from history."""
+        for headers in (
+            {},
+            {"HX-Request": "true", "HX-Boosted": "true"},
+            {"HX-Request": "true", "HX-History-Restore-Request": "true"},
+        ):
             response = await self.async_client.get("/search/", {"query": "the artist"}, headers=headers)
 
             assert response.status_code == 200
@@ -443,8 +486,12 @@ class TestAlbums(SignedInTestCase):
 
     async def test_get_from_a_link_shows_the_artist_page(self) -> None:
         """Following a link, boosted or not, leads to the artist's page, listing the releases by type, albums first,
-        with a button opening the discography modal."""
-        for headers in ({}, {"HX-Request": "true", "HX-Boosted": "true"}):
+        with a button opening the discography modal; so does restoring the page from history."""
+        for headers in (
+            {},
+            {"HX-Request": "true", "HX-Boosted": "true"},
+            {"HX-Request": "true", "HX-History-Restore-Request": "true"},
+        ):
             response = await self.async_client.get("/artist/artist1/", headers=headers)
 
             assert response.status_code == 200
@@ -496,15 +543,20 @@ class TestAlbums(SignedInTestCase):
 @pytest.mark.asyncio
 class TestAlbum(SignedInTestCase):
     async def test_lists_album_tracks(self) -> None:
-        """The album page names the album and lists its tracks, each with the album's cover."""
-        self.spotify.get_album = AsyncMock(return_value=make_full_album("album1"))
-        self.spotify.get_album_tracks = AsyncMock(return_value=[make_simple_track("track1")])
+        """The album page names the album and credits its artists, not those of its tracks, and lists its tracks."""
+        album = make_full_album("album1")
+        album.artists = [make_simple_artist("albumartist", "Album Artist")]
+        track = make_simple_track("track1")
+        track.artists = [make_simple_artist("guest", "Guest")]
+        self.spotify.get_album = AsyncMock(return_value=album)
+        self.spotify.get_album_tracks = AsyncMock(return_value=[track])
 
         response = await self.async_client.get("/album/album1/")
 
         assert response.status_code == 200
         page = lh.fromstring(response.content)
         assert page.xpath("normalize-space(//h1)") == "Album album1"
+        assert page.xpath("//section[@class='hero']//a[starts-with(@href, '/artist/')]/text()") == ["Album Artist"]
         assert "https://i.scdn.co/image/album1" in str(page.xpath("string(//section[@class='hero']/@style)"))
         assert page.xpath("//a[normalize-space()='Open in Spotify']/@href") == ["https://open.spotify.com/album/album1"]
         assert page.xpath("//table//a[@href='https://open.spotify.com/track/track1']/text()") == ["Track track1"]
@@ -527,6 +579,27 @@ class TestPlaylistItems(SignedInTestCase):
         assert "My Playlist" in content
         assert "Track track1" in content
         self.spotify.get_playlist.assert_awaited_once_with("playlist1")
+
+    async def test_offers_adding_a_playlist_not_in_the_library(self) -> None:
+        """Someone else's playlist the user does not follow can be added from its page, which then reloads, and not
+        removed; one they follow can be removed, which leads back to their playlists."""
+        self.spotify.get_playlist = AsyncMock(return_value=make_playlist("theirs", "Their Playlist", "someone"))
+        self.spotify.get_playlist_tracks = AsyncMock(return_value=[])
+        self.spotify.get_current_user_playlists = AsyncMock(return_value=[])
+
+        page = lh.fromstring((await self.async_client.get("/playlist/theirs/")).content)
+
+        assert page.xpath("//button[@hx-post='/playlist/theirs/follow/']/@data-success-refresh") == [""]
+        assert not page.xpath("//button[@hx-post='/playlist/theirs/unfollow/']")
+
+        self.spotify.get_current_user_playlists = AsyncMock(
+            return_value=[make_playlist("theirs", "Their Playlist", "someone")]
+        )
+
+        page = lh.fromstring((await self.async_client.get("/playlist/theirs/")).content)
+
+        assert page.xpath("//button[@hx-post='/playlist/theirs/unfollow/']/@data-success-redirect") == ["/playlists/"]
+        assert not page.xpath("//button[@hx-post='/playlist/theirs/follow/']")
 
     async def get_page_with_watch_configs(self, num_configs: int) -> str:
         """Return the playlist page of a playlist of the user's that watches as many playlists as given."""

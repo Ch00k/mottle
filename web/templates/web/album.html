@@ -13,15 +13,17 @@
     {{ album.name }}
 {% endblock hero_title %}
 {% block hero_meta %}
-    <span>
-        {% for artist in tracks.0.artists %}<a href="{% url 'albums' artist.id %}"
+    {% if album.artists %}
+        <span>
+            {% for artist in album.artists %}<a href="{% url 'albums' artist.id %}"
    class="font-semibold text-fg hover:underline">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
-    </span>
-    {% if album.release_year %}
+        </span>
         <span class="text-fg-subtle">/</span>
-        <span>{{ album.release_year }}</span>
     {% endif %}
-    <span class="text-fg-subtle">/</span>
+    {% if album.release_year %}
+        <span>{{ album.release_year }}</span>
+        <span class="text-fg-subtle">/</span>
+    {% endif %}
     <span>{{ tracks|length }} track{{ tracks|length|pluralize }}</span>
 {% endblock hero_meta %}
 {% block hero_actions %}

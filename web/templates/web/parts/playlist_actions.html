@@ -34,7 +34,7 @@ Parameters:
         {% include "web/icons/settings.html" %}<span>Manage</span>
     </button>
 {% endif %}
-{% if source == "playlists_my" or source == "playlist" or playlist.id in user_playlist_ids %}
+{% if source == "playlists_my" or playlist.id in user_playlist_ids %}
     {% if separator %}<div class="{{ separator }}"></div>{% endif %}
     <button class="{{ danger_class }}"
             data-danger
@@ -46,8 +46,7 @@ Parameters:
 {% else %}
     <button class="{{ item_class }}"
             hx-post="{% url 'follow_playlist' playlist.id %}"
-            hx-target="closest .tile"
-            hx-swap="outerHTML">
+            {% if source == "playlist" %} hx-swap="none" data-success-refresh {% else %} hx-target="closest .tile" hx-swap="outerHTML" {% endif %}>
         {% include "web/icons/plus.html" %}<span>Add to library</span>
     </button>
 {% endif %}

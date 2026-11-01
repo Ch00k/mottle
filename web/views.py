@@ -12,6 +12,7 @@ from django.http import (
     HttpResponseServerError,
 )
 from django.shortcuts import aget_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import (
     require_GET,
     require_http_methods,
@@ -38,7 +39,7 @@ from .models import (
 from .spotify import get_auth
 from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
 from .utils import MottleException, MottleSpotifyClient
-from .views_utils import bad_request_toast, get_playlist_modal_response, toast
+from .views_utils import bad_request_toast, get_playlist_modal_response, toast, wants_fragment
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -154,6 +155,9 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query", "")
 
     if not query:
+        # Emptying the search box gets the results' empty state, at the search page's own URL
+        if wants_fragment(request):
+            return push_url(render(request, "web/parts/search_results.html", {"query": ""}), reverse("search"))
         return render(request, "web/search.html", context={"results": [], "query": ""})
 
     artists, playlists = await request.spotify_client.find_artists_and_playlists(query)
@@ -171,7 +175,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
     user_playlist_ids = [playlist.id for playlist in user_playlists]
     playlists = [p for p in playlists if p.id not in user_playlist_ids]
 
-    if request.htmx and not request.htmx.boosted:
+    if wants_fragment(request):
         return push_url(
             render(
                 request,
@@ -218,9 +222,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
 
     if request.method == "GET":
         # A link leads to the artist's page, a button opens the dialog creating the discography
-        template = (
-            "web/modals/playlist_discography.html" if request.htmx and not request.htmx.boosted else "web/artist.html"
-        )
+        template = "web/modals/playlist_discography.html" if wants_fragment(request) else "web/artist.html"
         return render(
             request,
             template,

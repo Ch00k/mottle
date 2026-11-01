@@ -9,7 +9,8 @@
                     hx-post="{% url 'accept_playlist_updates' playlist_id %}"
                     hx-confirm="Add the tracks of every update to the playlist?"
                     hx-swap="none"
-                    data-close-dialog>
+                    data-close-dialog
+                    data-success-refresh>
                 {% include "web/icons/check.html" %}<span>Accept all</span>
             </button>
         </div>
@@ -29,7 +30,8 @@
                                 hx-post="{% url 'accept_playlist_update' playlist_id update_id %}"
                                 hx-confirm="Add {{ tracks|length }} new track{{ tracks|length|pluralize }} to the playlist?"
                                 hx-target="closest details"
-                                hx-swap="outerHTML">
+                                hx-swap="outerHTML"
+                                data-success-refresh>
                             {% include "web/icons/check.html" %}<span>Accept</span>
                         </button>
                     </summary>
