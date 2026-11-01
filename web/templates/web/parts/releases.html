@@ -1,0 +1,22 @@
+{% if releases %}
+    <section>
+        <h2 class="section-title mb-4">
+            {{ title }} <span class="ml-1 text-sm font-medium text-fg-subtle">{{ releases|length }}</span>
+        </h2>
+        <div class="cover-grid">
+            {% for album in releases %}
+                <article class="tile">
+                    <div class="tile-cover">
+                        <img src="{{ album.image_url_large }}" alt="" loading="lazy">
+                    </div>
+                    <div class="min-w-0 px-1 pb-1">
+                        <a href="{% url 'album' album.id %}" class="tile-link">
+                            <h3 class="tile-title" title="{{ album.name }}">{{ album.name }}</h3>
+                        </a>
+                        <p class="tile-meta mt-0.5">{{ album.release_year }} / {{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</p>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}

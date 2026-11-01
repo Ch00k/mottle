@@ -1,0 +1,27 @@
+{% comment %}
+A track in a dialog's list: the album cover, the track's name, its artists and its album.
+
+Parameters:
+- track: the track
+- count: how many times the track is in its playlist, shown when given
+{% endcomment %}
+<li class="flex items-center gap-3 px-5 py-2">
+    <img class="track-cover"
+         src="{{ track.album.image_url_small }}"
+         alt=""
+         loading="lazy">
+    <div class="min-w-0 flex-1">
+        <a href="{{ track.url }}"
+           class="link block truncate text-sm font-medium"
+           target="_blank"
+           rel="noopener">{{ track.name }}</a>
+        <p class="truncate text-xs text-fg-muted">
+            {% for artist in track.artists %}{{ artist.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            <span class="text-fg-subtle">/ {{ track.album.name }}</span>
+        </p>
+    </div>
+    {% if count %}
+        <span class="chip chip-danger">{{ count }} times</span>
+        <input type="hidden" name="track-ids" value="{{ track.id }}">
+    {% endif %}
+</li>

@@ -1,153 +1,72 @@
 {% load static %}
-<nav class="bg-white shadow-xl">
-    <div class="container-main">
-        <div class="flex-between h-24">
-            <div class="icon-text">
-                <a href="{% url 'index' %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"
-                   class="flex-shrink-0">
-                    <img class="h-12 w-auto"
-                         alt="mottle Logo"
-                         src="{% static 'web/logo.png' %}">
-                </a>
-            </div>
-            <div class="hidden md:block">
-                <div class="ml-10 icon-text space-x-4">
-                    {% if "spotify_user_display_name" in request.session and request.session.spotify_user_display_name %}
-                        <a href="{% url 'search' %}"
-                           hx-boost="true"
-                           hx-indicator="#spinner"
-                           class="nav-link hover:bg-blue-50 h-12">
-                            {% include "web/icons/tw_search.html" with class="h-4 w-4 mr-2" %}
-                            Search
-                        </a>
-                        <div class="relative group">
-                            <button class="nav-link hover:bg-blue-50 h-12">
-                                {{ request.session.spotify_user_display_name }}
-                                <img src="{{ request.session.spotify_user_image_url }}"
-                                     alt="User avatar"
-                                     class="w-8 h-8 rounded-full ml-2 border-2 border-gray-300">
-                            </button>
-                            <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                <div class="py-1">
-                                    <a href="{% url 'playlists' %}"
-                                       hx-boost="true"
-                                       hx-indicator="#spinner"
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                        {% include "web/icons/tw_music_notes.html" with class="h-4 w-4 mr-2" %}
-                                        Playlists
-                                    </a>
-                                    {% if request.session.feature_flags.events_enabled %}
-                                        <a href="{% url 'user_events' %}"
-                                           hx-boost="true"
-                                           hx-indicator="#spinner"
-                                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                            {% include "web/icons/tw_calendar.html" with class="h-4 w-4 mr-2" %}
-                                            Events
-                                        </a>
-                                    {% endif %}
-                                    <a href="{% url 'user_settings' %}"
-                                       hx-boost="true"
-                                       hx-indicator="#spinner"
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                        {% include "web/icons/tw_cog.html" with class="h-4 w-4 mr-2" %}
-                                        Settings
-                                    </a>
-                                    <a href="{% url 'logout' %}"
-                                       hx-boost="true"
-                                       hx-indicator="#spinner"
-                                       class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors flex items-center">
-                                        {% include "web/icons/tw_logout.html" with class="h-4 w-4 mr-2" %}
-                                        Logout
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    {% else %}
-                        <a href="{% url 'login' %}"
-                           hx-boost="true"
-                           hx-indicator="#spinner"
-                           class="btn-md btn-primary icon-text shadow-md">
-                            {% include "web/icons/tw_login.html" with class="h-4 w-4 mr-2" %}
-                            Login
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-            <!-- Mobile menu button -->
-            <div class="md:hidden">
-                <button class="text-gray-700 hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors p-2 hover:bg-blue-50 rounded-md"
-                        onclick="toggleMobileMenu()">
-                    {% include "web/icons/tw_hamburger.html" with class="h-6 w-6" %}
-                </button>
-            </div>
-        </div>
-    </div>
-    <!-- Mobile menu -->
-    <div id="mobile-menu" class="md:hidden hidden">
-        <div class="px-2 pt-2 pb-3 space-y-1 bg-gray-50 border-t border-gray-200">
-            {% if "spotify_user_display_name" in request.session and request.session.spotify_user_display_name %}
-                <a href="{% url 'search' %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"
-                   class="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base font-medium transition-colors icon-text">
-                    {% include "web/icons/tw_search.html" with class="h-5 w-5 mr-2" %}
-                    Search
-                </a>
-                <div class="space-y-1">
-                    <div class="px-3 py-2 text-gray-500 text-sm font-semibold uppercase tracking-wider icon-text">
-                        <img src="{{ request.session.spotify_user_image_url }}"
-                             alt="User avatar"
-                             class="w-6 h-6 rounded-full mr-2 border-2 border-gray-300">
-                        {{ request.session.spotify_user_display_name }}
-                    </div>
+{% with signed_in=request.session.spotify_user_id %}
+    <header class="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
+        <nav class="page flex h-16 items-center gap-4 sm:gap-6">
+            <a href="{% if signed_in %}{% url 'playlists' %}{% else %}{% url 'index' %}{% endif %}"
+               class="flex shrink-0 items-center rounded-md">
+                <img class="h-7 w-auto" alt="mottle" src="{% static 'web/logo.png' %}">
+            </a>
+            {% if signed_in %}
+                <div class="hidden items-center gap-1 md:flex">
                     <a href="{% url 'playlists' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
-                        {% include "web/icons/tw_music_notes.html" with class="h-5 w-5 mr-2" %}
-                        Playlists
-                    </a>
+                       class="btn btn-ghost {% if request.resolver_match.url_name == 'playlists' %}bg-surface-3 text-fg{% endif %}">Playlists</a>
                     {% if request.session.feature_flags.events_enabled %}
                         <a href="{% url 'user_events' %}"
-                           hx-boost="true"
-                           hx-indicator="#spinner"
-                           class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
-                            {% include "web/icons/tw_calendar.html" with class="h-5 w-5 mr-2" %}
-                            Events
-                        </a>
+                           class="btn btn-ghost {% if request.resolver_match.url_name == 'user_events' %}bg-surface-3 text-fg{% endif %}">Events</a>
                     {% endif %}
-                    <a href="{% url 'user_settings' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
-                        {% include "web/icons/tw_cog.html" with class="h-5 w-5 mr-2" %}
-                        Settings
-                    </a>
-                    <a href="{% url 'logout' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="block px-6 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md text-base transition-colors icon-text">
-                        {% include "web/icons/tw_logout.html" with class="h-5 w-5 mr-2" %}
-                        Logout
-                    </a>
                 </div>
+                {% if request.resolver_match.url_name == "search" %}
+                    <div class="ml-auto"></div>
+                {% else %}
+                    <form action="{% url 'search' %}"
+                          method="get"
+                          role="search"
+                          class="relative ml-auto hidden w-full max-w-xs sm:block">
+                        <span class="search-icon pointer-events-none absolute inset-y-0 left-3 flex items-center text-fg-subtle">
+                            {% include "web/icons/search.html" %}
+                        </span>
+                        <input type="search"
+                               name="query"
+                               value="{{ query|default:'' }}"
+                               placeholder="Search artists and playlists"
+                               aria-label="Search artists and playlists"
+                               class="input h-9 rounded-full pl-9">
+                    </form>
+                    <a href="{% url 'search' %}"
+                       class="btn btn-ghost btn-icon ml-auto sm:hidden"
+                       aria-label="Search">{% include "web/icons/search.html" with class="size-5" %}</a>
+                {% endif %}
+                <details class="menu">
+                    <summary class="flex items-center gap-2 rounded-full p-0.5 transition-colors hover:bg-surface-3 sm:pr-3"
+                             aria-label="Account menu">
+                        {% include "web/parts/avatar.html" with class="size-8" %}
+                        <span class="hidden max-w-32 truncate text-sm font-medium sm:inline">{% include "web/parts/user_name.html" %}</span>
+                    </summary>
+                    <div class="menu-panel">
+                        <div class="px-3 py-2">
+                            <p class="truncate text-sm font-semibold">{% include "web/parts/user_name.html" %}</p>
+                            {% if request.session.spotify_user_display_name and request.session.spotify_user_email %}
+                                <p class="truncate text-xs text-fg-muted">{{ request.session.spotify_user_email }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="menu-separator"></div>
+                        <a href="{% url 'playlists' %}"
+                           class="menu-item md:hidden">{% include "web/icons/music.html" %}Playlists</a>
+                        {% if request.session.feature_flags.events_enabled %}
+                            <a href="{% url 'user_events' %}"
+                               class="menu-item md:hidden">{% include "web/icons/calendar.html" %}Events</a>
+                        {% endif %}
+                        <a href="{% url 'user_settings' %}"
+                           class="menu-item">{% include "web/icons/settings.html" %}Settings</a>
+                        <div class="menu-separator"></div>
+                        <a href="{% url 'logout' %}" class="menu-item">{% include "web/icons/logout.html" %}Log out</a>
+                    </div>
+                </details>
             {% else %}
-                <a href="{% url 'login' %}"
-                   hx-boost="true"
-                   hx-indicator="#spinner"
-                   class="block px-3 py-2 btn-primary rounded-md text-base font-medium icon-text shadow-md">
-                    {% include "web/icons/tw_login.html" with class="h-5 w-5 mr-2" %}
-                    Login
-                </a>
+                {% if request.resolver_match.url_name != "login" %}
+                    <a href="{% url 'login' %}" class="btn btn-primary ml-auto">Log in</a>
+                {% endif %}
             {% endif %}
-        </div>
-    </div>
-</nav>
-<script>
-    function toggleMobileMenu() {
-        const menu = document.getElementById('mobile-menu');
-        menu.classList.toggle('hidden');
-    }
-</script>
+        </nav>
+    </header>
+{% endwith %}

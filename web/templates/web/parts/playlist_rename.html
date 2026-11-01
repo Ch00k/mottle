@@ -1,21 +1,22 @@
-<div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-    <div class="flex-1 min-w-0 mr-3">
-        <input type="text"
-               name="name"
-               value="{{ playlist.name }}"
-               required
-               class="w-full text-lg font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0"
-               placeholder="Enter playlist name">
-    </div>
-    <div class="flex items-center space-x-2">
-        <button class="inline-flex items-center p-2 text-gray-400 hover:text-green-600 transition-colors"
-                hx-post="{% url 'rename_playlist' playlist.id %}"
-                hx-target="#playlist-name-container"
-                hx-include="previous input"
-                title="Save changes">{% include "web/icons/tw_checkmark.html" with class="w-5 h-5" %}</button>
-        <button class="inline-flex items-center p-2 text-gray-400 hover:text-red-600 transition-colors"
-                hx-delete="{% url 'rename_playlist' playlist.id %}"
-                hx-target="#playlist-name-container"
-                title="Cancel">{% include "web/icons/tw_close.html" with class="w-5 h-5" %}</button>
-    </div>
-</div>
+<form class="flex min-w-0 flex-1 items-center gap-2"
+      hx-post="{% url 'rename_playlist' playlist.id %}"
+      hx-target="#playlist-name-container"
+      data-success-refresh>
+    <input type="text"
+           name="name"
+           value="{{ playlist.name }}"
+           required
+           autofocus
+           aria-label="Playlist name"
+           class="input">
+    <button type="submit"
+            class="btn btn-primary btn-icon btn-sm"
+            title="Save"
+            aria-label="Save">{% include "web/icons/check.html" %}</button>
+    <button type="button"
+            class="btn btn-ghost btn-icon btn-sm"
+            hx-delete="{% url 'rename_playlist' playlist.id %}"
+            hx-target="#playlist-name-container"
+            title="Cancel"
+            aria-label="Cancel">{% include "web/icons/close.html" %}</button>
+</form>

@@ -1,55 +1,52 @@
-<div class="flex flex-wrap items-center gap-1">
-    <!-- Merge button -->
-    <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 rounded transition-colors group"
-            hx-get="{% url 'merge_playlist' playlist.id %}"
+{% comment %}
+The actions on a playlist, as menu items of its tile or as buttons of its page.
+
+Parameters:
+- item_class: classes of an action
+- danger_class: classes of the action removing the playlist
+- source: "playlists_my" on the user's playlists, "playlists_search" in search results, "playlist" on the playlist's page
+{% endcomment %}
+<button class="{{ item_class }}"
+        hx-get="{% url 'merge_playlist' playlist.id %}"
+        hx-target="body"
+        hx-swap="beforeend">
+    {% include "web/icons/merge.html" %}<span>Merge into...</span>
+</button>
+{% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+    {% if playlist.id in watching_playlists %}
+        <button class="{{ item_class }}"
+                hx-get="{% url 'playlist_updates' playlist.id %}"
+                hx-target="body"
+                hx-swap="beforeend">
+            {% include "web/icons/refresh.html" %}<span>Updates</span>
+        </button>
+    {% endif %}
+    <button class="{{ item_class }}"
+            hx-get="{% url 'deduplicate_playlist' playlist.id %}"
             hx-target="body"
-            hx-swap="beforeend"
-            hx-indicator="#spinner">
-        {% include "web/icons/tw_copy.html" with class="w-3 h-3 mr-1" %}
-        Merge
+            hx-swap="beforeend">
+        {% include "web/icons/duplicate.html" %}<span>Duplicates</span>
     </button>
-    <!-- Manage button (only for owned playlists) -->
-    {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-        <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 bg-gray-50 rounded transition-colors group"
-                hx-get="{% url 'configure_playlist' playlist.id %}"
-                hx-target="body"
-                hx-swap="beforeend"
-                hx-indicator="#spinner">
-            {% include "web/icons/tw_cog.html" with class="w-3 h-3 mr-1" %}
-            Manage
-        </button>
-        <!-- Updates button -->
-        {% if playlist.id in watching_playlists %}
-            <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-green-600 hover:text-green-800 bg-green-50 rounded transition-colors group"
-                    hx-get="{% url 'playlist_updates' playlist.id %}"
-                    hx-target="body"
-                    hx-swap="beforeend"
-                    hx-indicator="#spinner">
-                {% include "web/icons/tw_refresh.html" with class="w-3 h-3 mr-1" %}
-                Updates
-            </button>
-        {% endif %}
-        <!-- Duplicates button -->
-        <button class="inline-flex items-center px-2 py-1 text-xs font-medium text-orange-600 hover:text-orange-800 bg-orange-50 rounded transition-colors group"
-                hx-get="{% url 'deduplicate_playlist' playlist.id %}"
-                hx-target="body"
-                hx-swap="beforeend"
-                hx-indicator="#spinner">
-            {% include "web/icons/tw_duplicate.html" with class="w-3 h-3 mr-1" %}
-            Duplicates
-        </button>
-    {% endif %}
-    <!-- Follow/Unfollow button -->
-    {% if source == "playlists_my" %}
-        <!-- Remove/Unfollow button -->
-        {% include "web/parts/playlist_unfollow.html" with playlist=playlist source=source %}
-    {% else %}
-        {% if playlist.id in user_playlist_ids %}
-            <!-- Unfollow button -->
-            {% include "web/parts/playlist_unfollow.html" with playlist=playlist source=source %}
-        {% else %}
-            <!-- Follow button -->
-            {% include "web/parts/playlist_follow.html" with playlist=playlist source=source %}
-        {% endif %}
-    {% endif %}
-</div>
+    <button class="{{ item_class }}"
+            hx-get="{% url 'configure_playlist' playlist.id %}"
+            hx-target="body"
+            hx-swap="beforeend">
+        {% include "web/icons/settings.html" %}<span>Manage</span>
+    </button>
+{% endif %}
+{% if source == "playlists_my" or playlist.id in user_playlist_ids %}
+    {% if separator %}<div class="{{ separator }}"></div>{% endif %}
+    <button class="{{ danger_class }}"
+            data-danger
+            hx-post="{% url 'unfollow_playlist' playlist.id %}"
+            hx-confirm="Remove playlist {{ playlist.name }} from your library?"
+            {% if source == "playlist" %} hx-swap="none" data-success-redirect="{% url 'playlists' %}" {% else %} hx-target="closest .tile" hx-swap="outerHTML" {% endif %}>
+        {% include "web/icons/trash.html" %}<span>Remove</span>
+    </button>
+{% else %}
+    <button class="{{ item_class }}"
+            hx-post="{% url 'follow_playlist' playlist.id %}"
+            {% if source == "playlist" %} hx-swap="none" data-success-refresh {% else %} hx-target="closest .tile" hx-swap="outerHTML" {% endif %}>
+        {% include "web/icons/plus.html" %}<span>Add to library</span>
+    </button>
+{% endif %}

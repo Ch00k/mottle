@@ -1,0 +1,7 @@
+{% if request.session.spotify_user_image_url %}
+    <img src="{{ request.session.spotify_user_image_url }}"
+         alt=""
+         class="avatar {{ class }}">
+{% else %}
+    <span class="avatar {{ class }}" aria-hidden="true">{% if request.session.spotify_user_display_name %}{{ request.session.spotify_user_display_name|first }}{% else %}{{ request.session.spotify_user_email|default:"?"|first }}{% endif %}</span>
+{% endif %}

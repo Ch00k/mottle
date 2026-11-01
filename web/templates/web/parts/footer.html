@@ -1,23 +1,19 @@
-<footer class="bg-gray-50 border-t border-gray-200 mt-16">
-    <div class="container-base py-4">
-        <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-600">
-            <span>Made with 💙 and out of 🥱 by <a href="https://www.linkedin.com/in/ayurchuk/"
-    class="text-blue-600 hover:text-blue-800 transition-colors">👨‍💻</a></span>
-            <span>•</span>
+{% load static %}
+<footer class="mt-20 border-t border-line">
+    <div class="page flex flex-col items-center justify-between gap-3 py-6 text-xs text-fg-subtle sm:flex-row">
+        <div class="flex items-center gap-2">
+            <img class="size-4" alt="" src="{% static 'web/favicon.png' %}">
+            <span>© {% now "Y" %} mottle. Made with 💙 and out of 🥱 by <a href="https://www.linkedin.com/in/ayurchuk/"
+    class="link-muted">👨‍💻</a></span>
+        </div>
+        <nav class="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
             <span>Powered by Spotify <a href="https://developer.spotify.com/documentation/web-api"
-    class="text-blue-600 hover:text-blue-800 transition-colors">Web API</a></span>
-            <span>•</span>
-            <span><a href="mailto:feedback@mottle.it"
-   class="text-blue-600 hover:text-blue-800 transition-colors">Feedback</a></span>
-            <span>•</span>
-            <span><a href="https://stats.uptimerobot.com/twLEyKzrW7/796740106"
-   class="text-blue-600 hover:text-blue-800 transition-colors">Status</a></span>
-            <span>•</span>
-            <span><a href="https://github.com/Ch00k/mottle/pkgs/container/mottle"
-   class="text-blue-600 hover:text-blue-800 transition-colors">v{{ APP_VERSION }}</a></span>
-        </div>
-        <div class="mt-4 pt-4 border-t border-gray-200">
-            <p class="text-center text-xs text-gray-500">© {{ "now"|date:"Y" }} mottle. All rights reserved.</p>
-        </div>
+    class="link-muted">Web API</a></span>
+            <a href="mailto:feedback@mottle.it" class="link-muted">Feedback</a>
+            <a href="https://stats.uptimerobot.com/twLEyKzrW7/796740106"
+               class="link-muted">Status</a>
+            <a href="https://github.com/Ch00k/mottle/pkgs/container/mottle"
+               class="link-muted">v{{ APP_VERSION }}</a>
+        </nav>
     </div>
 </footer>

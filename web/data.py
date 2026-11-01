@@ -49,6 +49,7 @@ class AlbumData(SpotifyEntityData):
     image_url_large: str | None = None
     track_image_url: str | None = None
     num_tracks: int | None = None
+    artists: list[ArtistData] = field(default_factory=list)
 
     @staticmethod
     def from_tekore_model(album: SimpleAlbum | FullAlbum) -> AlbumData:
@@ -62,6 +63,9 @@ class AlbumData(SpotifyEntityData):
             image_url_large=get_largest_image(album.images),
             track_image_url=get_smallest_image(album.images),
             num_tracks=album.total_tracks,
+            artists=[
+                ArtistData(id=artist.id, name=artist.name, url=get_spotify_url(artist)) for artist in album.artists
+            ],
         )
 
 

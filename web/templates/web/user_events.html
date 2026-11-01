@@ -2,41 +2,37 @@
 {% block title %}
     Upcoming events
 {% endblock title %}
-{% block page_title %}
-    Upcoming events
-{% endblock page_title %}
 {% block content %}
-    <div class="container-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Upcoming events</h1>
+            <p class="page-subtitle">Concerts of the artists you watch, near you</p>
+        </div>
+        <a href="{% url 'user_settings' %}"
+           class="btn btn-secondary">{% include "web/icons/map_pin.html" %}<span>Change location</span></a>
+    </div>
+    <div class="page space-y-10">
         {% for artist, events in upcoming_events.items %}
-            <div class="mb-12">
-                <!-- Artist Header -->
-                <div class="flex items-center gap-4 mb-6">
-                    <img class="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
-                         src="{{ artist.image_url_small }}"
-                         alt="{{ artist.name }}">
+            <section>
+                <div class="mb-3 flex items-center gap-3">
+                    {% if artist.image_url_small %}
+                        <img class="avatar size-10" src="{{ artist.image_url_small }}" alt="">
+                    {% endif %}
                     <div>
-                        <h2 class="text-2xl font-semibold text-gray-900">
-                            <a href="{{ artist.url }}"
-                               class="hover:text-blue-600 transition-colors">{{ artist.name }}</a>
+                        <h2 class="section-title">
+                            <a href="{% url 'albums' artist.id %}" class="hover:underline">{{ artist.name }}</a>
                         </h2>
-                        <p class="text-sm text-gray-600">{{ events|length }} upcoming event{{ events|length|pluralize }}</p>
+                        <p class="text-xs text-fg-muted">{{ events|length }} event{{ events|length|pluralize }}</p>
                     </div>
                 </div>
-                <!-- Events Grid -->
                 {% if events %}
                     {% include "web/parts/events.html" %}
                 {% else %}
-                    <div class="empty-state">
-                        <p class="text-gray-500 italic">No events found for {{ artist.name }}</p>
-                    </div>
+                    <p class="panel text-sm text-fg-muted">No events near you</p>
                 {% endif %}
-            </div>
+            </section>
         {% empty %}
-            <div class="empty-state">
-                {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                <h3 class="mt-4 text-lg font-medium text-gray-900">No upcoming events</h3>
-                <p class="mt-2 text-gray-500">We couldn't find any upcoming events for your tracked artists.</p>
-            </div>
+            {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description="None of the artists you watch has an event near you yet." %}
         {% endfor %}
     </div>
 {% endblock content %}

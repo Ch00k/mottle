@@ -1,12 +1,9 @@
-<input type="hidden"
-       id="track-id-{{ track.id }}"
-       name="track-id"
-       value="{{ track.id }}">
-<a href=""
-   title="Remove"
-   hx-post="{% url 'remove_saved_tracks' %}"
-   hx-include="#track-id-{{ track.id }}"
-   hx-confirm="Are you sure you want to remove track {{ track.name }}?"
-   hx-target="{{ target | default:'closest tr' }}"
-   hx-swap="outerHTML"
-   hx-indicator="#spinner">{% include "web/icons/tw_trash.html" %}</a>
+<button class="btn btn-ghost btn-icon btn-sm track-row-actions hover:text-danger"
+        aria-label="Remove {{ track.name }} from saved tracks"
+        title="Remove from saved tracks"
+        data-danger
+        hx-post="{% url 'remove_saved_tracks' %}"
+        hx-vals='{"track-id": "{{ track.id }}"}'
+        hx-confirm="Remove {{ track.name }} from your saved tracks?"
+        hx-target="closest tr"
+        hx-swap="outerHTML">{% include "web/icons/trash.html" %}</button>

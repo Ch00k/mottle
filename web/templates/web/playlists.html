@@ -1,10 +1,15 @@
 {% extends "web/base.html" %}
 {% block title %}
-    My playlists
+    Your playlists
 {% endblock title %}
-{% block page_title %}
-    My playlists
-{% endblock page_title %}
 {% block content %}
-    <div class="container-page-short">{% include "web/parts/playlists.html" with source="playlists_my" %}</div>
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Your playlists</h1>
+            <p class="page-subtitle">{{ playlists|length }} playlist{{ playlists|length|pluralize }} in your library</p>
+        </div>
+        <a href="{% url 'search' %}"
+           class="btn btn-secondary">{% include "web/icons/plus.html" %}<span>Create a discography</span></a>
+    </div>
+    <div class="page">{% include "web/parts/playlists.html" with source="playlists_my" %}</div>
 {% endblock content %}

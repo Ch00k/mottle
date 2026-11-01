@@ -1,0 +1,27 @@
+<article class="tile">
+    <div class="tile-cover">
+        {% if playlist.image_url_large %}
+            <img src="{{ playlist.image_url_large }}" alt="" loading="lazy">
+        {% else %}
+            <div class="flex size-full items-center justify-center text-fg-subtle">
+                {% include "web/icons/music.html" with class="size-10" %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="min-w-0 px-1 pb-1">
+        <a href="{% url 'playlist' playlist.id %}" class="tile-link">{% include "web/parts/playlist_name.html" %}</a>
+        <p class="tile-meta mt-0.5">
+            {{ playlist.num_tracks }} track{{ playlist.num_tracks|pluralize }}
+            {% if playlist.owner_id != request.session.spotify_user_spotify_id %}<span class="text-fg-subtle">by {{ playlist.owner_name }}</span>{% endif %}
+        </p>
+    </div>
+    <div class="tile-actions">
+        <details class="menu">
+            <summary class="btn btn-secondary btn-icon btn-sm border-transparent bg-bg/70 backdrop-blur hover:bg-bg"
+                     aria-label="Playlist actions">{% include "web/icons/more.html" %}</summary>
+            <div class="menu-panel">
+                {% include "web/parts/playlist_actions.html" with item_class="menu-item" danger_class="menu-item menu-item-danger" separator="menu-separator" %}
+            </div>
+        </details>
+    </div>
+</article>

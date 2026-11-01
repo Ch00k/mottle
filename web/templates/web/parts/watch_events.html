@@ -1,0 +1,16 @@
+{% comment %}The button starting or stopping watching an artist's events, which swaps itself for the other one.{% endcomment %}
+{% if watching %}
+    <button class="btn btn-secondary"
+            hx-delete="{% url 'watch_artist_events' artist.id %}"
+            hx-swap="outerHTML"
+            title="Stop watching {{ artist.name }}'s events">
+        {% include "web/icons/check.html" %}<span>Watching events</span>
+    </button>
+{% else %}
+    <button class="btn btn-secondary"
+            hx-post="{% url 'watch_artist_events' artist.id %}"
+            hx-swap="outerHTML"
+            title="Get emailed about {{ artist.name }}'s events near you">
+        {% include "web/icons/bell.html" %}<span>Watch events</span>
+    </button>
+{% endif %}

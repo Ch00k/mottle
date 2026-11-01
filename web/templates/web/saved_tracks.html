@@ -2,62 +2,46 @@
 {% block title %}
     Saved tracks
 {% endblock title %}
-{% block page_title %}
-    Saved tracks
-{% endblock page_title %}
 {% block content %}
-    {% if tracks %}
-        <table>
-            <thead>
-                <tr>
-                    <th>
-                        <input type="checkbox" onClick="toggleCheckboxes(this, 'saved-track')">
-                    </th>
-                    <th>Artwork</th>
-                    <th class="sortable" onClick="sortTable(this)">Artist</th>
-                    <th class="sortable" onClick="sortTable(this)">Album</th>
-                    <th class="sortable" onClick="sortTable(this)">Track</th>
-                    <th class="sortable" onClick="sortTable(this)">Duration</th>
-                    <th class="sortable" onClick="sortTable(this)">Added</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for track in tracks %}
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Saved tracks</h1>
+            <p class="page-subtitle">{{ tracks|length }} track{{ tracks|length|pluralize }} you liked on Spotify</p>
+        </div>
+    </div>
+    <div class="page">
+        {% if tracks %}
+            <table class="tracks">
+                <thead>
                     <tr>
-                        <td>
-                            <input type="checkbox"
-                                   name="track"
-                                   value="{{ track.id }}"
-                                   class="saved-track">
-                        </td>
-                        <td>
-                            <img class="small" src="{{ track.album.image_url_small }}" />
-                        </td>
-                        <td>
-                            {% for artist in track.artists %}
-                                <a href="{{ artist.url }}">{{ artist.name }}</a>
-                                <br>
-                            {% endfor %}
-                        </td>
-                        <td>
-                            <a href="{% url 'album' track.album.id %}">{{ track.album.name }}</a>
-                        </td>
-                        <td>
-                            <a href="{{ track.url }}">{{ track.name }}</a>
-                        </td>
-                        <td>{{ track.duration }}</td>
-                        <td>{{ track.added_at | date:"Y-m-d" }}</td>
-                        <td>{% include "web/parts/saved_track_delete.html" %}</td>
+                        <th class="track-index" data-sort>#</th>
+                        <th data-sort>Title</th>
+                        <th class="hidden md:table-cell" data-sort>Album</th>
+                        <th class="hidden w-32 lg:table-cell" data-sort>Added</th>
+                        <th class="w-16 text-right" aria-label="Duration" data-sort>
+                            {% include "web/icons/clock.html" with class="ml-auto size-4" %}
+                        </th>
+                        <th class="w-12"></th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <article>
-            <aside>
-                <h3>No saved tracks found</h3>
-            </aside>
-        </article>
-    {% endif %}
+                </thead>
+                <tbody>
+                    {% for track in tracks %}
+                        <tr>
+                            <td class="track-index">{{ forloop.counter }}</td>
+                            <td>{% include "web/parts/track_title.html" with cover=track.album.image_url_small %}</td>
+                            <td class="hidden truncate md:table-cell">
+                                <a href="{% url 'album' track.album.id %}" class="link-muted">{{ track.album.name }}</a>
+                            </td>
+                            <td class="hidden text-fg-muted lg:table-cell"
+                                data-value="{{ track.added_at|date:'Y-m-d' }}">{{ track.added_at|date:"M j, Y" }}</td>
+                            <td class="text-right text-fg-muted tabular-nums">{{ track.duration }}</td>
+                            <td class="text-right">{% include "web/parts/saved_track_delete.html" %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            {% include "web/parts/empty_state.html" with icon="web/icons/music.html" title="No saved tracks" description="Tracks you like on Spotify show up here." %}
+        {% endif %}
+    </div>
 {% endblock content %}

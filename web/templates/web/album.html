@@ -1,41 +1,56 @@
-{% extends "web/base.html" %}
+{% extends "web/media_page.html" %}
 {% block title %}
     {{ album.name }}
 {% endblock title %}
-{% block page_title %}
-    <div class="centered">
-        <img class="large" src="{{ album.image_url_large }}" />
-        <a href="{{ album.url }}">{{ album.name }}</a>
-    </div>
-{% endblock page_title %}
-{% block content %}
-    <table>
+{% block hero_cover_url %}{{ album.image_url_large|default:"" }}{% endblock hero_cover_url %}
+{% block hero_alt %}
+    {{ album.name }} cover
+{% endblock hero_alt %}
+{% block hero_kind %}
+    {{ album.type|default:"Album"|capfirst }}
+{% endblock hero_kind %}
+{% block hero_title %}
+    {{ album.name }}
+{% endblock hero_title %}
+{% block hero_meta %}
+    {% if album.artists %}
+        <span>
+            {% for artist in album.artists %}<a href="{% url 'albums' artist.id %}"
+   class="font-semibold text-fg hover:underline">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+        </span>
+        <span class="text-fg-subtle">/</span>
+    {% endif %}
+    {% if album.release_year %}
+        <span>{{ album.release_year }}</span>
+        <span class="text-fg-subtle">/</span>
+    {% endif %}
+    <span>{{ tracks|length }} track{{ tracks|length|pluralize }}</span>
+{% endblock hero_meta %}
+{% block hero_actions %}
+    <a href="{{ album.url }}"
+       class="btn btn-primary"
+       target="_blank"
+       rel="noopener">{% include "web/icons/spotify_logo.html" with class="size-4" %}<span>Open in Spotify</span></a>
+{% endblock hero_actions %}
+{% block body %}
+    <table class="tracks">
         <thead>
             <tr>
-                <th>Artwork</th>
-                <th class="sortable" onClick="sortTable(this)">Artist</th>
-                <th class="sortable" onClick="sortTable(this)">Track</th>
-                <th class="sortable" onClick="sortTable(this)">Duration</th>
+                <th class="track-index" data-sort>#</th>
+                <th data-sort>Title</th>
+                <th class="w-16 text-right" aria-label="Duration" data-sort>
+                    {% include "web/icons/clock.html" with class="ml-auto size-4" %}
+                </th>
             </tr>
         </thead>
         <tbody>
             {% for track in tracks %}
                 <tr>
-                    <td>
-                        <img class="small" src="{{ album.track_image_url }}" />
-                    </td>
-                    <td>
-                        {% for artist in track.artists %}
-                            <a href="{{ artist.url }}">{{ artist.name }}</a>
-                            <br>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <a href="{{ track.url }}">{{ track.name }}</a>
-                    </td>
-                    <td>{{ track.duration }}</td>
+                    <td class="track-index">{{ forloop.counter }}</td>
+                    <td>{% include "web/parts/track_title.html" %}</td>
+                    <td class="text-right text-fg-muted tabular-nums">{{ track.duration }}</td>
                 </tr>
             {% endfor %}
         </tbody>
     </table>
-{% endblock content %}
+{% endblock body %}

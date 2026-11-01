@@ -23,6 +23,27 @@ def toast(response: HttpResponse, toast_type: str, body: str) -> HttpResponse:
     return trigger_client_event(response, "HXToast", {"type": toast_type, "body": body})
 
 
+# The request headers `wants_fragment` goes by, which a response it chose must vary on, so that a browser does not serve
+# a cached fragment as the page at the same URL, or the page as the fragment
+FRAGMENT_REQUEST_HEADERS = ("HX-Request", "HX-Boosted", "HX-History-Restore-Request")
+
+
+def wants_fragment(request: MottleHttpRequest) -> bool:
+    """Return whether the request is an HTMX one for part of a page, which a page's own control makes.
+
+    A boosted link or form, and the request restoring a page htmx no longer has in its history cache, want the whole
+    page.
+    """
+    return bool(request.htmx) and not request.htmx.boosted and not request.htmx.history_restore_request
+
+
+async def is_watching_artist_events(request: MottleHttpRequest, artist_spotify_id: str) -> bool:
+    """Return whether the signed-in user watches the artist's events."""
+    return await EventArtist.objects.filter(
+        artist__spotify_id=artist_spotify_id, watching_users__id=request.session["spotify_user_id"]
+    ).aexists()
+
+
 def bad_request_toast(message: str) -> HttpResponse:
     """Return a bad request response with the message, which an error toast shows the user."""
     return toast(HttpResponseBadRequest(message), "error", message)

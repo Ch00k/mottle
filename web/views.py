@@ -12,12 +12,14 @@ from django.http import (
     HttpResponseServerError,
 )
 from django.shortcuts import aget_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import (
     require_GET,
     require_http_methods,
     require_POST,
     require_safe,
 )
+from django.views.decorators.vary import vary_on_headers
 from django_htmx.http import push_url
 from tekore.model import AlbumType, FullPlaylistTrack
 
@@ -28,6 +30,7 @@ from .data import AlbumData, ArtistData, PlaylistData, TrackData
 from .middleware import MottleHttpRequest, get_signed_in_auth
 from .models import (
     Event,
+    EventArtist,
     Playlist,
     PlaylistUpdate,
     PlaylistWatchConfig,
@@ -36,9 +39,21 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
-from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
+from .tasks import (
+    atrack_artists_events,
+    check_playlist_for_updates,
+    track_and_fetch_artist_events,
+    upload_cover_image,
+)
 from .utils import MottleException, MottleSpotifyClient
-from .views_utils import bad_request_toast, get_playlist_modal_response, toast
+from .views_utils import (
+    FRAGMENT_REQUEST_HEADERS,
+    bad_request_toast,
+    get_playlist_modal_response,
+    is_watching_artist_events,
+    toast,
+    wants_fragment,
+)
 
 ALBUM_SORT_ORDER = {AlbumType.album: 0, AlbumType.single: 1, AlbumType.compilation: 2}
 
@@ -139,6 +154,9 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
 
 @require_safe  # Accept HEAD requests from UptimeRobot
 def index(request: MottleHttpRequest) -> HttpResponse:
+    if request.session.get("spotify_user_id"):
+        return redirect("playlists")
+
     return render(request, "web/index.html")
 
 
@@ -147,10 +165,14 @@ def changelog(request: MottleHttpRequest) -> HttpResponse:
 
 
 @require_GET
+@vary_on_headers(*FRAGMENT_REQUEST_HEADERS)
 async def search(request: MottleHttpRequest) -> HttpResponse:
     query = request.GET.get("query", "")
 
     if not query:
+        # Emptying the search box gets the results' empty state, at the search page's own URL
+        if wants_fragment(request):
+            return push_url(render(request, "web/parts/search_results.html", {"query": ""}), reverse("search"))
         return render(request, "web/search.html", context={"results": [], "query": ""})
 
     artists, playlists = await request.spotify_client.find_artists_and_playlists(query)
@@ -168,7 +190,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
     user_playlist_ids = [playlist.id for playlist in user_playlists]
     playlists = [p for p in playlists if p.id not in user_playlist_ids]
 
-    if request.htmx:
+    if wants_fragment(request):
         return push_url(
             render(
                 request,
@@ -196,6 +218,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
 
 
 @require_http_methods(["GET", "POST"])
+@vary_on_headers(*FRAGMENT_REQUEST_HEADERS)
 async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
 
@@ -213,23 +236,18 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     singles = releases_dict.get(AlbumType.single, [])
     compilations = releases_dict.get(AlbumType.compilation, [])
 
-    has_albums = bool(albums)
-    has_singles = bool(singles)
-    has_compilations = bool(compilations)
-
     if request.method == "GET":
+        # A link leads to the artist's page, a button opens the dialog creating the discography
+        template = "web/modals/playlist_discography.html" if wants_fragment(request) else "web/artist.html"
         return render(
             request,
-            "web/modals/playlist_discography.html",
+            template,
             context={
                 "artist": artist,
                 "albums": albums,
                 "singles": singles,
                 "compilations": compilations,
-                "album_ids": album_ids,
-                "has_albums": has_albums,
-                "has_singles": has_singles,
-                "has_compilations": has_compilations,
+                "watching": await is_watching_artist_events(request, artist_id),
             },
         )
 
@@ -473,7 +491,7 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         await request.spotify_client.remove_tracks_from_playlist(playlist_id, tracks)
         await request.spotify_client.add_tracks_to_playlist(playlist_id, tracks)
 
-        return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
+        return toast(HttpResponse(), "success", "Duplicates removed")
 
     duplicates = await request.spotify_client.find_duplicate_tracks_in_playlist(playlist_id)
     duplicates = [(TrackData.from_tekore_model(track), _) for track, _ in duplicates]
@@ -523,7 +541,7 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
     playlist = await request.spotify_client.get_playlist(playlist.id)
 
     # TODO: Toast
-    return render(request, "web/parts/playlist_row.html", context={"playlist": playlist})
+    return render(request, "web/parts/playlist_card.html", context={"playlist": playlist})
 
 
 @require_http_methods(["GET", "POST"])
@@ -646,11 +664,13 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
         await request.spotify_client.change_playlist_details(playlist_id, name)
 
         playlist.name = name
-        # TODO: Toast
-        return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
+        return toast(
+            render(request, "web/parts/playlist_name_editable.html", {"playlist": playlist}),
+            "success",
+            "Playlist renamed",
+        )
 
-    # TODO: Toast
-    return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
+    return render(request, "web/parts/playlist_name_editable.html", {"playlist": playlist})
 
 
 @require_POST
@@ -763,13 +783,53 @@ async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: 
 
 @require_GET
 async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
+    """Show the artist's upcoming events that mottle has fetched, leaving the user's watched artists as they are."""
     artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
 
-    event_artist = await track_artist_events(artist_id, artist.name, request.session["spotify_user_id"])
-    await event_artist.update_events()
+    event_artist = await EventArtist.objects.filter(artist__spotify_id=artist_id).afirst()
+    if event_artist is None:
+        events = []
+    else:
+        events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]
 
-    events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]
-    return render(request, "web/events.html", context={"artist": artist, "events": events})
+    return render(
+        request,
+        "web/events.html",
+        context={"artist": artist, "events": events, "watching": await is_watching_artist_events(request, artist_id)},
+    )
+
+
+@require_http_methods(["POST", "DELETE"])
+async def watch_artist_events(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
+    """Start (POST) or stop (DELETE) watching the artist's events, which the user is then emailed about.
+
+    An artist mottle already tracks gets the user at once; one it does not is found at the event sources, and its
+    events fetched, in the background.
+    """
+    if not settings.EVENTS_ENABLED:
+        return bad_request_toast("Events are not available yet. Please check back later")
+
+    artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
+    spotify_user_id = request.session["spotify_user_id"]
+    event_artist = await EventArtist.objects.filter(artist__spotify_id=artist_id).afirst()
+
+    if request.method == "POST":
+        if event_artist is None:
+            run_in_background(track_and_fetch_artist_events(artist_id, artist.name, spotify_user_id))
+            message = f"Watching {artist.name}'s events. Finding them may take a minute."
+        else:
+            await event_artist.watching_users.aadd(spotify_user_id)
+            message = f"Watching {artist.name}'s events"
+        watching = True
+    else:
+        if event_artist is not None:
+            await event_artist.watching_users.aremove(spotify_user_id)
+        message = f"Stopped watching {artist.name}'s events"
+        watching = False
+
+    return toast(
+        render(request, "web/parts/watch_events.html", {"artist": artist, "watching": watching}), "success", message
+    )
 
 
 @require_http_methods(["GET", "POST"])

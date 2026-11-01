@@ -1,147 +1,86 @@
-{% load static %}
-<div id="modal" _="on closeModal remove me" class="modal-overlay">
-    <div class="modal-container">
-        <!-- Background overlay -->
-        <div class="modal-backdrop" _="on click trigger closeModal"></div>
-        <!-- Modal panel -->
-        <div class="modal-panel-sm">
-            <!-- Header -->
-            <div class="modal-header">
-                <div class="modal-header-layout">
-                    <h3 class="modal-title">Merge Playlist</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
+<dialog tabindex="-1" class="modal" aria-labelledby="modal-title">
+    {% include "web/parts/modal_header.html" with title="Merge playlist" %}
+    <form class="contents"
+          hx-post="{% url 'merge_playlist' playlist_id %}"
+          hx-swap="none"
+          hx-indicator="#merge-submit"
+          data-close-dialog
+          data-success-refresh>
+        <div class="modal-body">
+            <div class="flex items-center gap-3">
+                {% if playlist_image_url %}
+                    <img src="{{ playlist_image_url }}"
+                         alt="{{ playlist_name }} cover"
+                         class="size-12 shrink-0 rounded-lg object-cover">
+                {% endif %}
+                <div class="min-w-0">
+                    <p class="eyebrow">Merging</p>
+                    <p class="truncate font-semibold" title="{{ playlist_name }}">{{ playlist_name }}</p>
                 </div>
             </div>
-            <!-- Content -->
-            <div class="modal-content">
-                <form class="space-y-4">
-                    <!-- Source Playlist Section -->
-                    <div class="form-section-background">
-                        <h4 class="text-md font-medium text-gray-900 mb-3">Source Playlist</h4>
-                        <div class="flex items-center space-x-3">
-                            <img src="{{ playlist_image_url }}"
-                                 alt="{{ playlist_name }} cover art"
-                                 class="w-12 h-12 rounded-lg border border-gray-200 flex-shrink-0">
-                            <div class="min-w-0 flex-1">
-                                <p class="text-lg font-medium text-gray-900 truncate"
-                                   title="{{ playlist_name }}">{{ playlist_name }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Target Playlist Section -->
-                    <div class="form-section-background">
-                        <h4 class="text-md font-medium text-gray-900 mb-3">Target Playlist</h4>
-                        <div class="space-y-4">
-                            <!-- Choice: Existing vs New -->
-                            <div class="space-y-3">
-                                <div class="flex items-center">
-                                    <input type="radio"
-                                           id="merge-existing"
-                                           name="merge-type"
-                                           value="existing"
-                                           class="form-radio"
-                                           onchange="toggleMergeType('existing')">
-                                    <label for="merge-existing"
-                                           class="form-radio-label">Merge into existing playlist</label>
-                                </div>
-                                <div class="flex items-center">
-                                    <input type="radio"
-                                           id="merge-new"
-                                           name="merge-type"
-                                           value="new"
-                                           class="form-radio"
-                                           onchange="toggleMergeType('new')"
-                                           checked>
-                                    <label for="merge-new" class="form-radio-label">Create new playlist</label>
-                                </div>
-                            </div>
-                            <!-- Existing Playlist Selection -->
-                            <div id="existing-playlist-section" class="hidden">
-                                <label for="existing-playlist-select" class="form-label-section">Select playlist</label>
-                                <select id="existing-playlist-select" name="merge-target" class="form-select">
-                                    <option value="">Choose a playlist...</option>
-                                    {% for playlist in playlists %}<option value="{{ playlist.id }}">{{ playlist.name }}</option>{% endfor %}
-                                </select>
-                            </div>
-                            <!-- New Playlist Name -->
-                            <div id="new-playlist-section">
-                                <label for="new-playlist-name" class="form-label-section">Playlist name</label>
-                                <input id="new-playlist-name"
-                                       type="text"
-                                       name="new-playlist-name"
-                                       placeholder="Enter new playlist name..."
-                                       class="form-select">
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Options Section -->
-                    <div class="form-section-background">
-                        <h4 class="text-md font-medium text-gray-900 mb-3">Options</h4>
-                        <div class="space-y-4">
-                            <div class="flex items-center">
-                                <input type="checkbox"
-                                       name="auto-update"
-                                       id="auto-update"
-                                       class="form-checkbox"
-                                       checked
-                                       onClick="toggleRelatedCheckbox(this, 'auto-accept')">
-                                <label for="auto-update" class="form-checkbox-label">Watch for new tracks</label>
-                            </div>
-                            <div class="flex items-center">
-                                <input type="checkbox"
-                                       id="auto-accept"
-                                       name="auto-accept"
-                                       class="form-checkbox">
-                                <label for="auto-accept"
-                                       class="form-checkbox-label">Automatically add new tracks</label>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Actions Section -->
-                    <div class="border-t border-gray-200 pt-6">
-                        <button hx-post="{% url 'merge_playlist' playlist_id %}"
-                                hx-target="#modal"
-                                hx-swap="delete"
-                                hx-indicator="#spinner"
-                                class="modal-button-create">
-                            {% include "web/icons/tw_duplicate.html" with class="modal-icon" %}
-                            <span class="modal-icon-mr">Merge</span>
-                        </button>
-                    </div>
-                </form>
+            <fieldset class="panel space-y-3">
+                <legend class="sr-only">Merge into</legend>
+                <label class="flex items-center gap-3 text-sm font-medium">
+                    <input type="radio"
+                           name="merge-type"
+                           value="new"
+                           class="radio"
+                           checked
+                           data-shows="new-playlist-section">
+                    Into a new playlist
+                </label>
+                <div id="new-playlist-section" class="pl-7">
+                    <input type="text"
+                           name="new-playlist-name"
+                           placeholder="New playlist's name"
+                           aria-label="New playlist's name"
+                           class="input">
+                </div>
+                <label class="flex items-center gap-3 text-sm font-medium">
+                    <input type="radio"
+                           name="merge-type"
+                           value="existing"
+                           class="radio"
+                           data-shows="existing-playlist-section">
+                    Into one of your playlists
+                </label>
+                <div id="existing-playlist-section" class="pl-7" hidden>
+                    <select name="merge-target"
+                            aria-label="Playlist to merge into"
+                            class="select">
+                        <option value="">Choose a playlist</option>
+                        {% for playlist in playlists %}<option value="{{ playlist.id }}">{{ playlist.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </fieldset>
+            <div>
+                <label class="option -mx-3">
+                    <input type="checkbox"
+                           name="auto-update"
+                           checked
+                           class="switch"
+                           data-enables="auto-accept">
+                    <span>
+                        <span class="option-title block">Watch for new tracks</span>
+                        <span class="option-hint block">Get tracks added to this playlist offered as updates</span>
+                    </span>
+                </label>
+                <label class="option -mx-3">
+                    <input type="checkbox" id="auto-accept" name="auto-accept" class="switch">
+                    <span>
+                        <span class="option-title block">Add them automatically</span>
+                        <span class="option-hint block">New tracks go into the merged playlist without asking</span>
+                    </span>
+                </label>
             </div>
         </div>
-    </div>
-</div>
-<script>
-    function toggleMergeType(type) {
-        const existingSection = document.getElementById('existing-playlist-section');
-        const newSection = document.getElementById('new-playlist-section');
-        const existingSelect = document.getElementById('existing-playlist-select');
-        const newInput = document.getElementById('new-playlist-name');
-
-        if (type === 'existing') {
-            existingSection.classList.remove('hidden');
-            newSection.classList.add('hidden');
-            existingSelect.required = true;
-            newInput.required = false;
-            newInput.value = '';
-        } else {
-            existingSection.classList.add('hidden');
-            newSection.classList.remove('hidden');
-            existingSelect.required = false;
-            existingSelect.value = '';
-            newInput.required = true;
-        }
-    }
-
-    function toggleRelatedCheckbox(checkbox, relatedId) {
-        const relatedCheckbox = document.getElementById(relatedId);
-        if (!checkbox.checked) {
-            relatedCheckbox.checked = false;
-            relatedCheckbox.disabled = true;
-        } else {
-            relatedCheckbox.disabled = false;
-        }
-    }
-</script>
+        <div class="modal-footer">
+            <button type="button"
+                    class="btn btn-ghost"
+                    onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" id="merge-submit" class="btn btn-primary">
+                {% include "web/icons/merge.html" %}<span>Merge</span>
+            </button>
+        </div>
+    </form>
+</dialog>

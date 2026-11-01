@@ -1,93 +1,34 @@
-<div id="search-results">
-    <!-- Tabs -->
-    {% if query %}
-        <div class="bg-white border-b border-gray-200">
-            <div class="container-main">
-                <nav class="flex space-x-8" role="tablist">
-                    <button class="tab-button active"
-                            data-tab="artists"
-                            onclick="switchTab('artists')">
-                        Artists
-                        {% if artists %}
-                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ artists|length }}
-                            </span>
-                        {% endif %}
-                    </button>
-                    <button class="tab-button"
-                            data-tab="playlists"
-                            onclick="switchTab('playlists')">
-                        Playlists
-                        {% if playlists %}
-                            <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ playlists|length }}
-                            </span>
-                        {% endif %}
-                    </button>
-                </nav>
-            </div>
+<div id="search-results" class="page pt-6">
+    {% if not query %}
+        {% include "web/parts/empty_state.html" with icon="web/icons/search.html" title="Find an artist or a playlist" description="Make a discography of an artist, or add someone else's playlist to your library." %}
+    {% else %}
+        <div class="tabs mb-6" role="tablist">
+            <button class="tab"
+                    role="tab"
+                    aria-selected="true"
+                    aria-controls="tab-artists">
+                Artists <span class="tab-count">{{ artists|length }}</span>
+            </button>
+            <button class="tab"
+                    role="tab"
+                    aria-selected="false"
+                    aria-controls="tab-playlists">
+                Playlists <span class="tab-count">{{ playlists|length }}</span>
+            </button>
+        </div>
+        <div id="tab-artists" role="tabpanel">
+            {% if artists %}
+                {% include "web/parts/artists.html" %}
+            {% else %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/search.html" title="No artists found" description="Try searching with different keywords." %}
+            {% endif %}
+        </div>
+        <div id="tab-playlists" role="tabpanel" hidden>
+            {% if playlists %}
+                {% include "web/parts/playlists.html" with source="playlists_search" %}
+            {% else %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/search.html" title="No playlists found" description="Try searching with different keywords." %}
+            {% endif %}
         </div>
     {% endif %}
-    <!-- Search Results -->
-    <div class="container-page">
-        {% if not query %}
-            <div class="empty-state">
-                {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                <h3 class="mt-4 text-lg font-medium text-gray-900">Search for content</h3>
-                <p class="mt-2 text-gray-500">Enter a search term above to find artists and playlists.</p>
-            </div>
-        {% else %}
-            <!-- Artists Tab Content -->
-            <div id="tab-artists" class="tab-content active">
-                {% if artists %}
-                    {% include "web/parts/artists.html" %}
-                {% else %}
-                    <div class="empty-state">
-                        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                        <h3 class="mt-4 text-lg font-medium text-gray-900">No artists found</h3>
-                        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
-                    </div>
-                {% endif %}
-            </div>
-            <!-- Playlists Tab Content -->
-            <div id="tab-playlists" class="tab-content hidden">
-                {% if playlists %}
-                    {% include "web/parts/playlists.html" with source="playlists_search" %}
-                {% else %}
-                    <div class="empty-state">
-                        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                        <h3 class="mt-4 text-lg font-medium text-gray-900">No playlists found</h3>
-                        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
-                    </div>
-                {% endif %}
-            </div>
-        {% endif %}
-    </div>
 </div>
-{% if query %}
-    <script>
-    function switchTab(tabName) {
-        // Update active tab button
-        document.querySelectorAll('.tab-button').forEach(btn => {
-            btn.classList.remove('active');
-            btn.setAttribute('aria-selected', 'false');
-        });
-        const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-        if (activeButton) {
-            activeButton.classList.add('active');
-            activeButton.setAttribute('aria-selected', 'true');
-        }
-
-        // Show/hide tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-            content.classList.add('hidden');
-        });
-        const activeContent = document.getElementById(`tab-${tabName}`);
-        if (activeContent) {
-            activeContent.classList.add('active');
-            activeContent.classList.remove('hidden');
-        }
-    }
-    </script>
-{% endif %}

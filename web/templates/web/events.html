@@ -1,20 +1,31 @@
 {% extends "web/base.html" %}
 {% block title %}
-    {{ artist.name }} - events
+    {{ artist.name }} events
 {% endblock title %}
-{% block page_title %}
-    Events
-{% endblock page_title %}
 {% block content %}
-    <div class="container-page">
+    <div class="page-header">
+        <div class="flex items-center gap-4">
+            {% if artist.image_url_small %}
+                <img class="avatar size-14" src="{{ artist.image_url_small }}" alt="">
+            {% endif %}
+            <div>
+                <p class="eyebrow">Upcoming events</p>
+                <h1 class="page-title">
+                    <a href="{% url 'albums' artist.id %}" class="hover:underline">{{ artist.name }}</a>
+                </h1>
+            </div>
+        </div>
+        {% include "web/parts/watch_events.html" %}
+    </div>
+    <div class="page">
         {% if events %}
             {% include "web/parts/events.html" %}
         {% else %}
-            <div class="empty-state">
-                {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                <h3 class="mt-4 text-lg font-medium text-gray-900">No events found</h3>
-                <p class="mt-2 text-gray-500">{{ artist.name }} has no upcoming events.</p>
-            </div>
+            {% if watching %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description="mottle has found no upcoming events of "|add:artist.name|add:" yet. It checks every day, and emails you about the ones near you if event notifications are on in your settings." %}
+            {% else %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description="mottle has no upcoming events of "|add:artist.name|add:". Watch the artist's events to have it look for them every day." %}
+            {% endif %}
         {% endif %}
     </div>
 {% endblock content %}

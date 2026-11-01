@@ -1,0 +1,52 @@
+{% comment %}
+A collapsible group of an artist's releases in the discography dialog, each release a checkbox of the form.
+
+Parameters:
+- group: the group's key, such as "albums"
+- title: the group's heading
+- releases: the releases
+- checked: whether the releases start selected
+{% endcomment %}
+{% if releases %}
+    <details class="group border-t border-line">
+        <summary class="group-summary">
+            {% include "web/icons/chevron_down.html" with class="group-chevron" %}
+            <input type="checkbox"
+                   class="checkbox"
+                   aria-label="Select all {{ title|lower }}"
+                   data-check-all="{{ group }}"
+                   {% if checked %}checked{% endif %}>
+            <div class="min-w-0 flex-1">
+                <p class="font-semibold">{{ title }}</p>
+                <p class="text-xs text-fg-muted">{{ releases|length }} release{{ releases|length|pluralize }}</p>
+            </div>
+            <div class="stack">
+                {% for album in releases|slice:":4" %}<img src="{{ album.image_url_small }}" alt="">{% endfor %}
+            </div>
+        </summary>
+        <div class="grid grid-cols-2 gap-3 px-5 pt-2 pb-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {% for album in releases %}
+                <label class="group/release relative flex cursor-pointer flex-col gap-2 rounded-xl p-2 transition-colors hover:bg-surface-2 has-[:checked]:bg-accent-soft">
+                    <span class="relative block aspect-square overflow-hidden rounded-lg bg-surface-3">
+                        <img src="{{ album.image_url_large }}"
+                             alt=""
+                             loading="lazy"
+                             class="size-full object-cover opacity-50 transition-opacity group-has-[:checked]/release:opacity-100">
+                        <input type="checkbox"
+                               name="album"
+                               form="albums-form"
+                               value="{{ album.id }}"
+                               class="checkbox absolute top-2 left-2 shadow"
+                               data-group="{{ group }}"
+                               {% if checked %}checked{% endif %}>
+                    </span>
+                    <span class="min-w-0">
+                        <span class="block truncate text-sm font-medium"
+                              title="{{ album.name }}">{{ album.name }}</span>
+                        <span class="block text-xs text-fg-muted">{{ album.release_year }} / {{ album.num_tracks }} track{{ album.num_tracks|pluralize }}</span>
+                    </span>
+                </label>
+            {% endfor %}
+        </div>
+    </details>
+{% endif %}
