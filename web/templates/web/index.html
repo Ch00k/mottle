@@ -2,118 +2,36 @@
 {% block title %}
     Home
 {% endblock title %}
-{% block page_title %}
-    Supercharge Your Spotify Experience
-{% endblock page_title %}
 {% block content %}
-    <div class="container-page">
-        <div class="text-center mb-12">
-            <p class="text-lg text-gray-600 max-w-3xl mx-auto">
-                Mottle unlocks advanced playlist management features missing from Spotify. Whether you're a music enthusiast, collector, or casual listener, Mottle transforms how you organize and discover music.
+    <section class="relative isolate overflow-hidden">
+        <div class="absolute inset-x-0 -top-40 -z-10 flex justify-center blur-3xl"
+             aria-hidden="true">
+            <div class="aspect-[2/1] w-[60rem] bg-[radial-gradient(closest-side,var(--color-accent),transparent)] opacity-25">
+            </div>
+        </div>
+        <div class="page pt-20 pb-16 text-center sm:pt-28">
+            <p class="eyebrow">For Spotify listeners who keep their library tidy</p>
+            <h1 class="mx-auto mt-4 max-w-3xl text-4xl font-extrabold tracking-tight sm:text-6xl">
+                The playlist tools Spotify forgot to build
+            </h1>
+            <p class="mx-auto mt-6 max-w-2xl text-lg text-fg-muted">
+                Turn an artist's whole catalog into one playlist, merge playlists and keep them in sync, clean out duplicates, and hear about new releases first.
             </p>
-        </div>
-        <div class="grid-responsive-2col">
-            <!-- Complete Artist Discographies -->
-            <div class="feature-card">
-                <div class="flex-start space-x-3 flex-1">
-                    <div class="flex-shrink-0">{% include "web/icons/tw_music_notes.html" with class="h-8 w-8 text-green-600" %}</div>
-                    <div class="flex-1">
-                        <h3 class="text-heading-md mb-2">Complete Artist Discographies</h3>
-                        <p class="text-metadata mb-4">
-                            Transform any artist's entire catalog into a perfectly organized playlist with one click
-                        </p>
-                    </div>
-                </div>
-                <div class="flex justify-start ml-11">
-                    <a href="{% url 'search' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="btn-action btn-success">
-                        Create Discography
-                        {% include "web/icons/tw_arrow_right.html" with class="ml-2 h-4 w-4" %}
-                    </a>
-                </div>
-            </div>
-            <!-- Smart Playlist Merging -->
-            <div class="feature-card">
-                <div class="flex-start space-x-3 flex-1">
-                    <div class="flex-shrink-0">{% include "web/icons/tw_duplicate.html" with class="h-8 w-8 text-blue-600" %}</div>
-                    <div class="flex-1">
-                        <h3 class="text-heading-md mb-2">Smart Playlist Merging</h3>
-                        <p class="text-metadata mb-4">
-                            Found multiple great playlists for your favorite genre? Don't choose - combine them all!
-                        </p>
-                    </div>
-                </div>
-                <div class="flex justify-start ml-11">
-                    <a href="{% url 'search' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="btn-action btn-primary">
-                        Merge Playlists
-                        {% include "web/icons/tw_arrow_right.html" with class="ml-2 h-4 w-4" %}
-                    </a>
-                </div>
-            </div>
-            <!-- Intelligent Updates & Notifications -->
-            <div class="feature-card">
-                <div class="flex-start space-x-3 flex-1">
-                    <div class="flex-shrink-0">{% include "web/icons/tw_refresh.html" with class="h-8 w-8 text-cyan-600" %}</div>
-                    <div class="flex-1">
-                        <h3 class="text-heading-md mb-2">Intelligent Updates & Notifications</h3>
-                        <p class="text-metadata mb-4">Never miss new music again. Keep your playlists fresh with new releases and tracks.</p>
-                    </div>
-                </div>
-                <div class="flex justify-start ml-11">
-                    <a href="{% url 'user_settings' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="btn-action btn-cyan">
-                        Manage Updates
-                        {% include "web/icons/tw_arrow_right.html" with class="ml-2 h-4 w-4" %}
-                    </a>
-                </div>
-            </div>
-            <!-- Smart Duplicate Removal -->
-            <div class="feature-card">
-                <div class="flex-start space-x-3 flex-1">
-                    <div class="flex-shrink-0">{% include "web/icons/tw_trash.html" with class="h-8 w-8 text-orange-600" %}</div>
-                    <div class="flex-1">
-                        <h3 class="text-heading-md mb-2">Smart Duplicate Removal</h3>
-                        <p class="text-metadata mb-4">
-                            Intelligent duplicate detection for clean, streamlined playlists without the hassle of manual cleanup.
-                        </p>
-                    </div>
-                </div>
-                <div class="flex justify-start ml-11">
-                    <a href="{% url 'playlists' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="btn-action btn-warning">
-                        Clean Playlists
-                        {% include "web/icons/tw_arrow_right.html" with class="ml-2 h-4 w-4" %}
-                    </a>
-                </div>
-            </div>
-            <!-- AI-Powered Cover Art -->
-            <div class="feature-card">
-                <div class="flex-start space-x-3 flex-1">
-                    <div class="flex-shrink-0">{% include "web/icons/tw_image.html" %}</div>
-                    <div class="flex-1">
-                        <h3 class="text-heading-md mb-2">AI-Powered Cover Art</h3>
-                        <p class="text-metadata mb-4">Make your playlists stand out with custom cover art generated by AI.</p>
-                    </div>
-                </div>
-                <div class="flex justify-start ml-11">
-                    <a href="{% url 'playlists' %}"
-                       hx-boost="true"
-                       hx-indicator="#spinner"
-                       class="btn-action btn-accent">
-                        Generate Cover Art
-                        {% include "web/icons/tw_arrow_right.html" with class="ml-2 h-4 w-4" %}
-                    </a>
-                </div>
+            <div class="mt-10 flex flex-wrap justify-center gap-3">
+                <a href="{% url 'login' %}" class="btn btn-spotify btn-lg">
+                    {% include "web/icons/spotify_logo.html" %}
+                    Continue with Spotify
+                </a>
             </div>
         </div>
-    </div>
+    </section>
+    <section class="page">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% include "web/parts/feature.html" with icon="web/icons/music.html" class="lg:col-span-2" title="Complete discographies" text="Every album, single and compilation of an artist in one playlist, in release order. Pick exactly which releases go in." %}
+            {% include "web/parts/feature.html" with icon="web/icons/merge.html" title="Merged playlists" text="Found several great playlists for one mood? Combine them into one, and keep pulling in what gets added to them." %}
+            {% include "web/parts/feature.html" with icon="web/icons/bell.html" title="Updates by email" text="mottle watches the artists and playlists you follow, and emails you the new releases and tracks to add." %}
+            {% include "web/parts/feature.html" with icon="web/icons/duplicate.html" title="Duplicate removal" text="Find every track a playlist holds more than once, and remove the copies in one go." %}
+            {% include "web/parts/feature.html" with icon="web/icons/sparkles.html" title="AI cover art" text="Give a playlist a cover of its own, generated from its title." %}
+        </div>
+    </section>
 {% endblock content %}

@@ -364,6 +364,18 @@ class TestSignIn(SignedInTestCase):
 
         assert [record.getMessage() for record in logs.records] == ["Failed to refresh token"] * 2
 
+    async def test_index_sends_a_signed_in_user_to_their_playlists(self) -> None:
+        """The index is the landing page for visitors; a signed-in user goes on to their playlists."""
+        response = await self.async_client.get("/")
+        assert response.status_code == 302
+        assert response["Location"] == "/playlists/"
+
+        self.async_client.cookies.clear()
+
+        response = await self.async_client.get("/")
+        assert response.status_code == 200
+        assert "Continue with Spotify" in response.content.decode()
+
     async def test_exempt_page_without_session(self) -> None:
         """A page anyone may see is shown without a session."""
         self.async_client.cookies.clear()
@@ -374,21 +386,74 @@ class TestSignIn(SignedInTestCase):
 
 
 @pytest.mark.asyncio
+class TestSearch(SignedInTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.spotify.find_artists_and_playlists = AsyncMock(
+            return_value=(
+                [make_artist("artist1", "The Artist")],
+                [make_playlist("theirs", "Their Playlist", "someone")],
+            )
+        )
+        self.spotify.get_current_user_playlists = AsyncMock(return_value=[])
+
+    async def test_typing_updates_the_results_in_place(self) -> None:
+        """A query typed into the search box gets only the results, for the page to swap in, and the query's URL."""
+        response = await self.async_client.get("/search/", {"query": "the artist"}, headers={"HX-Request": "true"})
+
+        assert response.status_code == 200
+        page = lh.fromstring(response.content)
+        assert page.get("id") == "search-results"
+        assert page.xpath("//a[@href='/artist/artist1/']//h3/text()") == ["The Artist"]
+        assert page.xpath("//a[@href='/playlist/theirs/']//h5/text()") == ["Their Playlist"]
+        assert response["HX-Push-Url"] == "?query=the artist"
+
+    async def test_navigating_shows_the_whole_page(self) -> None:
+        """Searching from the navigation bar, boosted or not, leads to the whole search page."""
+        for headers in ({}, {"HX-Request": "true", "HX-Boosted": "true"}):
+            response = await self.async_client.get("/search/", {"query": "the artist"}, headers=headers)
+
+            assert response.status_code == 200
+            page = lh.fromstring(response.content)
+            assert page.xpath("//input[@id='query']/@value") == ["the artist"]
+            assert page.xpath("//div[@id='search-results']")
+            assert "HX-Push-Url" not in response
+
+
+@pytest.mark.asyncio
 class TestAlbums(SignedInTestCase):
-    async def test_get_lists_artist_releases_by_type(self) -> None:
-        """The discography modal names the artist and lists its releases, albums before singles."""
+    def setUp(self) -> None:
+        super().setUp()
         self.spotify.get_artist = AsyncMock(return_value=make_artist("artist1", "The Artist"))
         self.spotify.get_artist_albums_separately_by_type = AsyncMock(
             return_value=[make_simple_album("single1", "single"), make_simple_album("album1", "album")]
         )
 
-        response = await self.async_client.get("/artist/artist1/")
+    async def test_get_from_a_button_opens_the_discography_modal(self) -> None:
+        """An HTMX request a button makes gets the discography modal, naming the artist and listing its releases,
+        albums before singles, each a checkbox of the form."""
+        response = await self.async_client.get("/artist/artist1/", headers={"HX-Request": "true"})
 
         assert response.status_code == 200
-        content = response.content.decode()
-        assert "Create The Artist Discography" in content
-        assert content.index("Album album1") < content.index("Album single1")
+        page = lh.fromstring(response.content)
+        assert page.tag == "dialog"
+        assert page.xpath("//h2[@class='modal-title']/text()") == ["Create The Artist discography"]
+        assert page.xpath("//input[@name='album']/@value") == ["album1", "single1"]
         self.spotify.get_artist.assert_awaited_once_with("artist1")
+
+    async def test_get_from_a_link_shows_the_artist_page(self) -> None:
+        """Following a link, boosted or not, leads to the artist's page, listing the releases by type, albums first,
+        with a button opening the discography modal."""
+        for headers in ({}, {"HX-Request": "true", "HX-Boosted": "true"}):
+            response = await self.async_client.get("/artist/artist1/", headers=headers)
+
+            assert response.status_code == 200
+            page = lh.fromstring(response.content)
+            assert page.xpath("normalize-space(//h1)") == "The Artist"
+            assert page.xpath("normalize-space((//section/h2)[1])") == "Albums 1"
+            assert page.xpath("normalize-space((//section/h2)[2])") == "Singles and EPs 1"
+            assert page.xpath("//main//a[starts-with(@href, '/album/')]/@href") == ["/album/album1/", "/album/single1/"]
+            assert page.xpath("//button[normalize-space()='Create discography']/@hx-get") == ["/artist/artist1/"]
 
     async def test_post_creates_discography_playlist_watching_the_artist(self) -> None:
         """A discography playlist is named after the artist unless given a name, and gets the chosen albums' tracks.
@@ -438,10 +503,11 @@ class TestAlbum(SignedInTestCase):
         response = await self.async_client.get("/album/album1/")
 
         assert response.status_code == 200
-        content = response.content.decode()
-        assert '<a href="https://open.spotify.com/album/album1">Album album1</a>' in content
-        assert '<a href="https://open.spotify.com/track/track1">Track track1</a>' in content
-        assert '<img class="small" src="https://i.scdn.co/image/album1" />' in content
+        page = lh.fromstring(response.content)
+        assert page.xpath("normalize-space(//h1)") == "Album album1"
+        assert "https://i.scdn.co/image/album1" in str(page.xpath("string(//section[@class='hero']/@style)"))
+        assert page.xpath("//a[normalize-space()='Open in Spotify']/@href") == ["https://open.spotify.com/album/album1"]
+        assert page.xpath("//table//a[@href='https://open.spotify.com/track/track1']/text()") == ["Track track1"]
         self.spotify.get_album.assert_awaited_once_with("album1")
 
 
@@ -744,6 +810,7 @@ class TestDeduplicatePlaylist(SignedInTestCase):
         response = await self.async_client.post("/playlist/playlist1/deduplicate/", {"track-ids": ["track1"]})
 
         assert response.status_code == 200
+        assert json.loads(response["HX-Trigger"]) == {"HXToast": {"type": "success", "body": "Duplicates removed"}}
         self.spotify.remove_tracks_from_playlist.assert_awaited_once_with("playlist1", ["spotify:track:track1"])
         self.spotify.add_tracks_to_playlist.assert_awaited_once_with("playlist1", ["spotify:track:track1"])
 
@@ -818,11 +885,13 @@ class TestRenamePlaylist(SignedInTestCase):
         assert 'value="My Playlist"' in response.content.decode()
 
     async def test_post_renames(self) -> None:
-        """A new name is saved at Spotify and shown in place of the form."""
+        """A new name is saved at Spotify and shown in place of the form, with the button to rename it again."""
         response = await self.async_client.post("/playlist/playlist1/rename/", {"name": "New Name"})
 
         assert response.status_code == 200
         assert 'title="New Name">New Name</h5>' in response.content.decode()
+        assert 'hx-get="/playlist/playlist1/rename/"' in response.content.decode()
+        assert json.loads(response["HX-Trigger"]) == {"HXToast": {"type": "success", "body": "Playlist renamed"}}
         self.spotify.change_playlist_details.assert_awaited_once_with("playlist1", "New Name")
 
     async def test_post_without_name_is_rejected_with_a_toast(self) -> None:
@@ -839,6 +908,7 @@ class TestRenamePlaylist(SignedInTestCase):
 
         assert response.status_code == 200
         assert 'title="My Playlist">My Playlist</h5>' in response.content.decode()
+        assert 'hx-get="/playlist/playlist1/rename/"' in response.content.decode()
 
 
 @pytest.mark.asyncio
@@ -925,9 +995,9 @@ class TestEventDetails(SignedInTestCase):
             tickets_urls=["https://s.example/a", "https://s.example/b"],
         )
 
-        assert modal.xpath("//h3[@class='modal-title']/text()") == ["The Artist"]
+        assert modal.xpath("//h2[@class='modal-title']/text()") == ["The Artist"]
         text = " ".join(modal.text_content().split())
-        assert "Jan. 1, 2100 The Venue Berlin, Germany" in text
+        assert "Jan 1 The Venue Berlin, Germany Friday, January 1, 2100" in text
         links = modal.xpath("//a[@target='_blank']")
         assert [a.get("href") for a in links] == ["https://s.example/a", "https://s.example/b"]
         assert [" ".join(a.text_content().split()) for a in links] == ["Buy tickets 1", "Buy tickets 2"]
@@ -950,7 +1020,7 @@ class TestEventDetails(SignedInTestCase):
         modal = await self.get_modal(type=EventType.live_stream, stream_urls=["https://s.example/stream"])
 
         text = " ".join(modal.text_content().split())
-        assert "Jan. 1, 2100 Live stream" in text
+        assert "Jan 1 Live stream Friday, January 1, 2100" in text
         assert "None" not in text
         links = modal.xpath("//a[@target='_blank']")
         assert [a.get("href") for a in links] == ["https://s.example/stream"]

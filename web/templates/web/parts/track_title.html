@@ -1,0 +1,15 @@
+{% comment %}A track list's title cell: the album cover, the track's name and its artists.{% endcomment %}
+<div class="flex min-w-0 items-center gap-3">
+    {% if cover %}<img class="track-cover" src="{{ cover }}" alt="" loading="lazy">{% endif %}
+    <div class="min-w-0">
+        <a href="{{ track.url }}"
+           class="link block truncate font-medium"
+           target="_blank"
+           rel="noopener">{{ track.name }}</a>
+        <p class="truncate text-xs text-fg-muted">
+            {% for artist in track.artists %}<a href="{% url 'albums' artist.id %}"
+   class="link-muted"
+   hx-boost="true">{{ artist.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+    </div>
+</div>

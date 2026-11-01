@@ -139,6 +139,9 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
 
 @require_safe  # Accept HEAD requests from UptimeRobot
 def index(request: MottleHttpRequest) -> HttpResponse:
+    if request.session.get("spotify_user_id"):
+        return redirect("playlists")
+
     return render(request, "web/index.html")
 
 
@@ -168,7 +171,7 @@ async def search(request: MottleHttpRequest) -> HttpResponse:
     user_playlist_ids = [playlist.id for playlist in user_playlists]
     playlists = [p for p in playlists if p.id not in user_playlist_ids]
 
-    if request.htmx:
+    if request.htmx and not request.htmx.boosted:
         return push_url(
             render(
                 request,
@@ -213,23 +216,19 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
     singles = releases_dict.get(AlbumType.single, [])
     compilations = releases_dict.get(AlbumType.compilation, [])
 
-    has_albums = bool(albums)
-    has_singles = bool(singles)
-    has_compilations = bool(compilations)
-
     if request.method == "GET":
+        # A link leads to the artist's page, a button opens the dialog creating the discography
+        template = (
+            "web/modals/playlist_discography.html" if request.htmx and not request.htmx.boosted else "web/artist.html"
+        )
         return render(
             request,
-            "web/modals/playlist_discography.html",
+            template,
             context={
                 "artist": artist,
                 "albums": albums,
                 "singles": singles,
                 "compilations": compilations,
-                "album_ids": album_ids,
-                "has_albums": has_albums,
-                "has_singles": has_singles,
-                "has_compilations": has_compilations,
             },
         )
 
@@ -473,7 +472,7 @@ async def deduplicate_playlist(request: MottleHttpRequest, playlist_id: str) -> 
         await request.spotify_client.remove_tracks_from_playlist(playlist_id, tracks)
         await request.spotify_client.add_tracks_to_playlist(playlist_id, tracks)
 
-        return HttpResponse("<article><aside><h3>No duplicates found</h3></aside></article>")
+        return toast(HttpResponse(), "success", "Duplicates removed")
 
     duplicates = await request.spotify_client.find_duplicate_tracks_in_playlist(playlist_id)
     duplicates = [(TrackData.from_tekore_model(track), _) for track, _ in duplicates]
@@ -523,7 +522,7 @@ async def copy_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpRes
     playlist = await request.spotify_client.get_playlist(playlist.id)
 
     # TODO: Toast
-    return render(request, "web/parts/playlist_row.html", context={"playlist": playlist})
+    return render(request, "web/parts/playlist_card.html", context={"playlist": playlist})
 
 
 @require_http_methods(["GET", "POST"])
@@ -646,11 +645,13 @@ async def rename_playlist(request: MottleHttpRequest, playlist_id: str) -> HttpR
         await request.spotify_client.change_playlist_details(playlist_id, name)
 
         playlist.name = name
-        # TODO: Toast
-        return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
+        return toast(
+            render(request, "web/parts/playlist_name_editable.html", {"playlist": playlist}),
+            "success",
+            "Playlist renamed",
+        )
 
-    # TODO: Toast
-    return render(request, "web/parts/playlist_name.html", {"playlist": playlist})
+    return render(request, "web/parts/playlist_name_editable.html", {"playlist": playlist})
 
 
 @require_POST

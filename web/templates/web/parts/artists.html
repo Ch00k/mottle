@@ -1,51 +1,35 @@
-{% if artists %}
-    <div class="space-y-4">
-        <div class="grid-responsive-4col">
-            {% for artist in artists %}
-                <div class="card-interactive">
-                    <!-- Artist Image -->
-                    <div class="image-container-square">
-                        <a href="{% url 'albums' artist.id %}"
-                           hx-boost="true"
-                           hx-indicator="#spinner">
-                            <img src="{{ artist.image_url_large }}"
-                                 alt="{{ artist.name }} photo"
-                                 class="cover-image">
-                        </a>
+<div class="cover-grid">
+    {% for artist in artists %}
+        <article class="tile">
+            <div class="tile-cover rounded-full">
+                {% if artist.image_url_large %}
+                    <img src="{{ artist.image_url_large }}" alt="" loading="lazy">
+                {% else %}
+                    <div class="flex size-full items-center justify-center text-fg-subtle">
+                        {% include "web/icons/user.html" with class="size-10" %}
                     </div>
-                    <!-- Content -->
-                    <div class="p-4 flex flex-col h-full">
-                        <!-- Artist Name -->
-                        <div class="mb-2">
-                            <a href="{% url 'albums' artist.id %}"
-                               hx-boost="true"
-                               hx-indicator="#spinner"
-                               class="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2">
-                                {{ artist.name }}
-                            </a>
-                        </div>
-                        <!-- Genres -->
-                        <div class="mb-3 h-12 flex items-start">
-                            {% if artist.genres %}
-                                <div class="flex flex-wrap gap-1">
-                                    {% for genre in artist.genres|slice:":3" %}<span class="badge-genre">{{ genre }}</span>{% endfor %}
-                                    {% if artist.genres|length > 3 %}
-                                        <span class="badge-genre text-gray-500">+{{ artist.genres|length|add:"-3" }}</span>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <!-- Actions -->
-                        <div class="pt-3 border-t border-gray-100">{% include "web/parts/artist_actions.html" %}</div>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-{% else %}
-    <div class="text-center py-12">
-        {% include "web/icons/tw_search.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-        <h3 class="mt-4 text-lg font-medium text-gray-900">No artists found</h3>
-        <p class="mt-2 text-gray-500">Try searching with different keywords.</p>
-    </div>
-{% endif %}
+                {% endif %}
+            </div>
+            <div class="min-w-0 px-1 pb-1">
+                <a href="{% url 'albums' artist.id %}" class="tile-link" hx-boost="true">
+                    <h3 class="tile-title">{{ artist.name }}</h3>
+                </a>
+                <p class="tile-meta mt-0.5">
+                    {% if artist.genres %}
+                        {{ artist.genres|slice:":2"|join:", " }}
+                    {% else %}
+                        Artist
+                    {% endif %}
+                </p>
+            </div>
+            <div class="tile-actions">
+                <button class="btn btn-primary btn-sm shadow-lg"
+                        hx-get="{% url 'albums' artist.id %}"
+                        hx-target="body"
+                        hx-swap="beforeend">
+                    {% include "web/icons/plus.html" %}<span>Discography</span>
+                </button>
+            </div>
+        </article>
+    {% endfor %}
+</div>

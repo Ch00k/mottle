@@ -1,98 +1,73 @@
 {% load static %}
-<div class="mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-4xl">
-    <div class="card">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-xl font-semibold text-gray-900">Notification Settings</h3>
-        </div>
-        <form class="p-6 space-y-4">
-            {% csrf_token %}
-            <!-- Email Notifications Section -->
-            <div class="bg-gray-50 rounded-lg p-4">
-                <h4 class="text-md font-medium text-gray-900 mb-3">Email Notifications</h4>
-                <div class="space-y-3">
-                    <!-- Playlist Notifications -->
-                    <label class="flex items-center">
-                        <input type="checkbox"
-                               id="playlist-notifications"
-                               name="playlist-notifications"
-                               {% if playlist_notifications %}checked{% endif %}
-                               class="form-checkbox">
-                        <div class="ml-3">
-                            <span class="text-sm font-medium text-gray-700">Playlist Changes</span>
-                            <p class="text-sm text-gray-500">
-                                Receive email notifications about updates to your playlists (discographies or merges)
-                            </p>
-                        </div>
-                    </label>
-                    <!-- Release Notifications (Hidden) -->
-                    <div class="hidden">
-                        <label class="flex items-center">
-                            <input type="checkbox"
-                                   id="release-notifications"
-                                   name="release-notifications"
-                                   {% if release_notifications %}checked{% endif %}
-                                   class="form-checkbox">
-                            <div class="ml-3">
-                                <span class="text-sm font-medium text-gray-700">Artist Releases</span>
-                                <p class="text-sm text-gray-500">Receive email notifications about new releases of watched artists</p>
-                            </div>
-                        </label>
-                    </div>
-                    <!-- Event Notifications -->
-                    {% if request.session.feature_flags.events_enabled %}
-                        <label class="flex items-center">
-                            <input type="checkbox"
-                                   id="event-notifications"
-                                   name="event-notifications"
-                                   {% if event_notifications %}checked{% endif %}
-                                   class="form-checkbox">
-                            <div class="ml-3">
-                                <span class="text-sm font-medium text-gray-700">Artist Events</span>
-                                <p class="text-sm text-gray-500">Receive email notifications about events of watched artists</p>
-                            </div>
-                        </label>
-                    {% endif %}
-                </div>
-            </div>
-            <!-- Location Settings Section -->
-            {% if request.session.feature_flags.events_enabled %}
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <h4 class="text-md font-medium text-gray-900 mb-3">Location Settings</h4>
-                    <p class="text-sm text-gray-600 mb-4">
-                        Select your location and area radius to get notified about events within the area
-                    </p>
-                    <!-- Map Container -->
-                    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        <div id="map" class="w-full h-96"></div>
-                    </div>
-                    <!-- Hidden Location Inputs -->
-                    <input type="hidden"
-                           id="latitude"
-                           name="latitude"
-                           value="{{ latitude | default_if_none:'' }}">
-                    <input type="hidden"
-                           id="longitude"
-                           name="longitude"
-                           value="{{ longitude | default_if_none:'' }}">
-                    <input type="hidden"
-                           id="radius"
-                           name="radius"
-                           value="{{ radius | default_if_none:'' }}">
-                </div>
-            {% endif %}
-            <!-- Save Button -->
-            <div class="border-t border-gray-200 pt-4">
-                <button type="button"
-                        hx-post="."
-                        hx-target="#content"
-                        hx-indicator="#spinner"
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                    {% include "web/icons/tw_checkmark.html" with class="h-4 w-4 mr-2" %}
-                    Save Settings
-                </button>
-            </div>
-        </form>
-    </div>
+<div class="page-header max-w-3xl">
+    <h1 class="page-title">Settings</h1>
 </div>
-<!-- https://developers.cloudflare.com/speed/optimization/content/rocket-loader/ignore-javascripts/ -->
-<script data-cfasync="false" src="{% static 'web/map.js' %}"></script>
+<form class="page max-w-3xl space-y-6"
+      hx-post="."
+      hx-target="#content"
+      hx-indicator="#save-settings">
+    {% csrf_token %}
+    <section class="card p-6">
+        <h2 class="section-title">Email notifications</h2>
+        <p class="mt-1 text-sm text-fg-muted">Sent to {{ request.session.spotify_user_email|default:"your Spotify account's address" }}</p>
+        <div class="mt-4 space-y-1">
+            <label class="option -mx-3 items-center justify-between">
+                <span>
+                    <span class="option-title block">Playlist updates</span>
+                    <span class="option-hint block">New releases and tracks for the discographies and merged playlists mottle watches</span>
+                </span>
+                <input type="checkbox"
+                       id="playlist-notifications"
+                       name="playlist-notifications"
+                       {% if playlist_notifications %}checked{% endif %}
+                       class="switch">
+            </label>
+            {% if release_notifications %}
+                <input type="hidden" name="release-notifications" value="on">
+            {% endif %}
+            {% if request.session.feature_flags.events_enabled %}
+                <label class="option -mx-3 items-center justify-between">
+                    <span>
+                        <span class="option-title block">Artist events</span>
+                        <span class="option-hint block">Concerts of the artists you watch within your area</span>
+                    </span>
+                    <input type="checkbox"
+                           id="event-notifications"
+                           name="event-notifications"
+                           {% if event_notifications %}checked{% endif %}
+                           class="switch">
+                </label>
+            {% endif %}
+        </div>
+    </section>
+    {% if request.session.feature_flags.events_enabled %}
+        <section class="card p-6">
+            <h2 class="section-title">Your area</h2>
+            <p class="mt-1 text-sm text-fg-muted">
+                Search for your city on the map, then set how far from it you would travel for a concert.
+            </p>
+            <div id="map" class="mt-4 h-96 w-full"></div>
+            <input type="hidden"
+                   id="latitude"
+                   name="latitude"
+                   value="{{ latitude|default_if_none:'' }}">
+            <input type="hidden"
+                   id="longitude"
+                   name="longitude"
+                   value="{{ longitude|default_if_none:'' }}">
+            <input type="hidden"
+                   id="radius"
+                   name="radius"
+                   value="{{ radius|default_if_none:'' }}">
+        </section>
+    {% endif %}
+    <div class="flex justify-end">
+        <button type="submit" id="save-settings" class="btn btn-primary btn-lg">
+            <span>Save settings</span>
+        </button>
+    </div>
+</form>
+{% if request.session.feature_flags.events_enabled %}
+    <!-- https://developers.cloudflare.com/speed/optimization/content/rocket-loader/ignore-javascripts/ -->
+    <script data-cfasync="false" src="{% static 'web/map.js' %}"></script>
+{% endif %}

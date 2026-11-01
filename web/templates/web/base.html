@@ -4,7 +4,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta name="theme-color" content="#2563eb">
+        <meta name="theme-color" content="#0a0a0d">
+        <meta name="color-scheme" content="dark">
         <!-- SEO Meta Tags -->
         <meta name="description"
               content="{% block meta_description %}Enhanced Spotify features including playlist management, artist tracking, and event discovery{% endblock %}">
@@ -27,103 +28,44 @@
         <meta name="twitter:description"
               content="{% block twitter_description %}Enhanced Spotify features including playlist management, artist tracking, and event discovery{% endblock %}">
         <!-- DNS Prefetch & Preconnect -->
-        <link rel="dns-prefetch" href="//unpkg.com">
         <link rel="preconnect" href="https://unpkg.com" crossorigin>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="{% static 'web/favicon.png' %}">
         <link rel="apple-touch-icon" href="{% static 'web/favicon.png' %}">
-        <!-- Critical CSS -->
+        <!-- Styles -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap"
+              rel="stylesheet">
         <link href="{% static 'web/style.css' %}" rel="stylesheet">
-        <!-- Preload Critical Resources -->
-        <link rel="preload" href="{% static 'web/script.js' %}" as="script">
-        <title>{% block title %}mottle{% endblock %}</title>
+        <!-- Maps -->
+        {% block maps_resources %}
+            {% include "web/parts/leaflet.html" %}
+        {% endblock %}
+        <title>{% block title %}mottle{% endblock %} - mottle</title>
         {% block head %}{% endblock %}
     </head>
-    <body hx-ext="head-support"
+    <body class="flex min-h-dvh flex-col"
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-        <!-- Skip Navigation -->
+        <div class="progress" aria-hidden="true"></div>
         <a href="#main-content"
-           class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50">
+           class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[80] focus:rounded-full focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-fg">
             Skip to main content
         </a>
-        <!-- Header -->
-        <header role="banner">
-            {% include "web/parts/nav.html" %}
-            <div class="bg-gradient-to-r from-blue-800 to-blue-500 text-white">
-                <div class="container-page">
-                    <h1 class="text-3xl md:text-4xl font-bold">
-                        {% block page_title %}{% endblock %}
-                    </h1>
-                </div>
-            </div>
-        </header>
-        <!-- Main Content -->
-        <main id="main-content" class="min-h-screen bg-gray-100" role="main">
-            <!-- Loading Spinner -->
-            <div id="spinner"
-                 class="htmx-indicator opacity-0 pointer-events-none fixed inset-0 backdrop-blur-md z-[9999] flex-center transition-opacity duration-200"
-                 role="status"
-                 aria-label="Loading">
-                <div class="relative">
-                    <div class="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span class="sr-only">Loading...</span>
-                </div>
-            </div>
+        {% include "web/parts/nav.html" %}
+        <main id="main-content" class="flex-1">
             <div id="content">
                 {% block content %}{% endblock %}
             </div>
         </main>
-        <!-- Footer -->
-        <footer role="contentinfo">
-            {% include "web/parts/footer.html" %}
-        </footer>
+        {% include "web/parts/footer.html" %}
+        <div id="toasts" class="toasts" popover="manual" aria-live="polite"></div>
+        {% include "web/parts/confirm_dialog.html" %}
         <!-- Scripts -->
         <script src="https://unpkg.com/htmx.org@2.0.11/dist/htmx.min.js"
                 integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg"
                 crossorigin="anonymous"
                 defer></script>
-        <script src="https://unpkg.com/hyperscript.org@0.9.14/dist/_hyperscript.min.js"
-                integrity="sha384-NzchC8z9HmP/Ed8cheGl9XuSrFSkDNHPiDl+ujbHE0F0I7tWC4rUnwPXP+7IvVZv"
-                crossorigin="anonymous"
-                defer></script>
-        <!-- Leaflet CSS & JS (only load when needed) -->
-        {% block maps_resources %}
-            {% include "web/parts/leaflet.html" %}
-        {% endblock %}
-        <!-- HTMX Extensions -->
-        <script src="https://unpkg.com/htmx-toaster@0.0.20/dist/htmx-toaster.min.js"
-                integrity="sha384-Kwt+p/oQ/8Ii44CuacRU5TNOiFbXvqE5+6ZeptILOpN8Kfl8kzlE6LakGLkOm1AF"
-                crossorigin="anonymous"
-                defer></script>
-        <!-- App Scripts -->
-        <script>
-        // HTMX Loading States
-        document.addEventListener('htmx:beforeRequest', function() {
-            const spinner = document.getElementById('spinner');
-            if (spinner) {
-                spinner.style.opacity = '1';
-                spinner.style.pointerEvents = 'auto';
-            }
-        });
-
-        document.addEventListener('htmx:afterRequest', function() {
-            const spinner = document.getElementById('spinner');
-            if (spinner) {
-                spinner.style.opacity = '0';
-                spinner.style.pointerEvents = 'none';
-            }
-        });
-        
-        // Error Handling for External Resources
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if HTMX loaded properly
-            if (typeof htmx === 'undefined') {
-                console.warn('HTMX failed to load');
-            }
-        });
-        </script>
-        {% block script %}
-            <script src="{% static 'web/script.js' %}" defer></script>
-        {% endblock %}
+        <script src="{% static 'web/script.js' %}" defer></script>
     </body>
 </html>

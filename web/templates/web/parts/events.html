@@ -1,13 +1,5 @@
-<div class="grid-responsive-4col">
+<ul class="grid gap-1 lg:grid-cols-2">
     {% for event in events %}
         {% include "web/parts/event_row.html" %}
-    {% empty %}
-        <div class="col-span-full">
-            <div class="text-center py-12">
-                {% include "web/icons/tw_calendar.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                <h3 class="mt-4 text-lg font-medium text-gray-900">No events found</h3>
-                <p class="mt-2 text-gray-500">We couldn't find any events to display.</p>
-            </div>
-        </div>
     {% endfor %}
-</div>
+</ul>

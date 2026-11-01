@@ -1,57 +1,33 @@
 {% extends "web/base.html" %}
 {% block title %}
-    Login
+    Log in
 {% endblock title %}
-{% block page_title %}
-    Welcome to mottle
-{% endblock page_title %}
 {% block content %}
-    <div class="max-w-md mx-auto px-4 py-8">
-        <div class="card-elevated overflow-hidden">
-            <!-- Header -->
-            <div class="px-6 py-8 bg-gradient-to-r from-green-800 to-green-500 text-white text-center">
-                <div class="mb-4">{% include "web/icons/tw_spotify_logo.html" %}</div>
-                <h2 class="text-2xl font-bold">Connect with Spotify</h2>
-                <p class="mt-2 text-green-100">Access powerful tools to manage your music library</p>
+    <div class="page flex justify-center py-16 sm:py-24">
+        <div class="card w-full max-w-md p-8 text-center">
+            <div class="mx-auto flex size-14 items-center justify-center rounded-2xl bg-spotify/15 text-spotify">
+                {% include "web/icons/spotify_logo.html" with class="size-8" %}
             </div>
-            <!-- Content -->
-            <div class="px-6 py-8">
-                <div class="text-center mb-6">
-                    <h3 class="text-heading-md mb-3">What you'll get:</h3>
-                    <div class="space-y-3 text-left">
-                        <div class="icon-text">
-                            {% include "web/icons/tw_checkmark.html" %}
-                            <span class="text-metadata">Create discographies</span>
-                        </div>
-                        <div class="icon-text">
-                            {% include "web/icons/tw_checkmark.html" %}
-                            <span class="text-metadata">Merge playlists</span>
-                        </div>
-                        <div class="icon-text">
-                            {% include "web/icons/tw_checkmark.html" %}
-                            <span class="text-metadata">Generate cover art with AI</span>
-                        </div>
-                        <div class="icon-text">
-                            {% include "web/icons/tw_checkmark.html" %}
-                            <span class="text-metadata">Receive playlist update notifications</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Login Form -->
-                <form action="." method="post" class="space-y-4">
-                    {% csrf_token %}
-                    <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
-                    <button type="submit" class="btn-spotify-login icon-text">
-                        {% include "web/icons/tw_spotify_logo.html" with class="h-6 w-6 mr-3" %}
-                        Continue with Spotify
-                    </button>
-                </form>
-                <!-- Footer Note -->
-                <p class="mt-6 text-xs text-gray-500 text-center">
-                    By connecting, you agree to let mottle access your Spotify data to provide these features.
-                    We don't store your personal information.
-                </p>
-            </div>
+            <h1 class="mt-6 text-2xl font-bold tracking-tight">Connect your Spotify account</h1>
+            <p class="mt-2 text-sm text-fg-muted">mottle works on your Spotify library, so it needs your permission to read and change it.</p>
+            <ul class="mt-8 space-y-3 text-left text-sm">
+                {% include "web/parts/check_item.html" with text="Create artist discographies" %}
+                {% include "web/parts/check_item.html" with text="Merge playlists and keep them in sync" %}
+                {% include "web/parts/check_item.html" with text="Generate cover art with AI" %}
+                {% include "web/parts/check_item.html" with text="Get emailed about playlist updates" %}
+            </ul>
+            <form action="." method="post" class="mt-8" hx-boost="false">
+                {% csrf_token %}
+                <input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+                <button type="submit" class="btn btn-spotify btn-lg w-full">
+                    {% include "web/icons/spotify_logo.html" %}
+                    Continue with Spotify
+                </button>
+            </form>
+            <p class="mt-6 text-xs text-fg-subtle">
+                By connecting, you agree to let mottle access your Spotify data to provide these features.
+                We don't store your personal information.
+            </p>
         </div>
     </div>
 {% endblock content %}

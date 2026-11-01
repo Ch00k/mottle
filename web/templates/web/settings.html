@@ -2,9 +2,6 @@
 {% block title %}
     Settings
 {% endblock title %}
-{% block page_title %}
-    Settings
-{% endblock page_title %}
 {% block maps_resources %}
     {% if request.session.feature_flags.events_enabled %}
         {% include "web/parts/leaflet.html" %}

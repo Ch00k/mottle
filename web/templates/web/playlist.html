@@ -1,87 +1,67 @@
-{% extends "web/base.html" %}
+{% extends "web/media_page.html" %}
 {% block title %}
     {{ playlist.name }}
 {% endblock title %}
-{% block page_title %}
-    <div class="flex flex-col md:flex-row items-start md:items-center gap-6 card p-6">
-        <div class="flex-shrink-0">
-            <img class="w-32 h-32 md:w-40 md:h-40 rounded-lg shadow-lg"
-                 src="{{ playlist.image_url_large }}"
-                 alt="{{ playlist.name }} cover" />
-        </div>
-        <div class="flex-1 min-w-0">
-            <h1 class="text-2xl md:text-4xl font-bold text-gray-900 mb-2 truncate">
-                <a href="{{ playlist.url }}" class="text-link-hover" target="_blank">{{ playlist.name }}</a>
-            </h1>
-            <div class="text-metadata mb-4">
-                {% if playlist.description %}<p class="mb-2">{{ playlist.description }}</p>{% endif %}
-                <p>{{ tracks|length }} track{{ tracks|length|pluralize }}</p>
-            </div>
-            {% include "web/parts/playlist_actions.html" with source="playlist" %}
-        </div>
-    </div>
-{% endblock page_title %}
-{% block content %}
-    <div class="container-page-short">
-        {% if tracks %}
-            <div class="card overflow-hidden">
-                <!-- Track List -->
-                <div class="divide-y divide-gray-200">
-                    {% for track in tracks %}
-                        <div id="track-row" class="p-4 hover-subtle">
-                            <div class="icon-text space-x-4">
-                                <!-- Album Art -->
-                                <div class="flex-shrink-0">
-                                    <img class="w-18 h-18 rounded-md shadow-sm object-cover"
-                                         style="min-width: 70px;
-                                                min-height: 70px"
-                                         src="{{ track.album.image_url_small }}"
-                                         alt="{{ track.album.name }} cover" />
-                                </div>
-                                <!-- Track Info -->
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-                                        <div class="flex-1 min-w-0">
-                                            <!-- Track Name -->
-                                            <h3 class="text-sm font-medium text-gray-900 truncate">
-                                                <a href="{{ track.url }}"
-                                                   class="text-link-hover"
-                                                   target="_blank">{{ track.name }}</a>
-                                            </h3>
-                                            <!-- Artists -->
-                                            <p class="text-metadata truncate">
-                                                {% for artist in track.artists %}
-                                                    <a href="{{ artist.url }}"
-                                                       class="text-link-hover"
-                                                       target="_blank">{{ artist.name }}</a>
-                                                    {% if not forloop.last %},{% endif %}
-                                                {% endfor %}
-                                            </p>
-                                            <!-- Album -->
-                                            <p class="text-xs text-gray-500 truncate mt-1">
-                                                <a href="{% url 'album' track.album.id %}"
-                                                   class="text-link-hover">{{ track.album.name }}</a>
-                                            </p>
-                                        </div>
-                                        <!-- Track Meta -->
-                                        <div class="mt-2 md:mt-0 md:ml-4 icon-text space-x-4 text-sm text-gray-500">
-                                            <span>{{ track.duration }}</span>
-                                            <span>{{ track.added_at | date:"M j, Y" }}</span>
-                                            {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
-                                                <div class="flex-shrink-0">{% include "web/parts/playlist_track_delete.html" %}</div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% else %}
-            <div class="card">
-                {% include "web/parts/empty_state.html" with icon="web/icons/tw_music_notes.html" title="No tracks found" description="This playlist appears to be empty or the tracks couldn't be loaded." %}
-            </div>
-        {% endif %}
-    </div>
-{% endblock content %}
+{% block hero_cover_url %}{{ playlist.image_url_large|default:"" }}{% endblock hero_cover_url %}
+{% block hero_alt %}
+    {{ playlist.name }} cover
+{% endblock hero_alt %}
+{% block hero_kind %}
+    Playlist
+{% endblock hero_kind %}
+{% block hero_title %}
+    {{ playlist.name }}
+{% endblock hero_title %}
+{% block hero_meta %}
+    {% if playlist.description %}<p class="w-full text-fg-muted">{{ playlist.description }}</p>{% endif %}
+    <a href="{{ playlist.owner_url }}"
+       class="font-semibold text-fg hover:underline">{{ playlist.owner_name }}</a>
+    <span class="text-fg-subtle">/</span>
+    <span>{{ tracks|length }} track{{ tracks|length|pluralize }}</span>
+{% endblock hero_meta %}
+{% block hero_actions %}
+    <a href="{{ playlist.url }}"
+       class="btn btn-primary"
+       target="_blank"
+       rel="noopener">{% include "web/icons/spotify_logo.html" with class="size-4" %}<span>Open in Spotify</span></a>
+    {% include "web/parts/playlist_actions.html" with item_class="btn btn-secondary" danger_class="btn btn-ghost text-danger hover:bg-danger-soft hover:text-danger" source="playlist" %}
+{% endblock hero_actions %}
+{% block body %}
+    {% if tracks %}
+        <table class="tracks">
+            <thead>
+                <tr>
+                    <th class="track-index" data-sort>#</th>
+                    <th data-sort>Title</th>
+                    <th class="hidden md:table-cell" data-sort>Album</th>
+                    <th class="hidden w-32 lg:table-cell" data-sort>Added</th>
+                    <th class="w-16 text-right" aria-label="Duration" data-sort>
+                        {% include "web/icons/clock.html" with class="ml-auto size-4" %}
+                    </th>
+                    {% if playlist.owner_id == request.session.spotify_user_spotify_id %}<th class="w-12"></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for track in tracks %}
+                    <tr>
+                        <td class="track-index">{{ forloop.counter }}</td>
+                        <td>{% include "web/parts/track_title.html" with cover=track.album.image_url_small %}</td>
+                        <td class="hidden truncate md:table-cell">
+                            <a href="{% url 'album' track.album.id %}"
+                               class="link-muted"
+                               hx-boost="true">{{ track.album.name }}</a>
+                        </td>
+                        <td class="hidden text-fg-muted lg:table-cell"
+                            data-value="{{ track.added_at|date:'Y-m-d' }}">{{ track.added_at|date:"M j, Y" }}</td>
+                        <td class="text-right text-fg-muted tabular-nums">{{ track.duration }}</td>
+                        {% if playlist.owner_id == request.session.spotify_user_spotify_id %}
+                            <td class="text-right">{% include "web/parts/playlist_track_delete.html" %}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        {% include "web/parts/empty_state.html" with icon="web/icons/music.html" title="This playlist is empty" description="Add tracks to it on Spotify, or merge another playlist into it." %}
+    {% endif %}
+{% endblock body %}

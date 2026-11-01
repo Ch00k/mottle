@@ -1,491 +1,93 @@
-{% load static %}
-<div id="modal" _="on closeModal remove me" class="modal-overlay">
-    <div class="modal-container">
-        <!-- Background overlay -->
-        <div class="modal-backdrop" _="on click trigger closeModal"></div>
-        <!-- Modal panel -->
-        <div class="modal-panel-lg">
-            <!-- Header -->
-            <div class="modal-header">
-                <div class="modal-header-layout">
-                    <h3 class="modal-title">Create {{ artist.name }} Discography</h3>
-                    <button class="modal-close-button" _="on click trigger closeModal">{% include "web/icons/tw_close.html" %}</button>
+<dialog tabindex="-1" class="modal modal-xl" aria-labelledby="modal-title">
+    {% include "web/parts/modal_header.html" with title="Create "|add:artist.name|add:" discography" %}
+    {% if albums or singles or compilations %}
+        <div class="modal-body space-y-0 p-0">
+            <form action="{% url 'albums' artist.id %}"
+                  method="post"
+                  id="albums-form"
+                  hx-boost="true"
+                  hx-indicator="#create-discography"
+                  class="grid gap-6 p-5 md:grid-cols-2">
+                {% csrf_token %}
+                <div>
+                    <label for="playlist-name" class="label">Playlist name</label>
+                    <input type="text"
+                           name="name"
+                           id="playlist-name"
+                           value="{{ artist.name }} discography"
+                           required
+                           class="input">
+                    <label class="option -mx-3 mt-3">
+                        <input type="checkbox" name="is-public" checked class="switch">
+                        <span>
+                            <span class="option-title block">Public</span>
+                            <span class="option-hint block">Anyone can find the playlist on your Spotify profile</span>
+                        </span>
+                    </label>
+                    <label class="option -mx-3">
+                        <input type="checkbox" name="generate-cover" class="switch">
+                        <span>
+                            <span class="option-title block">Generate a cover image</span>
+                            <span class="option-hint block">AI draws a cover from the playlist's name</span>
+                        </span>
+                    </label>
                 </div>
+                <div>
+                    <p class="label">Keeping it up to date</p>
+                    <label class="option -mx-3">
+                        <input type="checkbox"
+                               name="auto-update"
+                               checked
+                               class="switch"
+                               data-enables="auto-accept">
+                        <span>
+                            <span class="option-title block">Watch for new releases</span>
+                            <span class="option-hint block">Get the artist's new releases offered as updates to the playlist</span>
+                        </span>
+                    </label>
+                    <label class="option -mx-3">
+                        <input type="checkbox" name="auto-accept" id="auto-accept" class="switch">
+                        <span>
+                            <span class="option-title block">Add them automatically</span>
+                            <span class="option-hint block">New releases go into the playlist without asking</span>
+                        </span>
+                    </label>
+                    {% if request.session.feature_flags.events_enabled %}
+                        <label class="option -mx-3">
+                            <input type="checkbox" name="track-events" checked class="switch">
+                            <span>
+                                <span class="option-title block">Watch for live events</span>
+                                <span class="option-hint block">Get emailed about the artist's concerts near you</span>
+                            </span>
+                        </label>
+                    {% endif %}
+                </div>
+            </form>
+            <div class="flex items-center justify-between border-t border-line px-5 py-3">
+                <p class="text-sm font-semibold">Releases</p>
+                <button type="button" class="btn btn-ghost btn-sm" data-toggle-details>
+                    {% include "web/icons/chevron_down.html" %}<span data-label>Expand all</span>
+                </button>
             </div>
-            <!-- Content -->
-            <div class="modal-content-scrollable">
-                {% if albums or singles or compilations %}
-                    <!-- Playlist Configuration Form -->
-                    <div class="modal-section-divider">
-                        <form action="{% url 'albums' artist.id %}"
-                              method="post"
-                              id="albums-form"
-                              hx-boost="true"
-                              hx-indicator="#spinner"
-                              _="on htmx:afterRequest trigger closeModal"
-                              class="space-y-4">
-                            {% csrf_token %}
-                            <!-- Playlist Details -->
-                            <div class="form-section">
-                                <h4 class="text-md font-medium text-gray-900 mb-3">Playlist Details</h4>
-                                <div class="form-grid">
-                                    <div>
-                                        <label for="playlist-name" class="form-label">Playlist Name</label>
-                                        <input type="text"
-                                               name="name"
-                                               id="playlist-name"
-                                               value="{{ artist.name }} discography"
-                                               onkeyup="toggleSubmitButtonInput('playlist-name', 'create')"
-                                               required
-                                               class="form-input-text">
-                                    </div>
-                                    <div>
-                                        <label for="playlist-description"
-                                               class="form-label">Description (optional)</label>
-                                        <input type="text"
-                                               name="description"
-                                               id="playlist-description"
-                                               class="form-input-text">
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Settings -->
-                            <div class="form-section">
-                                <h4 class="text-md font-medium text-gray-900 mb-3">Settings</h4>
-                                <div class="form-grid">
-                                    <label class="form-checkbox-wrapper">
-                                        <input type="checkbox"
-                                               name="is-public"
-                                               id="is-public"
-                                               checked
-                                               class="form-checkbox">
-                                        <span class="form-checkbox-label">Make public</span>
-                                    </label>
-                                    <label class="form-checkbox-wrapper">
-                                        <input type="checkbox"
-                                               name="generate-cover"
-                                               id="generate-cover"
-                                               class="form-checkbox">
-                                        <span class="form-checkbox-label">Generate cover image</span>
-                                    </label>
-                                    {% if events_enabled %}
-                                        <label class="form-checkbox-wrapper">
-                                            <input type="checkbox"
-                                                   name="track-events"
-                                                   id="track-events"
-                                                   checked
-                                                   class="form-checkbox">
-                                            <span class="form-checkbox-label">Watch artist for live events</span>
-                                        </label>
-                                    {% endif %}
-                                    <label class="form-checkbox-wrapper">
-                                        <input type="checkbox"
-                                               name="auto-update"
-                                               id="auto-update"
-                                               checked
-                                               onClick="toggleRelatedCheckbox(this, 'auto-accept')"
-                                               class="form-checkbox">
-                                        <span class="form-checkbox-label">Watch artist for new releases</span>
-                                    </label>
-                                    <label class="form-checkbox-wrapper md:col-span-2">
-                                        <input type="checkbox"
-                                               name="auto-accept"
-                                               id="auto-accept"
-                                               class="form-checkbox">
-                                        <span class="form-checkbox-label">Automatically add tracks from new releases to the playlist</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <!-- Albums Overview Header -->
-                    <div class="modal-section-divider">
-                        <div class="modal-header-layout">
-                            <div>
-                                <a href="javascript:void(0)"
-                                   onclick="toggleAllAlbums()"
-                                   class="text-sm text-gray-500 hover:text-gray-700 transition-colors form-checkbox-wrapper">
-                                    <span id="toggleAllIcon" class="transform transition-transform mr-1">
-                                        {% include "web/icons/tw_chevron_down.html" with class="h-3 w-3" %}
-                                    </span>
-                                    <span id="toggleAllText">Expand all</span>
-                                </a>
-                            </div>
-                            <div>
-                                <button type="submit"
-                                        form="albums-form"
-                                        id="create"
-                                        class="modal-button-create">
-                                    {% include "web/icons/tw_plus.html" with class="modal-icon modal-icon-mr" %}
-                                    Create Playlist
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Albums Section -->
-                    {% if albums %}
-                        <div class="bg-white border-b border-gray-200">
-                            <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover-subtle"
-                                 onclick="toggleAlbumSection('albums-content')">
-                                <div class="modal-header-layout">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform albums-chevron" %}
-                                        </div>
-                                        <label class="flex items-center space-x-3 cursor-pointer"
-                                               onclick="event.stopPropagation()">
-                                            <input type="checkbox"
-                                                   name="all-albums"
-                                                   id="all-albums"
-                                                   class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxes(this, 'album')"
-                                                   onchange="toggleSubmitButton()"
-                                                   {% if not has_albums %}disabled{% endif %}
-                                                   checked>
-                                            <div>
-                                                <h2 class="text-lg font-semibold text-gray-900">Albums</h2>
-                                                <p class="text-sm text-gray-600">{{ albums|length }} album{{ albums|length|pluralize }}</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="form-checkbox-wrapper space-x-4">
-                                        <!-- Album Preview -->
-                                        <div class="flex -space-x-1">
-                                            {% for album in albums|slice:":3" %}
-                                                <img class="w-8 h-8 rounded border-2 border-white object-cover"
-                                                     src="{{ album.image_url_small }}"
-                                                     alt="{{ album.name }}"
-                                                     title="{{ album.name }}">
-                                            {% endfor %}
-                                            {% if albums|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
-                                                    <span class="text-xs font-medium text-gray-600">+{{ albums|length|add:"-3" }}</span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Collapsible Content -->
-                            <div id="albums-content" class="album-section-content hidden">
-                                <div class="px-6 py-4 border-t border-gray-200">
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                        {% for album in albums %}
-                                            <div class="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
-                                                <!-- Album Cover -->
-                                                <div class="aspect-square bg-gray-100 relative overflow-hidden">
-                                                    <img src="{{ album.image_url_large }}"
-                                                         alt="{{ album.name }} cover art"
-                                                         class="w-full h-full object-cover">
-                                                    <!-- Selection Checkbox -->
-                                                    <div class="absolute top-2 left-2">
-                                                        <label class="inline-form-checkbox-wrapper">
-                                                            <input type="checkbox"
-                                                                   name="album"
-                                                                   form="albums-form"
-                                                                   class="toggling album form-checkbox"
-                                                                   value="{{ album.id }}"
-                                                                   onchange="toggleSubmitButton()"
-                                                                   checked>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <!-- Content -->
-                                                <div class="p-3">
-                                                    <h3 class="text-sm font-medium text-gray-900 truncate"
-                                                        title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
-                                                        <span>{{ album.release_year }}</span>
-                                                        <span>{{ album.num_tracks }} tracks</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    <!-- Singles Section -->
-                    {% if singles %}
-                        <div class="bg-white border-b border-gray-200">
-                            <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover-subtle"
-                                 onclick="toggleAlbumSection('singles-content')">
-                                <div class="modal-header-layout">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform singles-chevron" %}
-                                        </div>
-                                        <label class="flex items-center space-x-3 cursor-pointer"
-                                               onclick="event.stopPropagation()">
-                                            <input type="checkbox"
-                                                   name="all-singles"
-                                                   id="all-singles"
-                                                   class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxes(this, 'single')"
-                                                   onchange="toggleSubmitButton()"
-                                                   {% if not has_singles %}disabled{% endif %}
-                                                   checked>
-                                            <div>
-                                                <h2 class="text-lg font-semibold text-gray-900">Singles</h2>
-                                                <p class="text-sm text-gray-600">{{ singles|length }} single{{ singles|length|pluralize }}</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="form-checkbox-wrapper space-x-4">
-                                        <!-- Singles Preview -->
-                                        <div class="flex -space-x-1">
-                                            {% for single in singles|slice:":3" %}
-                                                <img class="w-8 h-8 rounded border-2 border-white object-cover"
-                                                     src="{{ single.image_url_small }}"
-                                                     alt="{{ single.name }}"
-                                                     title="{{ single.name }}">
-                                            {% endfor %}
-                                            {% if singles|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
-                                                    <span class="text-xs font-medium text-gray-600">+{{ singles|length|add:"-3" }}</span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Collapsible Content -->
-                            <div id="singles-content" class="album-section-content hidden">
-                                <div class="px-6 py-4 border-t border-gray-200">
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                        {% for album in singles %}
-                                            <div class="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
-                                                <!-- Album Cover -->
-                                                <div class="aspect-square bg-gray-100 relative overflow-hidden">
-                                                    <img src="{{ album.image_url_large }}"
-                                                         alt="{{ album.name }} cover art"
-                                                         class="w-full h-full object-cover">
-                                                    <!-- Selection Checkbox -->
-                                                    <div class="absolute top-2 left-2">
-                                                        <label class="inline-form-checkbox-wrapper">
-                                                            <input type="checkbox"
-                                                                   name="album"
-                                                                   form="albums-form"
-                                                                   class="toggling single form-checkbox"
-                                                                   value="{{ album.id }}"
-                                                                   onchange="toggleSubmitButton()"
-                                                                   checked>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <!-- Content -->
-                                                <div class="p-3">
-                                                    <h3 class="text-sm font-medium text-gray-900 truncate"
-                                                        title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
-                                                        <span>{{ album.release_year }}</span>
-                                                        <span>{{ album.num_tracks }} tracks</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    <!-- Compilations Section -->
-                    {% if compilations %}
-                        <div class="bg-white border-b border-gray-200">
-                            <!-- Collapsible Header -->
-                            <div class="px-6 py-4 cursor-pointer hover-subtle"
-                                 onclick="toggleAlbumSection('compilations-content')">
-                                <div class="modal-header-layout">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 form-checkbox-wrapper justify-center">
-                                            {% include "web/icons/tw_chevron_down.html" with class="h-4 w-4 text-gray-400 transform transition-transform compilations-chevron" %}
-                                        </div>
-                                        <label class="flex items-center space-x-3 cursor-pointer"
-                                               onclick="event.stopPropagation()">
-                                            <input type="checkbox"
-                                                   name="all-compilations"
-                                                   id="all-compilations"
-                                                   class="toggling form-checkbox"
-                                                   onClick="toggleCheckboxes(this, 'compilation')"
-                                                   onchange="toggleSubmitButton()"
-                                                   {% if not has_compilations %}disabled{% endif %}>
-                                            <div>
-                                                <h2 class="text-lg font-semibold text-gray-900">Compilations</h2>
-                                                <p class="text-sm text-gray-600">{{ compilations|length }} compilation{{ compilations|length|pluralize }}</p>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="form-checkbox-wrapper space-x-4">
-                                        <!-- Compilations Preview -->
-                                        <div class="flex -space-x-1">
-                                            {% for compilation in compilations|slice:":3" %}
-                                                <img class="w-8 h-8 rounded border-2 border-white object-cover"
-                                                     src="{{ compilation.image_url_small }}"
-                                                     alt="{{ compilation.name }}"
-                                                     title="{{ compilation.name }}">
-                                            {% endfor %}
-                                            {% if compilations|length > 3 %}
-                                                <div class="w-8 h-8 rounded border-2 border-white bg-gray-100 form-checkbox-wrapper justify-center">
-                                                    <span class="text-xs font-medium text-gray-600">+{{ compilations|length|add:"-3" }}</span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <!-- Collapsible Content -->
-                            <div id="compilations-content" class="album-section-content hidden">
-                                <div class="px-6 py-4 border-t border-gray-200">
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                        {% for album in compilations %}
-                                            <div class="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow overflow-hidden">
-                                                <!-- Album Cover -->
-                                                <div class="aspect-square bg-gray-100 relative overflow-hidden">
-                                                    <img src="{{ album.image_url_large }}"
-                                                         alt="{{ album.name }} cover art"
-                                                         class="w-full h-full object-cover">
-                                                    <!-- Selection Checkbox -->
-                                                    <div class="absolute top-2 left-2">
-                                                        <label class="inline-form-checkbox-wrapper">
-                                                            <input type="checkbox"
-                                                                   name="album"
-                                                                   form="albums-form"
-                                                                   class="toggling compilation form-checkbox"
-                                                                   value="{{ album.id }}"
-                                                                   onchange="toggleSubmitButton()">
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <!-- Content -->
-                                                <div class="p-3">
-                                                    <h3 class="text-sm font-medium text-gray-900 truncate"
-                                                        title="{{ album.name }}">{{ album.name }}</h3>
-                                                    <div class="modal-header-layout text-xs text-gray-500 mt-1">
-                                                        <span>{{ album.release_year }}</span>
-                                                        <span>{{ album.num_tracks }} tracks</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <div class="px-6 py-12 text-center">
-                        {% include "web/icons/tw_music_notes.html" with class="mx-auto h-12 w-12 text-gray-400" %}
-                        <h3 class="mt-4 text-lg font-medium text-gray-900">No releases found</h3>
-                        <p class="mt-2 text-gray-500">{{ artist.name }} has no releases available.</p>
-                    </div>
-                {% endif %}
-            </div>
+            {% include "web/parts/release_group.html" with group="albums" title="Albums" releases=albums checked=True %}
+            {% include "web/parts/release_group.html" with group="singles" title="Singles and EPs" releases=singles checked=True %}
+            {% include "web/parts/release_group.html" with group="compilations" title="Compilations" releases=compilations checked=False %}
         </div>
-    </div>
-</div>
-<script>
-    function toggleAlbumSection(contentId) {
-        const content = document.getElementById(contentId);
-        const chevronClass = contentId.replace('-content', '-chevron');
-        const chevron = content.previousElementSibling.querySelector('.' + chevronClass);
-
-        if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
-            chevron.style.transform = 'rotate(180deg)';
-        } else {
-            content.classList.add('hidden');
-            chevron.style.transform = 'rotate(0deg)';
-        }
-
-        // Update toggle button text based on current state
-        updateToggleButton();
-    }
-
-    function toggleAllAlbums() {
-        const allContent = document.querySelectorAll('.album-section-content');
-        const allChevrons = document.querySelectorAll('.albums-chevron, .singles-chevron, .compilations-chevron');
-        const toggleText = document.getElementById('toggleAllText');
-        const toggleIcon = document.getElementById('toggleAllIcon');
-
-        // Check if any are expanded
-        const anyExpanded = Array.from(allContent).some(content => !content.classList.contains('hidden'));
-
-        if (anyExpanded) {
-            // Collapse all
-            allContent.forEach(content => content.classList.add('hidden'));
-            allChevrons.forEach(chevron => chevron.style.transform = 'rotate(0deg)');
-            toggleText.textContent = 'Expand all';
-            toggleIcon.style.transform = 'rotate(0deg)';
-        } else {
-            // Expand all
-            allContent.forEach(content => content.classList.remove('hidden'));
-            allChevrons.forEach(chevron => chevron.style.transform = 'rotate(180deg)');
-            toggleText.textContent = 'Collapse all';
-            toggleIcon.style.transform = 'rotate(180deg)';
-        }
-    }
-
-    function updateToggleButton() {
-        const allContent = document.querySelectorAll('.album-section-content');
-        const toggleText = document.getElementById('toggleAllText');
-        const toggleIcon = document.getElementById('toggleAllIcon');
-
-        if (allContent.length === 0) return;
-
-        // Check if all are expanded
-        const allExpanded = Array.from(allContent).every(content => !content.classList.contains('hidden'));
-
-        if (allExpanded) {
-            toggleText.textContent = 'Collapse all';
-            toggleIcon.style.transform = 'rotate(180deg)';
-        } else {
-            toggleText.textContent = 'Expand all';
-            toggleIcon.style.transform = 'rotate(0deg)';
-        }
-    }
-
-    // Functions from original albums.html that need to be included
-    function toggleSubmitButton() {
-        const allCheckboxes = document.querySelectorAll('.toggling');
-        const submitButton = document.getElementById('create');
-        const anyChecked = Array.from(allCheckboxes).some(checkbox => checkbox.checked);
-
-        submitButton.disabled = !anyChecked;
-        if (anyChecked) {
-            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        } else {
-            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    }
-
-    function toggleSubmitButtonInput(inputId, buttonId) {
-        const input = document.getElementById(inputId);
-        const button = document.getElementById(buttonId);
-
-        if (input.value.trim() === '') {
-            button.disabled = true;
-            button.classList.add('opacity-50', 'cursor-not-allowed');
-        } else {
-            button.disabled = false;
-            button.classList.remove('opacity-50', 'cursor-not-allowed');
-        }
-    }
-
-    function toggleRelatedCheckbox(checkbox, relatedId) {
-        const relatedCheckbox = document.getElementById(relatedId);
-        if (!checkbox.checked) {
-            relatedCheckbox.checked = false;
-            relatedCheckbox.disabled = true;
-        } else {
-            relatedCheckbox.disabled = false;
-        }
-    }
-
-    // Initialize submit button state
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleSubmitButton();
-    });
-</script>
+        <div class="modal-footer">
+            <form method="dialog">
+                <button class="btn btn-ghost">Cancel</button>
+            </form>
+            <button type="submit"
+                    id="create-discography"
+                    form="albums-form"
+                    class="btn btn-primary"
+                    data-requires-checked="[name='album']">
+                {% include "web/icons/plus.html" %}<span>Create playlist</span>
+            </button>
+        </div>
+    {% else %}
+        <div class="modal-body">
+            {% include "web/parts/empty_state.html" with icon="web/icons/music.html" title="No releases found" description=artist.name|add:" has no releases on Spotify." %}
+        </div>
+    {% endif %}
+</dialog>
