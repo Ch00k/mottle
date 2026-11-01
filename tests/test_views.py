@@ -503,6 +503,9 @@ class TestAlbums(SignedInTestCase):
             assert page.xpath("normalize-space((//section/h2)[2])") == "Singles and EPs 1"
             assert page.xpath("//main//a[starts-with(@href, '/album/')]/@href") == ["/album/album1/", "/album/single1/"]
             assert page.xpath("//button[normalize-space()='Create discography']/@hx-get") == ["/artist/artist1/"]
+            assert page.xpath("//button[normalize-space()='Watch events']/@hx-post") == [
+                "/artist/artist1/events/watch/"
+            ]
 
     async def test_post_creates_discography_playlist_watching_the_artist(self) -> None:
         """A discography playlist is named after the artist unless given a name, and gets the chosen albums' tracks.
@@ -1007,8 +1010,12 @@ class TestPlaylistCoverImage(SignedInTestCase):
 
 @pytest.mark.asyncio
 class TestArtistEvents(SignedInTestCase):
-    async def test_tracks_the_artist_and_lists_upcoming_events(self) -> None:
-        """The artist's events are tracked for the user under the artist's name, and the upcoming ones are listed."""
+    def setUp(self) -> None:
+        super().setUp()
+        self.spotify.get_artist = AsyncMock(return_value=make_artist("artist1", "The Artist"))
+
+    async def make_event_artist(self) -> EventArtist:
+        """Return the tracked artist artist1, with an upcoming event at The Venue."""
         artist = await Artist.objects.acreate(spotify_id="artist1")
         event_artist = await EventArtist.objects.acreate(
             artist=artist, songkick_name_match_accuracy=0, bandsintown_name_match_accuracy=0
@@ -1022,17 +1029,85 @@ class TestArtistEvents(SignedInTestCase):
             venue="The Venue",
             city="Berlin",
         )
-        self.spotify.get_artist = AsyncMock(return_value=make_artist("artist1", "The Artist"))
+        return event_artist
 
-        with (
-            patch("web.views.track_artist_events", AsyncMock(return_value=event_artist)) as track_artist_events,
-            patch.object(EventArtist, "update_events", AsyncMock()),
-        ):
+    async def test_lists_upcoming_events_without_watching_them(self) -> None:
+        """The page lists the artist's upcoming events mottle has, offering to watch them, and neither adds the
+        artist to the user's watched artists nor fetches its events."""
+        event_artist = await self.make_event_artist()
+
+        with patch.object(EventArtist, "update_events", AsyncMock()) as update_events:
             response = await self.async_client.get("/artist/artist1/events/")
 
         assert response.status_code == 200
-        assert "The Venue" in response.content.decode()
-        track_artist_events.assert_awaited_once_with("artist1", "The Artist", str(self.spotify_user.id))
+        page = lh.fromstring(response.content)
+        assert page.xpath("//li[contains(., 'The Venue')]")
+        assert page.xpath("//button[normalize-space()='Watch events']/@hx-post") == ["/artist/artist1/events/watch/"]
+        assert not await event_artist.watching_users.aexists()
+        update_events.assert_not_awaited()
+
+    async def test_artist_mottle_does_not_track(self) -> None:
+        """The page of an artist mottle has no events of says so, offering to watch them."""
+        response = await self.async_client.get("/artist/artist1/events/")
+
+        assert response.status_code == 200
+        page = lh.fromstring(response.content)
+        assert page.xpath("normalize-space(//h3)") == "No upcoming events"
+        assert page.xpath("//button[normalize-space()='Watch events']")
+
+    async def test_watching_a_tracked_artist(self) -> None:
+        """Watching an artist mottle tracks adds the user to its watchers at once, and swaps in the button that stops
+        watching, with a toast."""
+        event_artist = await self.make_event_artist()
+
+        with patch("web.views.run_in_background") as run_in_background:
+            response = await self.async_client.post("/artist/artist1/events/watch/")
+
+        assert response.status_code == 200
+        assert [u.id async for u in event_artist.watching_users.all()] == [self.spotify_user.id]
+        page = lh.fromstring(response.content)
+        assert page.xpath("normalize-space(//button)") == "Watching events"
+        assert page.xpath("//button/@hx-delete") == ["/artist/artist1/events/watch/"]
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "success", "body": "Watching The Artist's events"}
+        }
+        run_in_background.assert_not_called()
+
+    async def test_watching_an_untracked_artist(self) -> None:
+        """Watching an artist mottle does not track yet finds it and fetches its events in the background."""
+        with (
+            patch("web.views.track_and_fetch_artist_events", Mock(return_value="coroutine")) as track,
+            patch("web.views.run_in_background") as run_in_background,
+        ):
+            response = await self.async_client.post("/artist/artist1/events/watch/")
+
+        assert response.status_code == 200
+        track.assert_called_once_with("artist1", "The Artist", str(self.spotify_user.id))
+        run_in_background.assert_called_once_with("coroutine")
+        assert lh.fromstring(response.content).xpath("normalize-space(//button)") == "Watching events"
+
+    async def test_stopping_watching(self) -> None:
+        """Stopping watching an artist's events removes the user from its watchers, and swaps in the button that
+        starts watching again."""
+        event_artist = await self.make_event_artist()
+        await event_artist.watching_users.aadd(self.spotify_user)
+
+        response = await self.async_client.delete("/artist/artist1/events/watch/")
+
+        assert response.status_code == 200
+        assert not await event_artist.watching_users.aexists()
+        assert lh.fromstring(response.content).xpath("//button/@hx-post") == ["/artist/artist1/events/watch/"]
+        assert json.loads(response["HX-Trigger"]) == {
+            "HXToast": {"type": "success", "body": "Stopped watching The Artist's events"}
+        }
+
+    async def test_watching_is_refused_while_events_are_off(self) -> None:
+        """With events turned off, watching an artist's events is refused with a toast."""
+        with self.settings(EVENTS_ENABLED=False):
+            response = await self.async_client.post("/artist/artist1/events/watch/")
+
+        assert response.status_code == 400
+        assert not await EventArtist.objects.aexists()
 
 
 @pytest.mark.asyncio

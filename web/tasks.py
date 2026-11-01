@@ -427,6 +427,12 @@ async def track_artist_events(
     return event_artist
 
 
+async def track_and_fetch_artist_events(artist_spotify_id: str, artist_name: str, spotify_user_id: str) -> None:
+    """Track the artist's events for the user, and fetch them, so that they show before the daily update does."""
+    event_artist = await track_artist_events(artist_spotify_id, artist_name, spotify_user_id)
+    await event_artist.update_events()
+
+
 async def atrack_artists_events(
     artists_data: dict[str, str],
     spotify_user_id: str,

@@ -37,6 +37,13 @@ def wants_fragment(request: MottleHttpRequest) -> bool:
     return bool(request.htmx) and not request.htmx.boosted and not request.htmx.history_restore_request
 
 
+async def is_watching_artist_events(request: MottleHttpRequest, artist_spotify_id: str) -> bool:
+    """Return whether the signed-in user watches the artist's events."""
+    return await EventArtist.objects.filter(
+        artist__spotify_id=artist_spotify_id, watching_users__id=request.session["spotify_user_id"]
+    ).aexists()
+
+
 def bad_request_toast(message: str) -> HttpResponse:
     """Return a bad request response with the message, which an error toast shows the user."""
     return toast(HttpResponseBadRequest(message), "error", message)

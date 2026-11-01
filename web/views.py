@@ -30,6 +30,7 @@ from .data import AlbumData, ArtistData, PlaylistData, TrackData
 from .middleware import MottleHttpRequest, get_signed_in_auth
 from .models import (
     Event,
+    EventArtist,
     Playlist,
     PlaylistUpdate,
     PlaylistWatchConfig,
@@ -38,12 +39,18 @@ from .models import (
     SpotifyUser,
 )
 from .spotify import get_auth
-from .tasks import atrack_artists_events, check_playlist_for_updates, track_artist_events, upload_cover_image
+from .tasks import (
+    atrack_artists_events,
+    check_playlist_for_updates,
+    track_and_fetch_artist_events,
+    upload_cover_image,
+)
 from .utils import MottleException, MottleSpotifyClient
 from .views_utils import (
     FRAGMENT_REQUEST_HEADERS,
     bad_request_toast,
     get_playlist_modal_response,
+    is_watching_artist_events,
     toast,
     wants_fragment,
 )
@@ -240,6 +247,7 @@ async def albums(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
                 "albums": albums,
                 "singles": singles,
                 "compilations": compilations,
+                "watching": await is_watching_artist_events(request, artist_id),
             },
         )
 
@@ -775,13 +783,53 @@ async def auto_accept_playlist_updates(request: MottleHttpRequest, playlist_id: 
 
 @require_GET
 async def artist_events(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
+    """Show the artist's upcoming events that mottle has fetched, leaving the user's watched artists as they are."""
     artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
 
-    event_artist = await track_artist_events(artist_id, artist.name, request.session["spotify_user_id"])
-    await event_artist.update_events()
+    event_artist = await EventArtist.objects.filter(artist__spotify_id=artist_id).afirst()
+    if event_artist is None:
+        events = []
+    else:
+        events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]
 
-    events = [e async for e in event_artist.events.filter(date__gte=datetime.now(tz=UTC)).order_by("date")]
-    return render(request, "web/events.html", context={"artist": artist, "events": events})
+    return render(
+        request,
+        "web/events.html",
+        context={"artist": artist, "events": events, "watching": await is_watching_artist_events(request, artist_id)},
+    )
+
+
+@require_http_methods(["POST", "DELETE"])
+async def watch_artist_events(request: MottleHttpRequest, artist_id: str) -> HttpResponse:
+    """Start (POST) or stop (DELETE) watching the artist's events, which the user is then emailed about.
+
+    An artist mottle already tracks gets the user at once; one it does not is found at the event sources, and its
+    events fetched, in the background.
+    """
+    if not settings.EVENTS_ENABLED:
+        return bad_request_toast("Events are not available yet. Please check back later")
+
+    artist = ArtistData.from_tekore_model(await request.spotify_client.get_artist(artist_id))
+    spotify_user_id = request.session["spotify_user_id"]
+    event_artist = await EventArtist.objects.filter(artist__spotify_id=artist_id).afirst()
+
+    if request.method == "POST":
+        if event_artist is None:
+            run_in_background(track_and_fetch_artist_events(artist_id, artist.name, spotify_user_id))
+            message = f"Watching {artist.name}'s events. Finding them may take a minute."
+        else:
+            await event_artist.watching_users.aadd(spotify_user_id)
+            message = f"Watching {artist.name}'s events"
+        watching = True
+    else:
+        if event_artist is not None:
+            await event_artist.watching_users.aremove(spotify_user_id)
+        message = f"Stopped watching {artist.name}'s events"
+        watching = False
+
+    return toast(
+        render(request, "web/parts/watch_events.html", {"artist": artist, "watching": watching}), "success", message
+    )
 
 
 @require_http_methods(["GET", "POST"])

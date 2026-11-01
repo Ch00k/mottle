@@ -15,12 +15,17 @@
                 </h1>
             </div>
         </div>
+        {% include "web/parts/watch_events.html" %}
     </div>
     <div class="page">
         {% if events %}
             {% include "web/parts/events.html" %}
         {% else %}
-            {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description=artist.name|add:" has no upcoming events." %}
+            {% if watching %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description="mottle has found no upcoming events of "|add:artist.name|add:" yet. It checks every day, and emails you about the ones near you if event notifications are on in your settings." %}
+            {% else %}
+                {% include "web/parts/empty_state.html" with icon="web/icons/calendar.html" title="No upcoming events" description="mottle has no upcoming events of "|add:artist.name|add:". Watch the artist's events to have it look for them every day." %}
+            {% endif %}
         {% endif %}
     </div>
 {% endblock content %}

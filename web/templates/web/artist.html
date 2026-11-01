@@ -27,6 +27,11 @@
             {% include "web/icons/plus.html" %}<span>Create discography</span>
         </button>
     {% endif %}
+    {% if request.session.feature_flags.events_enabled %}
+        {% include "web/parts/watch_events.html" %}
+        <a href="{% url 'artist_events' artist.id %}"
+           class="btn btn-secondary">{% include "web/icons/calendar.html" %}<span>Events</span></a>
+    {% endif %}
     <a href="{{ artist.url }}"
        class="btn btn-secondary"
        target="_blank"

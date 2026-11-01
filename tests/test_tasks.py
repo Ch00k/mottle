@@ -36,6 +36,7 @@ from web.tasks import (
     atrack_artists_events,
     check_playlist_for_updates,
     check_user_playlists_for_updates,
+    track_and_fetch_artist_events,
     track_artist_events,
     upload_cover_image,
 )
@@ -707,6 +708,27 @@ class TestTrackArtistEvents(TransactionTestCase):
         assert await EventArtist.objects.acount() == 1
         watching_user_ids = {user.id async for user in first.watching_users.all()}
         assert watching_user_ids == {user.id for user in spotify_users}
+
+
+@pytest.mark.asyncio
+class TestTrackAndFetchArtistEvents(TestCase):
+    async def test_tracks_the_artist_for_the_user_and_fetches_its_events(self) -> None:
+        """A new artist is found at the event sources, the user watches it, and its events are fetched right away."""
+        spotify_user = await SpotifyUser.objects.acreate(spotify_id="user")
+
+        async def find_event_data_sources(_: str, artist_name: str) -> tuple[None, EventSourceArtist]:
+            return None, EventSourceArtist(artist_name)
+
+        with (
+            patch("web.tasks.find_event_data_sources", find_event_data_sources),
+            patch.object(EventArtist, "update_events", autospec=True) as update_events,
+        ):
+            await track_and_fetch_artist_events("artist_1", "Artist One", str(spotify_user.id))
+
+        event_artist = await EventArtist.objects.select_related("artist").aget()
+        assert event_artist.artist.spotify_id == "artist_1"
+        assert [user.id async for user in event_artist.watching_users.all()] == [spotify_user.id]
+        update_events.assert_awaited_once_with(event_artist)
 
 
 @pytest.mark.asyncio
