@@ -7,7 +7,7 @@ from unittest.mock import Mock
 import httpx
 import pytest
 from tekore import AsyncSender, Spotify
-from tekore.model import FullPlaylistTrack
+from tekore.model import LocalPlaylistTrack, PlaylistTrackPaging
 
 from web.utils import (
     MottleException,
@@ -157,12 +157,14 @@ class TestMottleSpotifyClient:
         assert [(track.name, count) for track, count in duplicates] == [("Like a Rolling Stone", 2)]
 
     async def test_get_playlist_tracks_skips_local_files(self, spotify_client: MottleSpotifyClient) -> None:
-        """A local file on the playlist, whose album Spotify returns empty with a null type, is left out."""
+        """A local file on the playlist, whose album Spotify returns empty with a null type, is parsed and left out."""
+        playlist_items = await spotify_client.spotify_client.playlist_items("test_playlist_id")
         playlist_tracks = await spotify_client.get_playlist_tracks("test_playlist_id")
-        tracks = [item.track for item in playlist_tracks]
 
-        assert all(isinstance(track, FullPlaylistTrack) for track in tracks)
-        assert [track.name for track in tracks if track is not None] == [
+        assert isinstance(playlist_items, PlaylistTrackPaging)
+        assert isinstance(playlist_items.items[-1].track, LocalPlaylistTrack)
+        # The None check only narrows the type, as get_playlist_tracks returns the items holding a full track
+        assert [item.track.name for item in playlist_tracks if item.track is not None] == [
             "Like a Rolling Stone",
             "Blowin' in the Wind",
             "Like a Rolling Stone",
