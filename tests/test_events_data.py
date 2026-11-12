@@ -22,6 +22,7 @@ from web.events.exceptions import (
 )
 from web.events.http import AsyncRetryingClient, async_songkick_client
 from web.models import Artist, EventArtist
+from web.models import Event as StoredEvent
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -52,6 +53,13 @@ def songkick_site(request: httpx2.Request) -> httpx2.Response:
 
     if request.url.path == "/search":
         return httpx2.Response(200, text="<html><body>Search results</body></html>")
+
+    if request.url.path == "/artists/4-deep-purple-no-events/calendar":
+        return httpx2.Response(200, text="<html><body>No upcoming concerts</body></html>")
+
+    if request.url.path == "/artists/5-deep-purple-malformed/calendar":
+        calendar = (DATA_DIR / "songkick_artist_calendar.html").read_text()
+        return httpx2.Response(200, text=calendar.replace('[{"@context"', '[{}, {"@context"', 1))
 
     if request.url.path == "/artists/3-deep-purple-broken/calendar":
         calendar = (DATA_DIR / "songkick_artist_calendar.html").read_text()
@@ -561,6 +569,234 @@ async def test_update_events_saves_events_then_reports_failed_source(monkeypatch
         await event_artist.update_events()
 
     assert [e.source_url async for e in event_artist.events.all()] == [f"{SONGKICK_BASE_URL}{CONCERT_PATH}"]
+
+
+def refusing_bandsintown(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make Bandsintown refuse every request, as Cloudflare does."""
+    monkeypatch.setattr(
+        data,
+        "async_bandsintown_client",
+        AsyncRetryingClient(
+            attempts=1,
+            base_url=BANDSINTOWN_BASE_URL,
+            transport=httpx2.MockTransport(lambda _: httpx2.Response(403, text="Just a moment...")),
+        ),
+    )
+
+
+async def deep_purple_event_artist(bandsintown: bool = False) -> EventArtist:
+    return await EventArtist.objects.acreate(
+        artist=await Artist.objects.acreate(spotify_id="deep_purple"),
+        songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
+        bandsintown_url=f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}" if bandsintown else None,
+        songkick_name_match_accuracy=ArtistNameMatchAccuracy.exact,
+        bandsintown_name_match_accuracy=ArtistNameMatchAccuracy.exact,
+    )
+
+
+async def store_event(
+    event_artist: EventArtist,
+    source: EventDataSource,
+    url: str,
+    date: datetime.date,
+    tickets_urls: list[str] | None = None,
+) -> StoredEvent:
+    return await StoredEvent.objects.acreate(
+        artist=event_artist, source=source, source_url=url, type=EventType.concert, date=date, tickets_urls=tickets_urls
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+@pytest.mark.parametrize("force_refetch", [False, True])
+async def test_fetch_events_leaves_out_songkick_event_on_a_date_known_from_bandsintown(force_refetch: bool) -> None:
+    """A Songkick event on the date of a known Bandsintown event is the same concert, which Bandsintown had first.
+
+    It is left out even when every event's page is refetched.
+    """
+    bandsintown_event = Event(
+        source=EventDataSource.bandsintown,
+        url=f"{BANDSINTOWN_BASE_URL}/e/1-deep-purple-at-hamburg-sporthalle",
+        type=EventType.concert,
+        date=datetime.date(2026, 11, 1),
+    )
+    artist = EventSourceArtist(
+        name="Deep Purple", songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}", events=[bandsintown_event]
+    )
+
+    await artist.fetch_events(force_refetch)
+
+    assert artist.events == [bandsintown_event]
+    assert artist.unlisted_events == []
+    assert artist.failed_sources == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("bandsintown")
+async def test_fetch_events_leaves_out_bandsintown_event_on_a_date_known_from_songkick() -> None:
+    """A Bandsintown event on the date of a known Songkick event is the same concert, which Songkick had first."""
+    songkick_event = Event(
+        source=EventDataSource.songkick,
+        url=f"{SONGKICK_BASE_URL}/concerts/1-deep-purple-at-quarterback-immobilien-arena",
+        type=EventType.concert,
+        date=datetime.date(2026, 10, 31),
+    )
+    artist = EventSourceArtist(
+        name="Deep Purple",
+        bandsintown_url=f"{BANDSINTOWN_BASE_URL}{BANDSINTOWN_ARTIST_PATH}",
+        events=[songkick_event],
+    )
+
+    await artist.fetch_events()
+
+    assert artist.events == [songkick_event]
+    assert artist.failed_sources == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_update_events_moves_event_to_the_url_songkick_renamed_it_to() -> None:
+    """An event whose URL Songkick renamed, keeping the event's ID, is the same event, which takes the new URL.
+
+    Its page is fetched again though it is known with its links, as its venue or date may have changed with the URL.
+    """
+    event_artist = await deep_purple_event_artist()
+    stored_event = await store_event(
+        event_artist,
+        EventDataSource.songkick,
+        f"{SONGKICK_BASE_URL}/concerts/42898019-deep-purple-at-sporthalle-hamburg",
+        datetime.date(2026, 10, 30),
+        tickets_urls=["https://s.mottle.it/abc1234"],
+    )
+
+    await event_artist.update_events()
+
+    events = [e async for e in event_artist.events.all()]
+    assert [(e.id, e.source_url, e.date) for e in events] == [
+        (stored_event.id, f"{SONGKICK_BASE_URL}{CONCERT_PATH}", datetime.date(2026, 11, 1))
+    ]
+    assert len(events[0].tickets_urls) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_update_events_force_refetch_updates_the_known_event() -> None:
+    """Refetching the events fetches the page of an event known with its links, and updates that event with it."""
+    event_artist = await deep_purple_event_artist()
+    stored_event = await store_event(
+        event_artist,
+        EventDataSource.songkick,
+        f"{SONGKICK_BASE_URL}{CONCERT_PATH}",
+        datetime.date(2026, 11, 1),
+        tickets_urls=["https://s.mottle.it/abc1234"],
+    )
+
+    await event_artist.update_events(force_refetch=True)
+
+    events = [e async for e in event_artist.events.all()]
+    assert [e.id for e in events] == [stored_event.id]
+    assert len(events[0].tickets_urls) == 2
+    assert "https://s.mottle.it/abc1234" not in events[0].tickets_urls
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_update_events_deletes_upcoming_events_their_source_no_longer_lists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An upcoming event Songkick no longer lists is deleted.
+
+    A past event, which Songkick does not list either, is kept, as are the events of Bandsintown, which fails.
+    """
+    refusing_bandsintown(monkeypatch)
+    event_artist = await deep_purple_event_artist(bandsintown=True)
+    upcoming = datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30)
+    await store_event(event_artist, EventDataSource.songkick, f"{SONGKICK_BASE_URL}/concerts/1-cancelled", upcoming)
+    past = await store_event(
+        event_artist, EventDataSource.songkick, f"{SONGKICK_BASE_URL}/concerts/2-past", datetime.date(2026, 1, 1)
+    )
+    bandsintown_event = await store_event(
+        event_artist, EventDataSource.bandsintown, f"{BANDSINTOWN_BASE_URL}/e/3-upcoming", upcoming
+    )
+
+    with pytest.raises(EventDataSourceException, match=r"^Failed to fetch events from bandsintown$"):
+        await event_artist.update_events()
+
+    assert sorted([e.source_url async for e in event_artist.events.all()]) == sorted(
+        [f"{SONGKICK_BASE_URL}{CONCERT_PATH}", past.source_url, bandsintown_event.source_url]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_update_events_keeps_upcoming_events_when_songkick_lists_none() -> None:
+    """A Songkick calendar that lists no events leaves the artist's upcoming Songkick events in place.
+
+    A markup change makes the calendar yield no events without failing, which must not delete them all.
+    """
+    event_artist = await deep_purple_event_artist()
+    event_artist.songkick_url = f"{SONGKICK_BASE_URL}/artists/4-deep-purple-no-events/calendar"
+    await event_artist.asave()
+    upcoming = datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30)
+    stored_event = await store_event(
+        event_artist, EventDataSource.songkick, f"{SONGKICK_BASE_URL}/concerts/1-upcoming", upcoming
+    )
+
+    await event_artist.update_events()
+
+    assert [e.id async for e in event_artist.events.all()] == [stored_event.id]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_fetch_events_drops_songkick_event_when_all_listed_dates_are_known_from_bandsintown() -> None:
+    """A Songkick event the calendar no longer lists is dropped, though every event it does list is left out for being
+    on a Bandsintown event's date.
+    """
+    bandsintown_event = Event(
+        source=EventDataSource.bandsintown,
+        url=f"{BANDSINTOWN_BASE_URL}/e/1-deep-purple-at-hamburg-sporthalle",
+        type=EventType.concert,
+        date=datetime.date(2026, 11, 1),
+    )
+    rescheduled_event = Event(
+        source=EventDataSource.songkick,
+        url=f"{SONGKICK_BASE_URL}/concerts/2-deep-purple-at-barclays-arena",
+        type=EventType.concert,
+        date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+    )
+    artist = EventSourceArtist(
+        name="Deep Purple",
+        songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
+        events=[bandsintown_event, rescheduled_event],
+    )
+
+    await artist.fetch_events()
+
+    assert artist.events == [bandsintown_event]
+    assert artist.unlisted_events == [rescheduled_event]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
+async def test_fetch_events_fails_songkick_on_malformed_event_data() -> None:
+    """A calendar whose event data holds anything but one event fails the source, as the events left out of it would
+    be taken to be cancelled.
+    """
+    calendar_url = f"{SONGKICK_BASE_URL}/artists/5-deep-purple-malformed/calendar"
+    upcoming_event = Event(
+        source=EventDataSource.songkick,
+        url=f"{SONGKICK_BASE_URL}/concerts/1-upcoming",
+        type=EventType.concert,
+        date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+    )
+    artist = EventSourceArtist(name="Deep Purple", songkick_url=calendar_url, events=[upcoming_event])
+
+    await artist.fetch_events()
+
+    assert artist.events == [upcoming_event]
+    assert artist.unlisted_events == []
+    assert artist.failed_sources == [EventDataSource.songkick]
 
 
 MUSICBRAINZ_ARTIST_ID = "79239441-bfd5-4981-a70c-55c3f15c1287"

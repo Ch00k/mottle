@@ -11,6 +11,10 @@ SONGKICK_API_REQUEST_TIMEOUT = 5
 BANDSINTOWN_API_REQUEST_TIMEOUT = 5
 
 SONGKICK_EVENT_URL_REGEX = re.compile(r"^https://www\.songkick\.com/(concerts|festivals|live-stream-concerts).*$")
+# The end of an event's URL, on Songkick and Bandsintown alike: its last segment starts with the event's ID, which the
+# source keeps when it renames the URL
+EVENT_URL_END_PATTERN = r"/{id}(?:-[^/]*)?$"
+EVENT_SOURCE_ID_REGEX = re.compile(EVENT_URL_END_PATTERN.format(id=r"(\d+)"))
 SONGKICK_ARTIST_CALENDAR_URL_REGEX = re.compile(r"^https://www\.songkick\.com/artists/[^/]+/calendar$")
 # The URL of an artist's page, which MusicBrainz links to, capturing the artist's ID
 SONGKICK_ARTIST_URL_REGEX = re.compile(r"^https?://(?:www\.)?songkick\.com/artists/(\d+)")

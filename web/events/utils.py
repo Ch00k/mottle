@@ -7,9 +7,9 @@ from django.conf import settings
 from rapidfuzz import fuzz
 from unidecode import unidecode
 
-from .constants import ALNUM_TABLE
-from .enums import ArtistNameMatchAccuracy, EventDataSource
-from .exceptions import HeuristicsException
+from .constants import ALNUM_TABLE, EVENT_SOURCE_ID_REGEX
+from .enums import ArtistNameMatchAccuracy
+from .exceptions import EventDataSourceException, HeuristicsException
 
 if TYPE_CHECKING:
     from .data import Event
@@ -162,14 +162,21 @@ def replace_unicode_characters(string: str) -> str:
     )
 
 
-def should_fetch_event(event_url: str, event_source: EventDataSource, events: dict[str, Event]) -> bool:
-    existing_event = events.get(event_url)
+def event_source_id(event_url: str) -> str:
+    """Return the source's ID of the event at the URL, which stays the same when the source renames the URL."""
+    match = EVENT_SOURCE_ID_REGEX.search(event_url)
 
-    if existing_event is None:
+    if match is None:
+        raise EventDataSourceException(f"Event URL has no event ID: {event_url}")
+
+    return match.group(1)
+
+
+def should_fetch_event(known_event: Event | None, event_url: str) -> bool:
+    """Return whether to fetch the page of a listed event, which an event already known with its links, under the URL
+    it is listed with, does not need.
+    """
+    if known_event is None or known_event.url != event_url:
         return True
 
-    if existing_event.source != event_source:
-        logger.error(f"Event {event_url} from {event_source} is already known from {existing_event.source}")
-        return True
-
-    return not existing_event.tickets_urls and not existing_event.stream_urls
+    return not known_event.tickets_urls and not known_event.stream_urls
