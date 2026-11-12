@@ -339,25 +339,33 @@ class EventSourceArtist:
         """
         events = {e.key: e for e in self.events}
         listed_keys: set[EventKey] = set()
+        # A source that lists no events at all is not trusted to have dropped the artist's: a markup change makes
+        # Songkick's page yield no events without failing, as it did from January to October 2026
+        listing_sources = set()
 
         # A source that fails, including on markup it cannot parse, leaves the events read from the other one in place
         if self.songkick_url is not None:
             try:
-                listed_keys |= await self.fetch_songkick_events(self.songkick_url, events, force_refetch)
+                keys, lists_events = await self.fetch_songkick_events(self.songkick_url, events, force_refetch)
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.songkick)
+            else:
+                listed_keys |= keys
+                if lists_events:
+                    listing_sources.add(EventDataSource.songkick)
 
         if self.bandsintown_url is not None:
             try:
-                listed_keys |= await self.fetch_bandsintown_events(self.bandsintown_url, events, force_refetch)
+                keys, lists_events = await self.fetch_bandsintown_events(self.bandsintown_url, events, force_refetch)
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.bandsintown)
+            else:
+                listed_keys |= keys
+                if lists_events:
+                    listing_sources.add(EventDataSource.bandsintown)
 
-        # A source that lists none of the artist's events is not trusted to have dropped them: a markup change makes
-        # Songkick's page yield no events without failing, as it did from January to October 2026
-        listing_sources = {source for source, _ in listed_keys}
         today = datetime.now(tz=UTC).date()
         self.events = []
         self.unlisted_events = []
@@ -370,8 +378,10 @@ class EventSourceArtist:
 
     async def fetch_songkick_events(
         self, songkick_url: str, events: dict[EventKey, Event], force_refetch: bool
-    ) -> set[EventKey]:
-        """Fetch the Songkick events to add to or update in `events`, and return the keys of those the artist has."""
+    ) -> tuple[set[EventKey], bool]:
+        """Fetch the Songkick events to add to or update in `events`, and return the keys of those the artist has, and
+        whether Songkick lists any events.
+        """
         try:
             events_xpath, calendar_url = await get_xpath(
                 async_songkick_client, songkick_url, SONGKICK_EVENTS_XPATH, follow_redirects=True
@@ -409,12 +419,14 @@ class EventSourceArtist:
             else:
                 events[r.key] = r
 
-        return listed_keys
+        return listed_keys, bool(listed_events_data)
 
     async def fetch_bandsintown_events(
         self, bandsintown_url: str, events: dict[EventKey, Event], force_refetch: bool
-    ) -> set[EventKey]:
-        """Fetch the Bandsintown events to add to or update in `events`, and return the keys of those the artist has."""
+    ) -> tuple[set[EventKey], bool]:
+        """Fetch the Bandsintown events to add to or update in `events`, and return the keys of those the artist has,
+        and whether Bandsintown lists any events.
+        """
         events_data = await extract_bandsintown_events_data(bandsintown_url)
 
         bandsintown_events_data, listed_keys = select_events_to_fetch(
@@ -430,7 +442,7 @@ class EventSourceArtist:
             else:
                 events[r.key] = r
 
-        return listed_keys
+        return listed_keys, bool(events_data)
 
 
 def select_events_to_fetch(

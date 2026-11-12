@@ -749,6 +749,36 @@ async def test_update_events_keeps_upcoming_events_when_songkick_lists_none() ->
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("songkick")
+async def test_fetch_events_drops_songkick_event_when_all_listed_dates_are_known_from_bandsintown() -> None:
+    """A Songkick event the calendar no longer lists is dropped, though every event it does list is left out for being
+    on a Bandsintown event's date.
+    """
+    bandsintown_event = Event(
+        source=EventDataSource.bandsintown,
+        url=f"{BANDSINTOWN_BASE_URL}/e/1-deep-purple-at-hamburg-sporthalle",
+        type=EventType.concert,
+        date=datetime.date(2026, 11, 1),
+    )
+    rescheduled_event = Event(
+        source=EventDataSource.songkick,
+        url=f"{SONGKICK_BASE_URL}/concerts/2-deep-purple-at-barclays-arena",
+        type=EventType.concert,
+        date=datetime.datetime.now(tz=datetime.UTC).date() + datetime.timedelta(days=30),
+    )
+    artist = EventSourceArtist(
+        name="Deep Purple",
+        songkick_url=f"{SONGKICK_BASE_URL}{CALENDAR_PATH}",
+        events=[bandsintown_event, rescheduled_event],
+    )
+
+    await artist.fetch_events()
+
+    assert artist.events == [bandsintown_event]
+    assert artist.unlisted_events == [rescheduled_event]
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("songkick")
 async def test_fetch_events_fails_songkick_on_malformed_event_data() -> None:
     """A calendar whose event data holds anything but one event fails the source, as the events left out of it would
     be taken to be cancelled.
