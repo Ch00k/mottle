@@ -8,7 +8,8 @@ The SQLite database must be reachable by both the web server and the scheduled j
 machine only. So everything runs on a single machine: `serve.sh` migrates the database, then runs supercronic and
 uvicorn side by side. When either of them exits, the script stops the other and exits, and Fly restarts the machine. The
 machine never stops, as the jobs and the tasks in `web/background.py` run between requests. A deploy stops the machine
-and starts the new one, which takes a few seconds and loses any running background task.
+and starts the new one, which takes a few seconds and loses any running background task. A running scheduled job gets up
+to five minutes (`kill_timeout`) to finish before the machine stops.
 
 The volume, mounted at `/data`, holds the database and the dumped cover images. Fly snapshots it daily and keeps five
 days of snapshots; there is no other backup.

@@ -2,6 +2,10 @@
 app = "mottle"
 primary_region = "fra"
 
+# A stopping machine gets five minutes, the longest Fly allows, so that a running job can finish: the jobs take two to
+# five minutes.
+kill_timeout = 300
+
 [env]
   DATABASE_FILE = "/data/db.sqlite3"
   OPENAI_IMAGES_DUMP_DIR = "/data/images_dump/"
