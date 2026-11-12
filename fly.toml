@@ -23,6 +23,10 @@ primary_region = "fra"
   min_machines_running = 1
   processes = ["app"]
 
+[[restart]]
+  policy = "always"
+  processes = ["app"]
+
 [[vm]]
   memory = "512mb"
   cpu_kind = "shared"

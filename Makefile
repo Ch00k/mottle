@@ -62,7 +62,7 @@ css-check: tailwind-version
 
 # Deploys the working tree to Fly.io, which builds the image from it; uncommitted changes would go along.
 deploy:
-	@git diff-index --quiet HEAD -- || { echo "Commit or stash the changes first"; exit 1; }
+	@test -z "$$(git status --porcelain --untracked-files=all)" || { echo "Commit or stash the changes first"; exit 1; }
 	fly deploy --ha=false --env APP_VERSION=$$(uv version --short)
 
 release-patch:
