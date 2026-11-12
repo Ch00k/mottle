@@ -339,7 +339,6 @@ class EventSourceArtist:
         """
         events = {e.key: e for e in self.events}
         listed_keys: set[EventKey] = set()
-        fetched_sources = []
 
         # A source that fails, including on markup it cannot parse, leaves the events read from the other one in place
         if self.songkick_url is not None:
@@ -348,8 +347,6 @@ class EventSourceArtist:
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.songkick)
-            else:
-                fetched_sources.append(EventDataSource.songkick)
 
         if self.bandsintown_url is not None:
             try:
@@ -357,15 +354,16 @@ class EventSourceArtist:
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.bandsintown)
-            else:
-                fetched_sources.append(EventDataSource.bandsintown)
 
+        # A source that lists none of the artist's events is not trusted to have dropped them: a markup change makes
+        # Songkick's page yield no events without failing, as it did from January to October 2026
+        listing_sources = {source for source, _ in listed_keys}
         today = datetime.now(tz=UTC).date()
         self.events = []
         self.unlisted_events = []
 
         for key, event in events.items():
-            if event.source in fetched_sources and key not in listed_keys and event.date >= today:
+            if event.source in listing_sources and key not in listed_keys and event.date >= today:
                 self.unlisted_events.append(event)
             else:
                 self.events.append(event)
@@ -392,14 +390,11 @@ class EventSourceArtist:
 
         event_jsons = [json.loads(event) for event in events_xpath]
 
-        listed_events_data = []
-        for event_json in event_jsons:
-            if len(event_json) != 1:
-                logger.error(f"Event data list does not have exactly one item: {event_json}")
-                capture_message(f"Event data list does not have exactly one item: {event_json}")
-                continue
+        # An event left out of the listing would be taken to be cancelled
+        if any(len(event_json) != 1 for event_json in event_jsons):
+            raise SongkickException(f"Event data lists do not all have exactly one item on {calendar_url}")
 
-            listed_events_data.append(event_json[0])
+        listed_events_data = [event_json[0] for event_json in event_jsons]
 
         songkick_events_data, listed_keys = select_events_to_fetch(
             EventDataSource.songkick, listed_events_data, events, force_refetch
@@ -464,7 +459,7 @@ def select_events_to_fetch(
         key = (source, event_source_id(event_url))
         listed_keys.add(key)
 
-        if not force_refetch and not should_fetch_event(events.get(key)):
+        if not force_refetch and not should_fetch_event(events.get(key), event_url):
             logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
             continue
 

@@ -16,6 +16,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from tekore import Token
 
+from web.events.constants import EVENT_URL_END_PATTERN
 from web.events.data import EventSourceArtist
 from web.events.enums import EventDataSource, EventType
 from web.events.exceptions import EventDataSourceException
@@ -367,11 +368,12 @@ class Event(DirtyFieldsMixin, BaseModel):
 
         _, source_id = fetched_event.key
 
+        # The event is found by the ID its URL ends in, which the source keeps when it renames the URL, and a new one
+        # takes its URL from `defaults`
         return await Event.objects.aupdate_or_create(
             artist=event_artist,
             source=fetched_event.source,
-            # The source's ID of the event, which it keeps when it renames the event's URL
-            source_url__regex=rf"/{source_id}(-[^/]*)?$",
+            source_url__regex=EVENT_URL_END_PATTERN.format(id=source_id),
             defaults={
                 "source_url": fetched_event.url,
                 "type": fetched_event.type,

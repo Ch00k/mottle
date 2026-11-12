@@ -62,16 +62,21 @@ event on a date the other source already has an event of the artist on is the sa
 source had the event stored first keeps it, so users are not told about a concert twice. Songkick is read first, so a
 concert neither source has stored yet goes to Songkick.
 
-An event is recognised by the ID its URL's last segment starts with (`EVENT_SOURCE_ID_REGEX`): both sites rename an
-event's URL when its venue or title changes, and keep the ID, so a renamed event is updated under its new URL.
+An event is recognised by the ID its URL's last segment starts with (`EVENT_URL_END_PATTERN`): both sites rename an
+event's URL when its venue or title changes, and keep the ID, so a renamed event's page is fetched again and the event
+updated under its new URL.
 
-An upcoming stored event its source no longer lists is deleted, unless reading that source failed: it was cancelled, or
-moved to a date the other source has an event on. When the source that kept a concert drops it while the other still
-lists it, the other source's event is stored on the next day's run, and users are told about it as a new event.
+An upcoming stored event its source no longer lists is deleted: it was cancelled, or moved to a date the other source
+has an event on. A source whose reading failed deletes nothing, and neither does one that lists none of the artist's
+events, as a markup change makes Songkick's calendar yield no events without failing; the events of an artist who
+really has none left stay until their date passes. Songkick event data holding anything but one event fails the source, as the
+events left out of it would be deleted. When the source that kept a concert drops it while the other still lists it,
+the other source's event is stored on the next day's run, and users are told about it as a new event.
 
 In November 2026 neither rule existed: the Bandsintown events stored while Songkick was broken, from January to
 October, got a Songkick twin once Songkick was read again, about 400 upcoming concerts in all, and each renamed URL left
-its old event behind. Migration `0013_remove_duplicate_events` deleted the twins by the same rules.
+its old event behind. Migration `0013_remove_duplicate_events` deleted the twins by the same rules, matching the
+sources by each event's latest URL and date.
 
 `get_event_updates --force-refetch` fetches the page of every listed event, including those already stored with their
 links, which are otherwise not fetched again.

@@ -1,7 +1,10 @@
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.db import migrations
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 # The ID of an event in its URL's last segment, which the source keeps when it renames the event's URL
 EVENT_SOURCE_ID_REGEX = re.compile(r"/(\d+)(?:-[^/]*)?$")
@@ -19,31 +22,34 @@ def event_source_id(event_url: str) -> str:
 def remove_duplicate_events(apps: Any, _: Any) -> None:
     """Delete the events stored twice, keeping one of each.
 
-    An artist's events on a date that more than one source has an event on are the same concert: the source that had
-    one stored first keeps its events of that date. Of the events a source stored under more than one URL of the same
-    event, the one stored last keeps its current URL and date.
+    Of the events a source stored under more than one URL of the same event, the one stored last keeps its current URL
+    and date. Then an artist's events on a date that more than one source has an event on are the same concert: the
+    source whose event was first stored, under any of its URLs, keeps its events of that date.
     """
     Event = apps.get_model("web", "Event")
-    events = list(Event.objects.order_by("created_at").only("id", "artist_id", "source", "source_url", "date"))
-
-    first_sources = {}
-    for event in events:
-        first_sources.setdefault((event.artist_id, event.date), event.source)
+    events = Event.objects.order_by("created_at").only("id", "artist_id", "source", "source_url", "date", "created_at")
 
     duplicate_ids = set()
-    last_stored = {}
+    current_versions: dict[tuple[Any, str, str], Any] = {}
+    first_stored_at: dict[tuple[Any, str, str], datetime] = {}
 
     for event in events:
-        if event.source != first_sources[(event.artist_id, event.date)]:
-            duplicate_ids.add(event.id)
-            continue
-
         key = (event.artist_id, event.source, event_source_id(event.source_url))
 
-        if key in last_stored:
-            duplicate_ids.add(last_stored[key].id)
+        if key in current_versions:
+            duplicate_ids.add(current_versions[key].id)
 
-        last_stored[key] = event
+        current_versions[key] = event
+        first_stored_at.setdefault(key, event.created_at)
+
+    first_sources = {}
+    for key in sorted(current_versions, key=lambda key: first_stored_at[key]):
+        event = current_versions[key]
+        first_sources.setdefault((event.artist_id, event.date), event.source)
+
+    for event in current_versions.values():
+        if event.source != first_sources[(event.artist_id, event.date)]:
+            duplicate_ids.add(event.id)
 
     Event.objects.filter(id__in=duplicate_ids).delete()
 

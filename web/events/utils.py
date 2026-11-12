@@ -172,6 +172,11 @@ def event_source_id(event_url: str) -> str:
     return match.group(1)
 
 
-def should_fetch_event(known_event: Event | None) -> bool:
-    """Return whether to fetch the page of an event, which an event already known with its links does not need."""
-    return known_event is None or (not known_event.tickets_urls and not known_event.stream_urls)
+def should_fetch_event(known_event: Event | None, event_url: str) -> bool:
+    """Return whether to fetch the page of a listed event, which an event already known with its links, under the URL
+    it is listed with, does not need.
+    """
+    if known_event is None or known_event.url != event_url:
+        return True
+
+    return not known_event.tickets_urls and not known_event.stream_urls

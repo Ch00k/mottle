@@ -62,3 +62,36 @@ def test_remove_duplicate_events_keeps_one_of_each_event() -> None:
     remove_duplicate_events(apps, None)
 
     assert set(Event.objects.values_list("id", flat=True)) == {bandsintown_first.id, renamed.id, matinee.id, evening.id}
+
+
+@pytest.mark.django_db
+def test_remove_duplicate_events_matches_sources_by_the_current_version_of_an_event() -> None:
+    """A rescheduled event a source stored again under a new URL is matched with the other source on its new date, and
+    keeps that date if it was stored first under its old URL.
+    """
+    event_artist = EventArtist.objects.create(
+        artist=Artist.objects.create(spotify_id="placebo"),
+        songkick_name_match_accuracy=100,
+        bandsintown_name_match_accuracy=100,
+    )
+
+    def store(source: EventDataSource, url: str, date: datetime.date) -> Event:
+        return Event.objects.create(
+            artist=event_artist, source=source, source_url=url, type=EventType.concert, date=date
+        )
+
+    store(EventDataSource.songkick, "https://www.songkick.com/concerts/1-placebo-at-tba", datetime.date(2026, 12, 1))
+    store(
+        EventDataSource.bandsintown,
+        "https://www.bandsintown.com/e/2-placebo-at-atlas-arena",
+        datetime.date(2026, 12, 2),
+    )
+    rescheduled = store(
+        EventDataSource.songkick,
+        "https://www.songkick.com/concerts/1-placebo-at-atlas-arena",
+        datetime.date(2026, 12, 2),
+    )
+
+    remove_duplicate_events(apps, None)
+
+    assert list(Event.objects.values_list("id", flat=True)) == [rescheduled.id]

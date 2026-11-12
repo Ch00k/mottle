@@ -158,17 +158,26 @@ def songkick_concert(tickets_urls: list[str] | None = None) -> Event:
 
 def test_event_not_known_is_fetched() -> None:
     """An event that was not fetched before is fetched."""
-    assert should_fetch_event(None) is True
+    assert should_fetch_event(None, EVENT_URL) is True
 
 
 def test_known_event_with_links_is_not_fetched_again() -> None:
     """An event already known with its ticket links is not fetched again."""
-    assert should_fetch_event(songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"])) is False
+    assert should_fetch_event(songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"]), EVENT_URL) is False
 
 
 def test_known_event_without_links_is_fetched_again() -> None:
     """An event known without ticket or stream links is fetched again, as it may have got some since."""
-    assert should_fetch_event(songkick_concert()) is True
+    assert should_fetch_event(songkick_concert(), EVENT_URL) is True
+
+
+def test_known_event_listed_under_a_new_url_is_fetched_again() -> None:
+    """An event known with its links is fetched again when listed under a new URL, as its venue or date may have
+    changed with it.
+    """
+    known_event = songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"])
+
+    assert should_fetch_event(known_event, "https://www.songkick.com/concerts/1-deep-purple-at-barclays-arena") is True
 
 
 @pytest.mark.parametrize(
