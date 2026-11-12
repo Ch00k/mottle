@@ -15,6 +15,8 @@ changes to their playlists, settings and notifications.
   supercronic, which runs the daily jobs in `crontab` as management commands. Auto-deploy is off for mottle: a merge to
   `main` reaches production only when the user deploys it from oar's web UI. Its environment lives in oar's project
   config (`oar project show <id>`), not in the repository.
+- Production is being moved to Fly.io (`fly.toml`, `make deploy`); the setup and the steps of the move are in
+  `docs/fly.md`.
 - GeoDjango needs GDAL and SpatiaLite. Homebrew's GDAL needs a newer glibc than this host has, so `make test` and
   anything that loads Django run in Docker (`compose.dev.yaml`); `make check` and `make lint` run on the host.
 - `make check` is what CI runs before the tests, and changes no file.

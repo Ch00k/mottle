@@ -42,6 +42,9 @@ WORKDIR /app
 
 ENV PATH=/app/.venv/bin:${PATH} \
     PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    STATIC_ROOT=/app/staticfiles/
+
+RUN /app/manage.py collectstatic --noinput
 
 ENTRYPOINT ["/app/run.sh"]

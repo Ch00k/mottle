@@ -20,4 +20,4 @@ mottle is currently in a closed beta. Ask for an invite via feedback[at]mottle.i
   standalone binary from [its releases](https://github.com/tailwindlabs/tailwindcss/releases), as CI installs it, or
   Homebrew's `tailwindcss` at that version.
 
-Notes on the event sources and on Spotify's API changes are in [docs](docs/).
+Notes on the event sources, on Spotify's API changes and on running on Fly.io are in [docs](docs/).

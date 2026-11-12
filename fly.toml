@@ -1,0 +1,37 @@
+# The Fly.io app. The environment that is not about the machine's layout is in the app's secrets: fly secrets list.
+app = "mottle"
+primary_region = "fra"
+
+# A stopping machine gets five minutes, the longest Fly allows, so that a running job can finish: the jobs take two to
+# five minutes.
+kill_timeout = 300
+
+[env]
+  DATABASE_FILE = "/data/db.sqlite3"
+  OPENAI_IMAGES_DUMP_DIR = "/data/images_dump/"
+
+[processes]
+  app = "/app/serve.sh"
+
+[mounts]
+  source = "mottle_data"
+  destination = "/data"
+  initial_size = "1gb"
+
+# One machine that never stops: the cron jobs and the tasks in web/background.py run on it between requests.
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+  processes = ["app"]
+
+[[restart]]
+  policy = "always"
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -1,7 +1,7 @@
 # The release of the Tailwind standalone CLI web/static/web/style.css is built with; another builds a different stylesheet.
 TAILWIND_VERSION := v4.3.3
 
-.PHONY: lint check css css-check tailwind-version test test_ci up down logs ssh shell makemigrations manage debug release-patch release-minor release-major
+.PHONY: lint check css css-check tailwind-version test test_ci up down logs ssh shell makemigrations manage debug deploy release-patch release-minor release-major
 
 lint:
 	uv run ruff format .
@@ -59,6 +59,11 @@ css-check: tailwind-version
 	@built=$$(mktemp) && trap 'rm -f "$$built"' EXIT; \
 		output=$$(tailwindcss -i web/static/web/src/style.css -o "$$built" --minify 2>&1) || { echo "$$output"; exit 1; }; \
 		cmp -s "$$built" web/static/web/style.css || { echo "web/static/web/style.css is out of date: run make css"; exit 1; }
+
+# Deploys the working tree to Fly.io, which builds the image from it; uncommitted changes would go along.
+deploy:
+	@test -z "$$(git status --porcelain --untracked-files=all)" || { echo "Commit or stash the changes first"; exit 1; }
+	fly deploy --ha=false --env APP_VERSION=$$(uv version --short)
 
 release-patch:
 	./release.sh patch
