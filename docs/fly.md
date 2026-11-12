@@ -9,7 +9,8 @@ machine only. So everything runs on a single machine: `serve.sh` migrates the da
 uvicorn side by side. When either of them exits, the script stops the other and exits, and Fly restarts the machine. The
 machine never stops, as the jobs and the tasks in `web/background.py` run between requests. A deploy stops the machine
 and starts the new one, which takes a few seconds and loses any running background task. A running scheduled job gets up
-to five minutes (`kill_timeout`) to finish before the machine stops.
+to five minutes (`kill_timeout`) to finish before the machine stops, and the site is down for that long, as uvicorn
+stops at once: deploy outside the jobs' runs at 04:00 and 11:00 UTC.
 
 The volume, mounted at `/data`, holds the database and the dumped cover images. Fly snapshots it daily and keeps five
 days of snapshots; there is no other backup.
