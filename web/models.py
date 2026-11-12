@@ -266,9 +266,9 @@ class EventArtist(BaseModel):
     def __str__(self) -> str:
         return f"<EventArtist {self.id}>"
 
-    async def as_fetched_artist(self, with_events: bool = True) -> EventSourceArtist:
+    async def as_fetched_artist(self) -> EventSourceArtist:
         # TODO: This is inefficient
-        events = [e.as_fetched_event() async for e in self.events.all()] if with_events else []
+        events = [e.as_fetched_event() async for e in self.events.all()]
 
         return EventSourceArtist(
             name="dummy", songkick_url=self.songkick_url, bandsintown_url=self.bandsintown_url, events=events
@@ -302,8 +302,8 @@ class EventArtist(BaseModel):
         await self.asave()
 
     async def update_events(self, force_refetch: bool = False) -> EventArtist:
-        fetched_artist = await self.as_fetched_artist(with_events=not force_refetch)
-        await fetched_artist.fetch_events()
+        fetched_artist = await self.as_fetched_artist()
+        await fetched_artist.fetch_events(force_refetch)
 
         if fetched_artist.songkick_url != self.songkick_url:
             self.songkick_url = fetched_artist.songkick_url
@@ -311,6 +311,9 @@ class EventArtist(BaseModel):
 
         for event in fetched_artist.events:
             await Event.update_or_create_from_fetched_event(event, self)
+
+        # Cancelled, or moved to a date another source has an event of the artist on
+        await self.events.filter(source_url__in=[e.url for e in fetched_artist.unlisted_events]).adelete()
 
         # Raised once the other source's events are saved, so that the task counts the artist as failed
         if fetched_artist.failed_sources:
@@ -362,11 +365,15 @@ class Event(DirtyFieldsMixin, BaseModel):
             country = venue.country
             geolocation = Point(venue.geo_lon, venue.geo_lat, srid=settings.GEODJANGO_SRID)
 
+        _, source_id = fetched_event.key
+
         return await Event.objects.aupdate_or_create(
             artist=event_artist,
             source=fetched_event.source,
-            source_url=fetched_event.url,
+            # The source's ID of the event, which it keeps when it renames the event's URL
+            source_url__regex=rf"/{source_id}(-[^/]*)?$",
             defaults={
+                "source_url": fetched_event.url,
                 "type": fetched_event.type,
                 "date": fetched_event.date,
                 "venue": venue_name,

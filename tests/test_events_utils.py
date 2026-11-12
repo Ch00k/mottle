@@ -1,5 +1,4 @@
 import datetime
-import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -7,8 +6,9 @@ from django.test import override_settings
 
 from web.events.data import Event
 from web.events.enums import ArtistNameMatchAccuracy, EventDataSource, EventType
-from web.events.exceptions import HeuristicsException
+from web.events.exceptions import EventDataSourceException, HeuristicsException
 from web.events.utils import (
+    event_source_id,
     find_best_artist_name_match_advanced,
     find_best_artist_name_match_simple,
     get_normalized_country_name,
@@ -158,26 +158,41 @@ def songkick_concert(tickets_urls: list[str] | None = None) -> Event:
 
 def test_event_not_known_is_fetched() -> None:
     """An event that was not fetched before is fetched."""
-    assert should_fetch_event(EVENT_URL, EventDataSource.songkick, {}) is True
+    assert should_fetch_event(None) is True
 
 
 def test_known_event_with_links_is_not_fetched_again() -> None:
     """An event already known with its ticket links is not fetched again."""
-    events = {EVENT_URL: songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"])}
-
-    assert should_fetch_event(EVENT_URL, EventDataSource.songkick, events) is False
+    assert should_fetch_event(songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"])) is False
 
 
 def test_known_event_without_links_is_fetched_again() -> None:
     """An event known without ticket or stream links is fetched again, as it may have got some since."""
-    assert should_fetch_event(EVENT_URL, EventDataSource.songkick, {EVENT_URL: songkick_concert()}) is True
+    assert should_fetch_event(songkick_concert()) is True
 
 
-def test_event_known_from_other_source_is_fetched(caplog: pytest.LogCaptureFixture) -> None:
-    """An event whose URL is known from the other source is fetched, and the mix-up is logged as an error."""
-    events = {EVENT_URL: songkick_concert(tickets_urls=["https://s.mottle.it/abc1234"])}
+@pytest.mark.parametrize(
+    ("url", "source_id"),
+    [
+        ("https://www.songkick.com/concerts/42947072-bonnie-tyler-at-raiffeisen-halle-gasometer", "42947072"),
+        (
+            "https://www.songkick.com/festivals/2877689-under-the-big-sky/id/43503427-under-the-big-sky-2027",
+            "43503427",
+        ),
+        ("https://www.songkick.com/live-stream-concerts/39722645-deep-purple", "39722645"),
+        ("https://www.bandsintown.com/e/1038620848-the-prodigy-at-wiener-stadthalle-halle-d", "1038620848"),
+        ("https://www.songkick.com/concerts/1", "1"),
+    ],
+)
+def test_event_source_id_is_read_from_the_url(url: str, source_id: str) -> None:
+    """The source's ID of an event is the number its URL's last segment starts with.
 
-    assert should_fetch_event(EVENT_URL, EventDataSource.bandsintown, events) is True
+    A festival's URL holds the festival's ID too, which stays the same from one year's festival to the next.
+    """
+    assert event_source_id(url) == source_id
 
-    errors = [r.getMessage() for r in caplog.records if r.name == "web.events.utils" and r.levelno == logging.ERROR]
-    assert errors == [f"Event {EVENT_URL} from bandsintown is already known from songkick"]
+
+def test_event_url_without_an_id_is_refused() -> None:
+    """A URL without an event ID raises, as it would leave the event without anything to recognise it by."""
+    with pytest.raises(EventDataSourceException, match=r"^Event URL has no event ID: https://www.songkick.com/search$"):
+        event_source_id("https://www.songkick.com/search")

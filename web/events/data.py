@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin, urlsplit
 
@@ -40,6 +40,7 @@ from .http import (
     get_xpath,
 )
 from .utils import (
+    event_source_id,
     get_normalized_country_name,
     match_artist_name,
     normalize_string,
@@ -187,6 +188,10 @@ class MusicBrainzArtist:
         )
 
 
+# An event's source and the source's ID of it
+type EventKey = tuple[EventDataSource, str]
+
+
 @dataclass
 class Venue:
     name: str
@@ -208,6 +213,10 @@ class Event:
     stream_urls: list[str] = field(default_factory=list)
     tickets_urls: list[str] = field(default_factory=list)
 
+    @property
+    def key(self) -> EventKey:
+        return self.source, event_source_id(self.url)
+
 
 @dataclass
 class EventSourceArtist:
@@ -218,6 +227,8 @@ class EventSourceArtist:
     songkick_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     bandsintown_match_accuracy: ArtistNameMatchAccuracy = ArtistNameMatchAccuracy.no_match
     events: list[Event] = field(default_factory=list)
+    # The known upcoming events their sources no longer list, set by `fetch_events`
+    unlisted_events: list[Event] = field(default_factory=list)
     failed_sources: list[EventDataSource] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -320,27 +331,49 @@ class EventSourceArtist:
         self.bandsintown_url = artist_url
         self.bandsintown_match_accuracy = accuracy
 
-    async def fetch_events(self) -> None:
-        events = {e.url: e for e in self.events}
+    async def fetch_events(self, force_refetch: bool = False) -> None:
+        """Merge the events the sources list into the known `events`, and move the known upcoming events their sources
+        no longer list to `unlisted_events`.
+
+        `force_refetch` fetches the page of every listed event, including those already known with their links.
+        """
+        events = {e.key: e for e in self.events}
+        listed_keys: set[EventKey] = set()
+        fetched_sources = []
 
         # A source that fails, including on markup it cannot parse, leaves the events read from the other one in place
         if self.songkick_url is not None:
             try:
-                await self.fetch_songkick_events(self.songkick_url, events)
+                listed_keys |= await self.fetch_songkick_events(self.songkick_url, events, force_refetch)
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.songkick)
+            else:
+                fetched_sources.append(EventDataSource.songkick)
 
         if self.bandsintown_url is not None:
             try:
-                await self.fetch_bandsintown_events(self.bandsintown_url, events)
+                listed_keys |= await self.fetch_bandsintown_events(self.bandsintown_url, events, force_refetch)
             except Exception as e:
                 logger.exception(e)
                 self.failed_sources.append(EventDataSource.bandsintown)
+            else:
+                fetched_sources.append(EventDataSource.bandsintown)
 
-        self.events = list(events.values())
+        today = datetime.now(tz=UTC).date()
+        self.events = []
+        self.unlisted_events = []
 
-    async def fetch_songkick_events(self, songkick_url: str, events: dict[str, Event]) -> None:
+        for key, event in events.items():
+            if event.source in fetched_sources and key not in listed_keys and event.date >= today:
+                self.unlisted_events.append(event)
+            else:
+                self.events.append(event)
+
+    async def fetch_songkick_events(
+        self, songkick_url: str, events: dict[EventKey, Event], force_refetch: bool
+    ) -> set[EventKey]:
+        """Fetch the Songkick events to add to or update in `events`, and return the keys of those the artist has."""
         try:
             events_xpath, calendar_url = await get_xpath(
                 async_songkick_client, songkick_url, SONGKICK_EVENTS_XPATH, follow_redirects=True
@@ -359,21 +392,18 @@ class EventSourceArtist:
 
         event_jsons = [json.loads(event) for event in events_xpath]
 
-        songkick_events_data = []
+        listed_events_data = []
         for event_json in event_jsons:
             if len(event_json) != 1:
                 logger.error(f"Event data list does not have exactly one item: {event_json}")
                 capture_message(f"Event data list does not have exactly one item: {event_json}")
                 continue
 
-            event_data = event_json[0]
-            event_url = event_data["url"].split("?")[0]
+            listed_events_data.append(event_json[0])
 
-            if not should_fetch_event(event_url, EventDataSource.songkick, events):
-                logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
-                continue
-
-            songkick_events_data.append(event_data)
+        songkick_events_data, listed_keys = select_events_to_fetch(
+            EventDataSource.songkick, listed_events_data, events, force_refetch
+        )
 
         calls = [extract_songkick_event(event_data) for event_data in songkick_events_data]
         results = await asyncio.gather(*calls, return_exceptions=True)
@@ -382,29 +412,19 @@ class EventSourceArtist:
             if isinstance(r, BaseException):
                 logger.error(r, exc_info=r)
             else:
-                events[r.url] = r
+                events[r.key] = r
 
-    async def fetch_bandsintown_events(self, bandsintown_url: str, events: dict[str, Event]) -> None:
+        return listed_keys
+
+    async def fetch_bandsintown_events(
+        self, bandsintown_url: str, events: dict[EventKey, Event], force_refetch: bool
+    ) -> set[EventKey]:
+        """Fetch the Bandsintown events to add to or update in `events`, and return the keys of those the artist has."""
         events_data = await extract_bandsintown_events_data(bandsintown_url)
 
-        # This assumes that there are no duplicate dates in the following `for` loop
-        existing_event_dates = [e.date for e in events.values()]
-
-        bandsintown_events_data = []
-        for event_data in events_data:
-            event_url = event_data["url"].split("?")[0]
-            event_date = datetime.fromisoformat(event_data["startDate"]).date()
-
-            if not should_fetch_event(event_url, EventDataSource.bandsintown, events):
-                logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
-                continue
-
-            # TODO: Perhaps this check needs to be a little smarter, but good enough for now
-            if event_date in existing_event_dates:
-                logger.warning(f"Event on {event_date} already exists. Skipping")
-                continue
-
-            bandsintown_events_data.append(event_data)
+        bandsintown_events_data, listed_keys = select_events_to_fetch(
+            EventDataSource.bandsintown, events_data, events, force_refetch
+        )
 
         calls = [extract_bandsintown_event(event_data) for event_data in bandsintown_events_data]
         results = await asyncio.gather(*calls, return_exceptions=True)
@@ -413,7 +433,44 @@ class EventSourceArtist:
             if isinstance(r, BaseException):
                 logger.error(r, exc_info=r)
             else:
-                events[r.url] = r
+                events[r.key] = r
+
+        return listed_keys
+
+
+def select_events_to_fetch(
+    source: EventDataSource, events_data: list[dict[str, Any]], events: dict[EventKey, Event], force_refetch: bool
+) -> tuple[list[dict[str, Any]], set[EventKey]]:
+    """Return the data of the source's listed events whose pages to fetch, and the keys of the listed events the
+    artist has.
+
+    The artist has an event of the source unless another source already has one on its date: both sources list the
+    same concert under different URLs, and the source that had it first keeps it. The page of an event already known
+    with its links is fetched again only when forced.
+    """
+    other_source_dates = {e.date for e in events.values() if e.source != source}
+
+    events_data_to_fetch = []
+    listed_keys: set[EventKey] = set()
+
+    for event_data in events_data:
+        event_url = event_data["url"].split("?")[0]
+        event_date = datetime.fromisoformat(event_data["startDate"]).date()
+
+        if event_date in other_source_dates:
+            logger.info(f"An event on {event_date} is already known from another source. Skipping {event_url}")
+            continue
+
+        key = (source, event_source_id(event_url))
+        listed_keys.add(key)
+
+        if not force_refetch and not should_fetch_event(events.get(key)):
+            logger.info(f"Event {event_url} already exists and has tickets or stream URLs. Skipping")
+            continue
+
+        events_data_to_fetch.append(event_data)
+
+    return events_data_to_fetch, listed_keys
 
 
 async def get_songkick_calendar_url(artist_id: str) -> str:
