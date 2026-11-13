@@ -139,13 +139,18 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     )
     logger.debug(spotify_auth)
 
-    # TODO: New versions of Django should suppport async methods on sessions (aget, aset, aupdate etc.)
-    request.session["spotify_user_id"] = str(spotify_user.id)
-    request.session["spotify_user_spotify_id"] = spotify_user.spotify_id
-    request.session["spotify_user_display_name"] = spotify_user.display_name
-    request.session["spotify_user_email"] = spotify_user.email
-    request.session["spotify_user_image_url"] = get_smallest_image(user.images)
-    request.session["feature_flags"] = {"events_enabled": settings.EVENTS_ENABLED}
+    # A new key for the signed-in session, so that a key known before the sign-in does not become signed in
+    await request.session.acycle_key()
+    await request.session.aupdate(
+        {
+            "spotify_user_id": str(spotify_user.id),
+            "spotify_user_spotify_id": spotify_user.spotify_id,
+            "spotify_user_display_name": spotify_user.display_name,
+            "spotify_user_email": spotify_user.email,
+            "spotify_user_image_url": get_smallest_image(user.images),
+            "feature_flags": {"events_enabled": settings.EVENTS_ENABLED},
+        }
+    )
 
     await spotify_auth_request.adelete()
 
