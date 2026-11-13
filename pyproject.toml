@@ -1,6 +1,7 @@
 [project]
 name = "mottle"
-version = "0.27.9"
+# The release tag is the version the app reports (docs/fly.md), so this one is not maintained
+version = "0.0.0"
 description = "Some quality of life improvements for Spotify"
 authors = [{ name = "Andrii Yurchuk", email = "ay@mntw.re" }]
 license = { file = "LICENSE" }
