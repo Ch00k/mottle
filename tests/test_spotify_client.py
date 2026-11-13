@@ -548,6 +548,16 @@ class TestGetPlaylistTrackIds:
 
         assert track_ids == ["track_1", "track_2"]
 
+    async def test_item_without_a_track(self) -> None:
+        """An item that carries no track at all fails the call with a MottleException, raised from the cause."""
+        page = {"total": 1, "limit": 100, "items": [{"item": {"id": "track_1", "type": "track"}}]}
+        api = SpotifyAPI(routes=[("GET", r"/v1/playlists/playlist_1/tracks", lambda _, __: page)])
+
+        with pytest.raises(MottleException, match=r"^Failed to get items$") as exc_info:
+            await make_client(api).get_playlist_track_ids("playlist_1")
+
+        assert isinstance(exc_info.value.__cause__, KeyError)
+
 
 @pytest.mark.asyncio
 class TestCreatePlaylistWithTracks:

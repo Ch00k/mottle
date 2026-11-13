@@ -199,12 +199,15 @@ class MottleSpotifyClient:
         # playlist of thousands of tracks take more memory than the machine has
         func = partial(self.spotify_client.playlist_items, playlist_id, fields="total,limit,items(track(id,type))")
         playlist_items = await get_all_offset_paging_items(func)
-        # The track is null when it is no longer available, and has a null ID when it is a local file
-        return [
-            item["track"]["id"]
-            for item in playlist_items
-            if item["track"] is not None and item["track"]["type"] == "track" and item["track"]["id"] is not None
-        ]
+
+        # The track is null when it is no longer available, and has a null ID when it is a local file. An item of
+        # another shape fails like a response tekore cannot parse.
+        with raising_mottle_exception("Failed to get items"):
+            return [
+                item["track"]["id"]
+                for item in playlist_items
+                if item["track"] is not None and item["track"]["type"] == "track" and item["track"]["id"] is not None
+            ]
 
     async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> list[tuple[FullPlaylistTrack, int]]:
         # TODO: This implementation is quite awful
