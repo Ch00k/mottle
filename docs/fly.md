@@ -46,8 +46,10 @@ Production moved from oar on this host to Fly.io on 13 November 2026, with about
 - DNS moved from Cloudflare's proxy to records pointing straight at the app, and the zone was copied to the Hetzner
   project, to which the nameservers move.
 
-Until oar's project is removed, going back is possible. Copy the database out of the volume, with Python as the image
-has no sqlite3 CLI, and stop the app:
+Going back is possible only while oar's project is kept and Cloudflare still serves the zone: oar's host serves no TLS
+for mottle and was reached through Cloudflare's proxy, which Hetzner's DNS cannot provide, so once the nameservers have
+moved there is no going back. Copy the database out of the volume, with Python as the image has no sqlite3 CLI, and stop
+the app:
 
 ```bash
 fly ssh console  # python -c "import sqlite3; sqlite3.connect('/data/db.sqlite3').backup(sqlite3.connect('/data/back.sqlite3'))"
@@ -57,7 +59,7 @@ fly scale count 0
 
 Replace `/opt/oar/data/projects/3d5ef5a3-208b-450a-9a27-04dc72764c06-mottle/git/database/db.sqlite3` with that file
 (with sudo, removing any `-wal` and `-shm` file beside it), start oar's project with Deploy in its web UI, and point the
-web records back at this host, proxied by Cloudflare.
+web records in Cloudflare's zone back at this host, proxied.
 
 Once Fly has run a day of jobs, oar's project is removed (`sudo oar project remove
 3d5ef5a3-208b-450a-9a27-04dc72764c06`), and `compose.prod.yaml` and this section go.
