@@ -11,12 +11,12 @@ changes to their playlists, settings and notifications.
 
 ## Running and deploying
 
-- Production runs in [oar](https://github.com/oar-cd/oar) on this host, from `compose.prod.yaml`: web (uvicorn) and
-  supercronic, which runs the daily jobs in `crontab` as management commands. Auto-deploy is off for mottle: a merge to
-  `main` reaches production only when the user deploys it from oar's web UI. Its environment lives in oar's project
-  config (`oar project show <id>`), not in the repository.
-- Production is being moved to Fly.io (`fly.toml`, `make deploy`); the setup and the steps of the move are in
-  `docs/fly.md`.
+- Production runs on Fly.io (`fly.toml`): one machine running web (uvicorn) and supercronic, which runs the daily jobs
+  in `crontab` as management commands. Its environment is in the app's secrets (`fly secrets list`).
+- A merge to `main` deploys nothing: pushing a tag `X.Y.Z` on `main` releases it through CI, and the tag is the version.
+  Releasing and the layout: `docs/fly.md`.
+- The previous production in [oar](https://github.com/oar-cd/oar) on this host (`compose.prod.yaml`) is stopped and kept
+  only until Fly has run a day of jobs.
 - GeoDjango needs GDAL and SpatiaLite. Homebrew's GDAL needs a newer glibc than this host has, so `make test` and
   anything that loads Django run in Docker (`compose.dev.yaml`); `make check` and `make lint` run on the host.
 - `make check` is what CI runs before the tests, and changes no file.
