@@ -56,10 +56,10 @@ def create_spotify_client(
     artist_albums = artist_albums or {}
     album_tracks = album_tracks or {}
 
-    async def get_playlist_tracks(playlist_id: str) -> list[Mock]:
+    async def get_playlist_track_ids(playlist_id: str) -> list[str]:
         if playlist_id not in playlist_tracks:
             raise MottleException("Failed to get items")
-        return [Mock(track=Mock(id=track_id)) for track_id in playlist_tracks[playlist_id]]
+        return playlist_tracks[playlist_id]
 
     async def get_artist_albums(artist_id: str) -> list[Mock]:
         return [Mock(id=album_id) for album_id in artist_albums[artist_id]]
@@ -68,7 +68,7 @@ def create_spotify_client(
         return [Mock(id=track_id) for track_id in album_tracks[album_id]]
 
     spotify_client = Mock(spec=MottleSpotifyClient)
-    spotify_client.get_playlist_tracks = AsyncMock(side_effect=get_playlist_tracks)
+    spotify_client.get_playlist_track_ids = AsyncMock(side_effect=get_playlist_track_ids)
     spotify_client.get_artist_albums = AsyncMock(side_effect=get_artist_albums)
     spotify_client.get_album_tracks = AsyncMock(side_effect=get_album_tracks)
     spotify_client.add_tracks_to_playlist = AsyncMock()
