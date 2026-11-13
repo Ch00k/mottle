@@ -28,7 +28,6 @@ from .utils import MottleException, MottleSpotifyClient
 
 if TYPE_CHECKING:
     from django.db.models.fields.related_descriptors import ManyRelatedManager, RelatedManager
-    from tekore.model import PlaylistTrack
 
 TOKEN_EXPIRATION_THRESHOLD = 60
 
@@ -520,15 +519,8 @@ class Playlist(SpotifyEntityModel):
         await self.updates.filter(source_playlist=playlist).adelete()
         await self.configs_as_watching.filter(watched_playlist=playlist).adelete()
 
-    async def get_tracks(self, spotify_client: MottleSpotifyClient) -> list[PlaylistTrack]:
-        return await spotify_client.get_playlist_tracks(self.spotify_id)
-
     async def get_track_ids(self, spotify_client: MottleSpotifyClient) -> list[str]:
-        return [
-            track.track.id
-            for track in await self.get_tracks(spotify_client)
-            if track.track is not None and track.track.id is not None
-        ]
+        return await spotify_client.get_playlist_track_ids(self.spotify_id)
 
     @property
     def pending_updates(self) -> models.QuerySet[PlaylistUpdate]:

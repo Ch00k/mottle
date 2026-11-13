@@ -143,8 +143,9 @@ async def compile_playlist_updates_email(
                     "owner_name": watched_playlist_data.owner.display_name,
                 }
 
-                tracks_data = await spotify_client.get_tracks(update["update"].tracks_added)
-                for track_data in tracks_data[:num_to_show]:
+                tracks_added = update["update"].tracks_added
+                tracks_data = await spotify_client.get_tracks(tracks_added[:num_to_show])
+                for track_data in tracks_data:
                     artists_str = ", ".join([a.name for a in track_data.artists])
                     update_info["tracks"].append(
                         {
@@ -153,9 +154,9 @@ async def compile_playlist_updates_email(
                         }
                     )
 
-                if len(tracks_data) > num_to_show:
+                if len(tracks_added) > num_to_show:
                     update_info["tracks_truncated"] = True
-                    update_info["tracks_remaining"] = len(tracks_data) - num_to_show
+                    update_info["tracks_remaining"] = len(tracks_added) - num_to_show
 
             elif watched_artist is not None:
                 watched_artist_data = await spotify_client.get_artist(watched_artist.spotify_id)
@@ -163,8 +164,9 @@ async def compile_playlist_updates_email(
                     "name": watched_artist_data.name,
                 }
 
-                albums_data = await spotify_client.get_albums(update["update"].albums_added)
-                for album_data in albums_data[:num_to_show]:
+                albums_added = update["update"].albums_added
+                albums_data = await spotify_client.get_albums(albums_added[:num_to_show])
+                for album_data in albums_data:
                     update_info["albums"].append(
                         {
                             "name": album_data.name,
@@ -172,9 +174,9 @@ async def compile_playlist_updates_email(
                         }
                     )
 
-                if len(albums_data) > num_to_show:
+                if len(albums_added) > num_to_show:
                     update_info["albums_truncated"] = True
-                    update_info["albums_remaining"] = len(albums_data) - num_to_show
+                    update_info["albums_remaining"] = len(albums_added) - num_to_show
 
             else:
                 # XXX: This should never happen

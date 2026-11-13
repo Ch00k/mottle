@@ -23,8 +23,14 @@ stops at once: tag a release outside the jobs' runs at 04:00 and 11:00 UTC.
 The volume, mounted at `/data`, holds the database and the dumped cover images. Fly snapshots it daily and keeps five
 days of snapshots; there is no other backup.
 
-The machine has 512 MB: the web server peaks at about 150 MB and a job that loads Django takes another 140 MB while it
-runs, which leaves no room on 256 MB.
+The machine has 512 MB, of which the kernel leaves about 445 MB, and no swap. The web server peaks at about 150 MB and a
+job that loads Django takes another 140 MB before it does any work, which leaves no room on 256 MB, and little for what
+a job holds on top. A playlist item parsed into tekore's model takes about 20 KB, so the playlist job fetches only the
+track IDs: with the full items, a playlist of several thousand tracks got the job killed for running out of memory.
+
+When memory runs out, the kernel may kill the largest process, or the machine may stall instead: the site, `fly ssh
+console` and `fly machine exec` stop answering, and `fly machine restart` takes effect only once `kill_timeout` has
+passed. So do not run anything that loads Django on it (`manage.py shell`, a job by hand) beside the running processes.
 
 Static files are collected into the image when it is built and served by whitenoise.
 

@@ -194,6 +194,21 @@ class MottleSpotifyClient:
         playlist_tracks = await get_all_offset_paging_items(func)
         return [item for item in playlist_tracks if isinstance(item.track, FullPlaylistTrack)]
 
+    async def get_playlist_track_ids(self, playlist_id: str) -> list[str]:
+        # Only the IDs are asked for: an item parsed into tekore's model takes about 20 KB, so the full items of a
+        # playlist of thousands of tracks take more memory than the machine has
+        func = partial(self.spotify_client.playlist_items, playlist_id, fields="total,limit,items(track(id,type))")
+        playlist_items = await get_all_offset_paging_items(func)
+
+        # The track is null when it is no longer available, and has a null ID when it is a local file. An item of
+        # another shape fails like a response tekore cannot parse.
+        with raising_mottle_exception("Failed to get items"):
+            return [
+                item["track"]["id"]
+                for item in playlist_items
+                if item["track"] is not None and item["track"]["type"] == "track" and item["track"]["id"] is not None
+            ]
+
     async def find_duplicate_tracks_in_playlist(self, playlist_id: str) -> list[tuple[FullPlaylistTrack, int]]:
         # TODO: This implementation is quite awful
         playlist_tracks = await self.get_playlist_tracks(playlist_id)
@@ -237,15 +252,28 @@ async def get_all_chunked(func: Callable, items: list[str], chunk_size: int = 10
     return list(itertools.chain(*results))
 
 
+def unpack_paging(paging: Any) -> tuple[int | None, int | None, list[Any]]:
+    """Return the total, the page size and the items of a page.
+
+    The page is a tekore paging, a tuple whose first element is one, or the dictionary tekore returns for a request
+    that asks for chosen fields only.
+    """
+    if isinstance(paging, tuple):
+        paging = paging[0]
+
+    if isinstance(paging, dict):
+        return paging["total"], paging["limit"], paging["items"]
+
+    return paging.total, paging.limit, paging.items
+
+
 async def get_all_offset_paging_items(func: Callable) -> list[Any]:
     items: list[Any] = []
 
     with raising_mottle_exception("Failed to get items"):
         paging = await func()
 
-    paging_total = paging[0].total if isinstance(paging, tuple) else paging.total
-    page_size = paging[0].limit if isinstance(paging, tuple) else paging.limit
-    first_page_items: list[Model] = paging[0].items if isinstance(paging, tuple) else paging.items
+    paging_total, page_size, first_page_items = unpack_paging(paging)
 
     logger.debug(f"Total items: {paging_total}, page size: {page_size}, items on first page: {len(first_page_items)}")
 
@@ -267,7 +295,7 @@ async def get_all_offset_paging_items(func: Callable) -> list[Any]:
         pages = [paging] + await asyncio.gather(*calls)
 
     for page in pages:
-        items.extend(page[0].items if isinstance(page, tuple) else page.items)
+        items.extend(unpack_paging(page)[2])
 
     return items
 

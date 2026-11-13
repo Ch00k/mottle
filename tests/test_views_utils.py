@@ -1,7 +1,7 @@
 # mypy: disable-error-code="method-assign,assignment"
 import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from django.test import TestCase
@@ -411,6 +411,43 @@ class TestCompilePlaylistUpdatesEmail(TestCase):
 
         # Verify against golden file
         assert minify(html) == minify(golden_html.read_text())
+
+    async def test_fetches_only_the_items_shown(self) -> None:
+        """Only the tracks and albums the email shows are fetched, and it counts the rest from the update's IDs."""
+        target_playlist = await Playlist.objects.acreate(spotify_id="target_playlist")
+        track_ids = [f"track{i}" for i in range(3000)]
+        album_ids = [f"album{i}" for i in range(500)]
+        tracks_update = await PlaylistUpdate.objects.acreate(
+            target_playlist=target_playlist,
+            source_playlist=await Playlist.objects.acreate(spotify_id="watched_playlist"),
+            tracks_added=track_ids,
+            update_hash="tracks_hash",
+        )
+        albums_update = await PlaylistUpdate.objects.acreate(
+            target_playlist=target_playlist,
+            source_artist=await Artist.objects.acreate(spotify_id="watched_artist"),
+            albums_added=album_ids,
+            update_hash="albums_hash",
+        )
+
+        spotify_client = Mock(spec=MottleSpotifyClient)
+        spotify_client.get_playlist = create_mock_playlist_getter()
+        spotify_client.get_artist = create_mock_artist_getter()
+        spotify_client.get_tracks = AsyncMock(side_effect=create_mock_tracks_getter())
+        spotify_client.get_albums = AsyncMock(side_effect=create_mock_albums_getter())
+
+        updates = {
+            "target_playlist": [
+                {"update": tracks_update, "auto_acceptable": False, "auto_accept_successful": False},
+                {"update": albums_update, "auto_acceptable": False, "auto_accept_successful": False},
+            ]
+        }
+        html = await compile_playlist_updates_email(updates, spotify_client, num_to_show=10)
+
+        spotify_client.get_tracks.assert_awaited_once_with(track_ids[:10])
+        spotify_client.get_albums.assert_awaited_once_with(album_ids[:10])
+        assert "...and 2990 more" in html
+        assert "...and 490 more" in html
 
 
 @pytest.mark.asyncio

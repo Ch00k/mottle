@@ -500,6 +500,65 @@ class TestOffsetPaging:
             await make_client(api).get_current_user_playlists()
 
 
+def playlist_track_ids_page(request: httpx.Request, tracks: list[dict[str, Any] | None]) -> dict[str, Any]:
+    """Answer with the page of the tracks' IDs and types the request's offset and limit ask for.
+
+    It is what Spotify returns for the fields `get_playlist_track_ids` asks for, and only for those.
+    """
+    assert request.url.params["fields"] == "total,limit,items(track(id,type))"
+    offset = int(request.url.params["offset"])
+    limit = int(request.url.params["limit"])
+
+    return {
+        "total": len(tracks),
+        "limit": limit,
+        "items": [{"track": track} for track in tracks[offset : offset + limit]],
+    }
+
+
+@pytest.mark.asyncio
+class TestGetPlaylistTrackIds:
+    async def test_track_ids_of_all_pages(self) -> None:
+        """The IDs of the playlist's tracks on every page are returned in order."""
+        tracks: list[dict[str, Any] | None] = [{"id": f"track_{i}", "type": "track"} for i in range(150)]
+        api = SpotifyAPI(
+            routes=[("GET", r"/v1/playlists/playlist_1/tracks", lambda r, _: playlist_track_ids_page(r, tracks))]
+        )
+
+        track_ids = await make_client(api).get_playlist_track_ids("playlist_1")
+
+        assert track_ids == [f"track_{i}" for i in range(150)]
+        offsets = [r.url.params["offset"] for r in api.requested("GET", r"/v1/playlists/playlist_1/tracks")]
+        assert sorted(offsets) == ["0", "100"]
+
+    async def test_skips_items_without_a_track_id(self) -> None:
+        """A track no longer available, a local file and an episode are left out."""
+        tracks: list[dict[str, Any] | None] = [
+            {"id": "track_1", "type": "track"},
+            None,
+            {"id": None, "type": "track"},
+            {"id": "episode_1", "type": "episode"},
+            {"id": "track_2", "type": "track"},
+        ]
+        api = SpotifyAPI(
+            routes=[("GET", r"/v1/playlists/playlist_1/tracks", lambda r, _: playlist_track_ids_page(r, tracks))]
+        )
+
+        track_ids = await make_client(api).get_playlist_track_ids("playlist_1")
+
+        assert track_ids == ["track_1", "track_2"]
+
+    async def test_item_without_a_track(self) -> None:
+        """An item that carries no track at all fails the call with a MottleException, raised from the cause."""
+        page = {"total": 1, "limit": 100, "items": [{"item": {"id": "track_1", "type": "track"}}]}
+        api = SpotifyAPI(routes=[("GET", r"/v1/playlists/playlist_1/tracks", lambda _, __: page)])
+
+        with pytest.raises(MottleException, match=r"^Failed to get items$") as exc_info:
+            await make_client(api).get_playlist_track_ids("playlist_1")
+
+        assert isinstance(exc_info.value.__cause__, KeyError)
+
+
 @pytest.mark.asyncio
 class TestCreatePlaylistWithTracks:
     async def test_creates_playlist_and_adds_tracks(self, client: MottleSpotifyClient, api: SpotifyAPI) -> None:
@@ -575,6 +634,7 @@ CALLS_AND_ERRORS: list[tuple[Callable[[MottleSpotifyClient], Awaitable[Any]], st
     (lambda c: c.follow_playlist("playlist_1"), "Failed to follow playlist playlist_1"),
     (lambda c: c.unfollow_playlist("playlist_1"), "Failed to unfollow playlist playlist_1"),
     (lambda c: c.get_playlist_tracks("playlist_1"), "Failed to get items"),
+    (lambda c: c.get_playlist_track_ids("playlist_1"), "Failed to get items"),
     (lambda c: c.find_duplicate_tracks_in_playlist("playlist_1"), "Failed to get items"),
 ]
 
