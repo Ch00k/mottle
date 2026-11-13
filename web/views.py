@@ -139,6 +139,8 @@ async def callback(request: MottleHttpRequest) -> HttpResponse:
     )
     logger.debug(spotify_auth)
 
+    # A new key for the signed-in session, so that a key known before the sign-in does not become signed in
+    await request.session.acycle_key()
     await request.session.aupdate(
         {
             "spotify_user_id": str(spotify_user.id),

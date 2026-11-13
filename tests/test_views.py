@@ -93,9 +93,10 @@ class TestCallback(TestCase):
         assert response.status_code == 400
 
     async def test_signs_in_a_browser_that_has_a_session(self) -> None:
-        """A browser that already carries a session cookie, as one signing in again does, is signed in to that session.
+        """A browser that already carries a session cookie, as one signing in again does, is signed in.
 
-        The session is loaded from the database while the view runs, which has to happen outside the event loop.
+        The session is loaded from the database while the view runs, which has to happen outside the event loop. Its
+        data carries over to a session under a new key, so that a key known before the sign-in is not signed in.
         """
         await SpotifyAuthRequest.objects.acreate(state="known_state", redirect_uri="/playlists/")
         session = SessionStore()
@@ -120,7 +121,10 @@ class TestCallback(TestCase):
         assert response.status_code == 302
         assert response["Location"] == "/playlists/"
         spotify_user = await SpotifyUser.objects.aget(spotify_id="me")
-        stored = await SessionStore(session.session_key).aload()
+        signed_in_key = response.cookies[settings.SESSION_COOKIE_NAME].value
+        assert signed_in_key != session.session_key
+        assert not await SessionStore().aexists(session.session_key)
+        stored = await SessionStore(signed_in_key).aload()
         assert stored["spotify_user_id"] == str(spotify_user.id)
         assert stored["unrelated"] == "value"
 
