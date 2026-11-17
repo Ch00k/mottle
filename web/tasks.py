@@ -163,10 +163,8 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
         return
 
     if await send_updates_email(user.email, html_message):
-        # TODO: This will update all PlaylistUpdates, not just the ones that were sent
-        await PlaylistUpdate.objects.filter(
-            target_playlist__in=user.playlists.filter(~Q(configs_as_watching=None))
-        ).aupdate(is_notified_of=True)
+        emailed_update_ids = [update["update"].id for update_list in updates.values() for update in update_list]
+        await PlaylistUpdate.objects.filter(id__in=emailed_update_ids).aupdate(is_notified_of=True)
 
 
 async def send_updates_email(email: str, html_message: str) -> bool:
