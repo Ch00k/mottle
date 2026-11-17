@@ -378,7 +378,7 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
         assert logs.output == ["ERROR:web.tasks:Failed to send email to user@example.com: Connection refused"]
 
     async def test_token_refresh_failure(self) -> None:
-        """A user whose expired token fails to refresh is logged, and the failure is raised."""
+        """The failure to refresh a user's expired token is raised."""
         spotify_user = await create_spotify_user()
         await SpotifyAuth.objects.filter(spotify_user=spotify_user).aupdate(
             expires_at=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(minutes=1)
@@ -386,17 +386,9 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
 
         with (
             patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=ConnectionError("Spotify is down")),
-            self.assertLogs("web.tasks", level="ERROR") as logs,
             pytest.raises(MottleException, match=r"^Failed to refresh token$"),
         ):
             await self.check(create_spotify_client(), spotify_user)
-
-        assert logs.output == [
-            (
-                f"ERROR:web.tasks:Failed to check for playlist updates for user {spotify_user}: "
-                "failed to refresh token: Failed to refresh token"
-            )
-        ]
 
     async def test_all_users_with_playlists(self) -> None:
         """Every user with a playlist is checked, and a user with none is not."""
@@ -409,6 +401,47 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
             await acheck_playlists_for_updates(send_notifications=True)
 
         assert [message.to for message in mail.outbox] == [["user@example.com"]]
+
+    async def test_failing_user_does_not_stop_the_others(self) -> None:
+        """A user whose check fails is logged and reported to Sentry, and the other users still get their email.
+
+        Spotify fails to return the failing user's watched playlist while their email is compiled. Either user may be
+        checked first.
+        """
+        failing_user = await create_spotify_user(spotify_id="failing_user", email="failing@example.com")
+        failing_target_playlist = await Playlist.objects.acreate(spotify_id="failing_target", spotify_user=failing_user)
+        await watch_playlist(failing_target_playlist, "failing_source")
+        spotify_user = await create_spotify_user()
+        await self.create_watching_playlist(spotify_user)
+        spotify_client = create_spotify_client(
+            {"failing_target": [], "failing_source": ["track1"], "target": [], "source": ["track1"]}
+        )
+        get_playlist = spotify_client.get_playlist.side_effect
+
+        async def get_playlist_failing_for_failing_source(playlist_id: str) -> Mock:
+            if playlist_id == "failing_source":
+                raise MottleException("Failed to get playlist failing_source")
+            return await get_playlist(playlist_id)
+
+        spotify_client.get_playlist.side_effect = get_playlist_failing_for_failing_source
+
+        with (
+            patch("web.tasks.MottleSpotifyClient", return_value=spotify_client),
+            patch("web.tasks.capture_exception") as capture_exception,
+            self.assertLogs("web.tasks", level="ERROR") as logs,
+        ):
+            await acheck_playlists_for_updates(send_notifications=True)
+
+        assert [message.to for message in mail.outbox] == [["user@example.com"]]
+        assert [record.getMessage() for record in logs.records] == [
+            f"Failed to check playlists for updates for user {failing_user}: Failed to get playlist failing_source"
+        ]
+        assert logs.records[0].exc_info is not None
+        capture_exception.assert_called_once()
+        exception = capture_exception.call_args.args[0]
+        assert isinstance(exception, MottleException)
+        assert str(exception) == "Failed to get playlist failing_source"
+        assert (await PlaylistUpdate.objects.aget(target_playlist=failing_target_playlist)).is_notified_of is False
 
 
 @pytest.mark.asyncio

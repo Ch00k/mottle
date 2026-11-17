@@ -114,11 +114,7 @@ async def check_user_playlists_for_updates(user: SpotifyUser, send_notifications
     spotify_auth = await SpotifyAuth.objects.aget(spotify_user=user)
 
     # TODO: This needs to happen for every update, not just once
-    try:
-        await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
-    except Exception as e:
-        logger.error(f"Failed to check for playlist updates for user {user}: failed to refresh token: {e}")
-        raise
+    await spotify_auth.maybe_refresh()  # TODO: Put this inside MottleSpotifyClient?
 
     spotify_client = MottleSpotifyClient(spotify_auth.access_token)
 
@@ -196,7 +192,11 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
     logger.info("Checking playlists for updates")
 
     async for user in SpotifyUser.objects.filter(~Q(playlists=None)):
-        await check_user_playlists_for_updates(user, send_notifications)
+        try:
+            await check_user_playlists_for_updates(user, send_notifications)
+        except Exception as e:
+            logger.exception(f"Failed to check playlists for updates for user {user}: {e}")
+            capture_exception(e)
 
 
 async def acheck_artists_for_event_updates(
