@@ -378,7 +378,7 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
         assert logs.output == ["ERROR:web.tasks:Failed to send email to user@example.com: Connection refused"]
 
     async def test_token_refresh_failure(self) -> None:
-        """A user whose expired token fails to refresh is logged, and the failure is raised."""
+        """The failure to refresh a user's expired token is raised."""
         spotify_user = await create_spotify_user()
         await SpotifyAuth.objects.filter(spotify_user=spotify_user).aupdate(
             expires_at=datetime.datetime.now(tz=datetime.UTC) - datetime.timedelta(minutes=1)
@@ -386,17 +386,9 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
 
         with (
             patch.object(settings.SPOTIFY_CREDEINTIALS, "refresh", side_effect=ConnectionError("Spotify is down")),
-            self.assertLogs("web.tasks", level="ERROR") as logs,
             pytest.raises(MottleException, match=r"^Failed to refresh token$"),
         ):
             await self.check(create_spotify_client(), spotify_user)
-
-        assert logs.output == [
-            (
-                f"ERROR:web.tasks:Failed to check for playlist updates for user {spotify_user}: "
-                "failed to refresh token: Failed to refresh token"
-            )
-        ]
 
     async def test_all_users_with_playlists(self) -> None:
         """Every user with a playlist is checked, and a user with none is not."""
