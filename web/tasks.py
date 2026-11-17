@@ -196,7 +196,11 @@ async def acheck_playlists_for_updates(send_notifications: bool = False) -> None
     logger.info("Checking playlists for updates")
 
     async for user in SpotifyUser.objects.filter(~Q(playlists=None)):
-        await check_user_playlists_for_updates(user, send_notifications)
+        try:
+            await check_user_playlists_for_updates(user, send_notifications)
+        except Exception as e:
+            logger.exception(f"Failed to check playlists for updates for user {user}: {e}")
+            capture_exception(e)
 
 
 async def acheck_artists_for_event_updates(

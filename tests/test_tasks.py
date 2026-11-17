@@ -410,6 +410,47 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
 
         assert [message.to for message in mail.outbox] == [["user@example.com"]]
 
+    async def test_failing_user_does_not_stop_the_others(self) -> None:
+        """A user whose check fails is logged and reported to Sentry, and the other users still get their email.
+
+        Spotify fails to return the failing user's watched playlist while their email is compiled. Either user may be
+        checked first.
+        """
+        failing_user = await create_spotify_user(spotify_id="failing_user", email="failing@example.com")
+        failing_target_playlist = await Playlist.objects.acreate(spotify_id="failing_target", spotify_user=failing_user)
+        await watch_playlist(failing_target_playlist, "failing_source")
+        spotify_user = await create_spotify_user()
+        await self.create_watching_playlist(spotify_user)
+        spotify_client = create_spotify_client(
+            {"failing_target": [], "failing_source": ["track1"], "target": [], "source": ["track1"]}
+        )
+        get_playlist = spotify_client.get_playlist.side_effect
+
+        async def get_playlist_failing_for_failing_source(playlist_id: str) -> Mock:
+            if playlist_id == "failing_source":
+                raise MottleException("Failed to get playlist failing_source")
+            return await get_playlist(playlist_id)
+
+        spotify_client.get_playlist.side_effect = get_playlist_failing_for_failing_source
+
+        with (
+            patch("web.tasks.MottleSpotifyClient", return_value=spotify_client),
+            patch("web.tasks.capture_exception") as capture_exception,
+            self.assertLogs("web.tasks", level="ERROR") as logs,
+        ):
+            await acheck_playlists_for_updates(send_notifications=True)
+
+        assert [message.to for message in mail.outbox] == [["user@example.com"]]
+        assert [record.getMessage() for record in logs.records] == [
+            f"Failed to check playlists for updates for user {failing_user}: Failed to get playlist failing_source"
+        ]
+        assert logs.records[0].exc_info is not None
+        capture_exception.assert_called_once()
+        exception = capture_exception.call_args.args[0]
+        assert isinstance(exception, MottleException)
+        assert str(exception) == "Failed to get playlist failing_source"
+        assert (await PlaylistUpdate.objects.aget(target_playlist=failing_target_playlist)).is_notified_of is False
+
 
 @pytest.mark.asyncio
 class TestEventUpdateNotifications(TestCase):
