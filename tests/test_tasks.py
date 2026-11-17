@@ -282,6 +282,33 @@ class TestCheckUserPlaylistsForUpdates(TestCase):
         assert update.is_accepted is None
         spotify_client.add_tracks_to_playlist.assert_not_awaited()
 
+    async def test_update_left_out_of_email_not_marked_notified_of(self) -> None:
+        """Only the updates the email shows are marked as notified of, so one left out of it is emailed on a later day.
+
+        A first check, without notifications, makes an update from each of the two watched playlists. On the second
+        check the tracks of one of them cannot be got, so its update is left out of the email the other one makes.
+        """
+        spotify_user = await create_spotify_user()
+        target_playlist = await self.create_watching_playlist(spotify_user)
+        broken_playlist = await watch_playlist(target_playlist, "broken")
+
+        with self.assertLogs("web.tasks", level="WARNING"):
+            await self.check(
+                create_spotify_client({"target": [], "source": ["track1"], "broken": ["track2"]}),
+                spotify_user,
+                send_notifications=False,
+            )
+
+        with self.assertLogs("web.tasks", level="ERROR") as logs:
+            await self.check(create_spotify_client({"target": [], "source": ["track1"]}), spotify_user)
+
+        assert len(mail.outbox) == 1
+        assert (await PlaylistUpdate.objects.aget(source_playlist__spotify_id="source")).is_notified_of is True
+        assert (await PlaylistUpdate.objects.aget(source_playlist=broken_playlist)).is_notified_of is False
+        assert logs.output == [
+            f"ERROR:web.tasks:Failed to get tracks for watched playlist {broken_playlist}: Failed to get items"
+        ]
+
     async def test_no_updates(self) -> None:
         """A user whose playlists have no updates gets no email."""
         spotify_user = await create_spotify_user()
